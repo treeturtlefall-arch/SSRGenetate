@@ -15,8 +15,9 @@ import numpy as np
 from scipy.io import wavfile
 from scipy.signal import butter, sosfilt
 
+from _utils import ASSETS_DIR, load_card_config, resolve_seed
+
 SR = 44100
-ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 
 
 def make_buffer(duration_sec: float) -> np.ndarray:
@@ -364,8 +365,9 @@ def build_se_fanfare(rng: np.random.Generator) -> np.ndarray:
 
 def main() -> None:
     ASSETS_DIR.mkdir(parents=True, exist_ok=True)
-    # 決定論的な固定シード
-    rng = np.random.default_rng(20261120)
+    cfg = load_card_config()
+    seed = resolve_seed(cfg)
+    rng = np.random.default_rng(seed)
 
     save_wav(ASSETS_DIR / "se_summon.wav", build_se_summon(rng), peak_db=-3.0)
     save_wav(ASSETS_DIR / "se_upgrade.wav", build_se_upgrade(rng), peak_db=-2.0)

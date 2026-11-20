@@ -16,21 +16,22 @@ import argparse
 import functools
 import json
 import math
-import os
 import random
-import re
 import struct
-import subprocess
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-FONTS_DIR = PROJECT_ROOT / "assets" / "fonts"
-OUT_DIR = PROJECT_ROOT / "assets" / "generated"
-CONFIG_PATH = PROJECT_ROOT / "card-config.js"
+from _utils import (
+    FONTS_DIR,
+    OUT_DIR,
+    PROJECT_ROOT,
+    generate_micro_emboss_height,
+    load_card_config,
+    make_linear_gradient,
+    resolve_seed,
+)
 
 FALLBACK_FONT_FILE = "TekitouPoem.ttf"
 
@@ -77,25 +78,31 @@ STAMP_KINEMATICS: Dict[str, float] = {
 # 質感スタイルプリセット定義
 TYPO_PRESETS: Dict[str, Dict[str, Any]] = {
     "foil-brush": {
-        "ssr":      {"font": "YujiSyuku-Regular.ttf", "material": "foil-gold",      "stamp": True,  "wobble_mul": 0.35},
-        "subtitle": {"font": "KleeOne-Regular.ttf",   "material": "foil-champagne", "stamp": False, "wobble_mul": 0.85},
-        "title":    {"font": "YujiSyuku-Regular.ttf", "material": "foil-gold",      "stamp": False, "wobble_mul": 1.00},
-        "flavor":   {"font": "KleeOne-Regular.ttf",   "material": "ink-ivory",      "stamp": False, "wobble_mul": 0.75},
-        "cardNo":   {"font": "cinecaption.ttf",       "material": "foil-silver",    "stamp": True,  "wobble_mul": 0.40},
+        "ssr":       {"font": "YujiSyuku-Regular.ttf", "material": "foil-gold",      "stamp": True,  "wobble_mul": 0.35},
+        "subtitle":  {"font": "KleeOne-Regular.ttf",   "material": "foil-champagne", "stamp": False, "wobble_mul": 0.85},
+        "title":     {"font": "YujiSyuku-Regular.ttf", "material": "foil-gold",      "stamp": False, "wobble_mul": 1.00},
+        "flavor":    {"font": "KleeOne-Regular.ttf",   "material": "ink-ivory",      "stamp": False, "wobble_mul": 0.75},
+        "cardNo":    {"font": "cinecaption.ttf",       "material": "foil-silver",    "stamp": True,  "wobble_mul": 0.40},
+        "cutinSub":  {"font": "cinecaption.ttf",       "material": "foil-champagne", "stamp": True,  "wobble_mul": 0.30},
+        "cutinMain": {"font": "YujiSyuku-Regular.ttf", "material": "foil-gold",      "stamp": False, "wobble_mul": 0.65},
     },
     "handwritten-sign": {
-        "ssr":      {"font": "TekitouPoem_Bold.ttf",     "material": "foil-gold",      "stamp": True,  "wobble_mul": 0.45},
-        "subtitle": {"font": "SetoFont.ttf",             "material": "foil-champagne", "stamp": False, "wobble_mul": 1.00},
-        "title":    {"font": "TekitouPoem_Bold.ttf",     "material": "ink-posca",      "stamp": False, "wobble_mul": 1.05},
-        "flavor":   {"font": "TekitouPoem.ttf",          "material": "ink-ivory",      "stamp": False, "wobble_mul": 0.90},
-        "cardNo":   {"font": "ZenKurenaido-Regular.ttf", "material": "foil-silver",    "stamp": False, "wobble_mul": 0.65},
+        "ssr":       {"font": "TekitouPoem_Bold.ttf",     "material": "foil-gold",      "stamp": True,  "wobble_mul": 0.45},
+        "subtitle":  {"font": "SetoFont.ttf",             "material": "foil-champagne", "stamp": False, "wobble_mul": 1.00},
+        "title":     {"font": "TekitouPoem_Bold.ttf",     "material": "ink-posca",      "stamp": False, "wobble_mul": 1.05},
+        "flavor":    {"font": "TekitouPoem.ttf",          "material": "ink-ivory",      "stamp": False, "wobble_mul": 0.90},
+        "cardNo":    {"font": "ZenKurenaido-Regular.ttf", "material": "foil-silver",    "stamp": False, "wobble_mul": 0.65},
+        "cutinSub":  {"font": "cinecaption.ttf",          "material": "foil-champagne", "stamp": True,  "wobble_mul": 0.35},
+        "cutinMain": {"font": "TekitouPoem_Bold.ttf",     "material": "foil-gold",      "stamp": False, "wobble_mul": 0.75},
     },
     "crisp-emboss": {
-        "ssr":      {"font": "cinecaption.ttf",       "material": "foil-gold",      "stamp": True,  "wobble_mul": 0.25},
-        "subtitle": {"font": "cinecaption.ttf",       "material": "foil-champagne", "stamp": False, "wobble_mul": 0.50},
-        "title":    {"font": "KleeOne-Regular.ttf",   "material": "foil-gold",      "stamp": False, "wobble_mul": 0.60},
-        "flavor":   {"font": "KleeOne-Regular.ttf",   "material": "ink-ivory",      "stamp": False, "wobble_mul": 0.50},
-        "cardNo":   {"font": "cinecaption.ttf",       "material": "foil-silver",    "stamp": True,  "wobble_mul": 0.25},
+        "ssr":       {"font": "cinecaption.ttf",       "material": "foil-gold",      "stamp": True,  "wobble_mul": 0.25},
+        "subtitle":  {"font": "cinecaption.ttf",       "material": "foil-champagne", "stamp": False, "wobble_mul": 0.50},
+        "title":     {"font": "KleeOne-Regular.ttf",   "material": "foil-gold",      "stamp": False, "wobble_mul": 0.60},
+        "flavor":    {"font": "KleeOne-Regular.ttf",   "material": "ink-ivory",      "stamp": False, "wobble_mul": 0.50},
+        "cardNo":    {"font": "cinecaption.ttf",       "material": "foil-silver",    "stamp": True,  "wobble_mul": 0.25},
+        "cutinSub":  {"font": "cinecaption.ttf",       "material": "foil-champagne", "stamp": True,  "wobble_mul": 0.20},
+        "cutinMain": {"font": "KleeOne-Regular.ttf",   "material": "foil-gold",      "stamp": False, "wobble_mul": 0.45},
     },
 }
 
@@ -137,33 +144,6 @@ MATERIALS: Dict[str, Dict[str, Any]] = {
         "halo_radius": 6.0,
     },
 }
-
-
-def load_card_config() -> Dict[str, Any]:
-    """card-config.js から window.SSR_CARD_CONFIG を読み込む"""
-    if CONFIG_PATH.exists():
-        try:
-            res = subprocess.run(
-                [
-                    "node",
-                    "-e",
-                    (
-                        "const fs=require('fs');"
-                        "const window={};"
-                        "eval(fs.readFileSync(process.argv[1],'utf8'));"
-                        "process.stdout.write(JSON.stringify(window.SSR_CARD_CONFIG||{}));"
-                    ),
-                    str(CONFIG_PATH),
-                ],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                check=True,
-            )
-            return json.loads(res.stdout)
-        except Exception:
-            pass
-    return {}
 
 
 @functools.lru_cache(maxsize=32)
@@ -315,52 +295,6 @@ def wrap_text_lines(text: str, font_file: str, font_size: int, max_w: float, max
     if rest:
         lines.append(rest)
     return lines
-
-
-def generate_micro_emboss_height(h: int, w: int, np_rng: np.random.RandomState) -> np.ndarray:
-    """InstantFilmFrame 由来の軽量多周波微細シボ高さマップ（平均0・標準偏差1）"""
-    hs1, ws1 = max(8, int(h * 0.65)), max(8, int(w * 0.65))
-    n1 = np_rng.normal(0.0, 1.0, (hs1, ws1)).astype(np.float32)
-    a1 = np.array(
-        Image.fromarray(np.clip((n1 / 5.5 + 0.5) * 255.0, 0, 255).astype(np.uint8), "L")
-        .resize((w, h), Image.Resampling.BILINEAR),
-        dtype=np.float32,
-    )
-    hs2, ws2 = max(6, int(h * 0.35)), max(6, int(w * 0.35))
-    n2 = np_rng.normal(0.0, 1.0, (hs2, ws2)).astype(np.float32)
-    a2 = np.array(
-        Image.fromarray(np.clip((n2 / 5.5 + 0.5) * 255.0, 0, 255).astype(np.uint8), "L")
-        .resize((w, h), Image.Resampling.BICUBIC),
-        dtype=np.float32,
-    )
-    comb = a1 * 0.6 + a2 * 0.4
-    std = float(comb.std())
-    return (comb - float(comb.mean())) / std if std > 1e-6 else np.zeros((h, w), dtype=np.float32)
-
-
-def make_metallic_gradient(h: int, w: int, stops: List[Tuple[int, int, int]], angle_deg: float = 128.0) -> np.ndarray:
-    """多段ストップの斜めリニアグラデーション画像 (H, W, 3) float32 [0,1] を生成"""
-    th = math.radians(angle_deg)
-    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
-    nx = xx / max(1.0, float(w - 1)) - 0.5
-    ny = yy / max(1.0, float(h - 1)) - 0.5
-    proj = nx * math.cos(th) + ny * math.sin(th)
-    pmin, pmax = float(proj.min()), float(proj.max())
-    t = (proj - pmin) / max(1e-6, pmax - pmin)
-
-    n_stops = len(stops)
-    if n_stops == 1:
-        arr = np.zeros((h, w, 3), dtype=np.float32)
-        arr[:, :] = np.array(stops[0], dtype=np.float32) / 255.0
-        return arr
-
-    scaled = np.clip(t * (n_stops - 1), 0.0, float(n_stops - 1) - 1e-6)
-    idx = scaled.astype(np.int32)
-    frac = (scaled - idx)[:, :, None]
-    stops_arr = np.array(stops, dtype=np.float32) / 255.0
-    c0 = stops_arr[idx]
-    c1 = stops_arr[np.minimum(idx + 1, n_stops - 1)]
-    return c0 * (1.0 - frac) + c1 * frac
 
 
 def render_humanized_line(
@@ -602,10 +536,10 @@ def apply_foil_and_grain_material(
     padded_mask.paste(mask_l, (halo_pad, halo_pad))
     alpha = np.array(padded_mask, dtype=np.float32) / 255.0
 
-    np_rng = np.random.RandomState(seed & 0xFFFFFFFF)
+    np_rng = np.random.default_rng(seed & 0xFFFFFFFF)
 
     # 1. 金属箔 / インクグラデーション
-    rgb = make_metallic_gradient(h, w, mat["stops"], angle_deg=126.0)
+    rgb = make_linear_gradient(h, w, mat["stops"], angle_deg=126.0)
 
     # 2. 筆記濃度ムラ / スタンプ片当たり印圧ムラ
     uneven = float(mat["unevenness"])
@@ -742,16 +676,18 @@ def main() -> None:
     wobble_norm = max(0.0, min(1.0, float(wobble_val) / 100.0))
     foil_glitter = float(typo_cfg.get("foilGlitter", 0.42))
     paper_grain = float(typo_cfg.get("paperGrain", 0.35))
-    seed = int(args.seed if args.seed is not None else typo_cfg.get("seed", cfg.get("seed", 20261120)))
+    seed = resolve_seed(cfg, section="typography", override=args.seed)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     specs = [
-        ("ssr",      str(cfg.get("rarity", "SSR")),     72, 260, 1, "typo_ssr.png"),
-        ("subtitle", str(cfg.get("subtitle", "")),      34, 780, 1, "typo_subtitle.png"),
-        ("title",    str(cfg.get("title", "")),         74, 800, 1, "typo_title.png"),
-        ("flavor",   str(cfg.get("flavor", "")),        29, 780, 2, "typo_flavor.png"),
-        ("cardNo",   str(cfg.get("cardNo", "")),        24, 340, 1, "typo_cardno.png"),
+        ("ssr",       str(cfg.get("rarity", "SSR")),     72, 260, 1, "typo_ssr.png"),
+        ("subtitle",  str(cfg.get("subtitle", "")),      34, 780, 1, "typo_subtitle.png"),
+        ("title",     str(cfg.get("title", "")),         74, 800, 1, "typo_title.png"),
+        ("flavor",    str(cfg.get("flavor", "")),        29, 780, 2, "typo_flavor.png"),
+        ("cardNo",    str(cfg.get("cardNo", "")),        24, 340, 1, "typo_cardno.png"),
+        ("cutinSub",  "RAINBOW PROMOTION",               32, 820, 1, "typo_cutin_sub.png"),
+        ("cutinMain", "★ 昇格 — SSR 確定 ★",            68, 920, 1, "typo_cutin_main.png"),
     ]
 
     manifest: Dict[str, Any] = {
@@ -782,7 +718,7 @@ def main() -> None:
         if img is None:
             continue
         out_path = OUT_DIR / filename
-        img.save(out_path, format="PNG")
+        img.save(out_path, format="PNG", optimize=True)
         manifest["items"][key] = {
             "src": f"assets/generated/{filename}",
             "width": img.width,

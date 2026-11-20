@@ -1,0 +1,281 @@
+<!doctype html>
+<html
+  lang="ja"
+  data-resolution="portrait"
+  data-composition-variables='[
+    {"id":"photo","type":"string","label":"Photo Path","default":""},
+    {"id":"title","type":"string","label":"Card Title","default":""},
+    {"id":"subtitle","type":"string","label":"Card Subtitle","default":""},
+    {"id":"rarity","type":"string","label":"Rarity","default":""},
+    {"id":"flavor","type":"string","label":"Flavor Text","default":""}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>SSRGenerate — Scene 3-5: 3D SSR Card &amp; Static Result</title>
+    <link rel="stylesheet" href="./scene-result.css" />
+    <style>
+      #result-root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        isolation: isolate;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <script src="../card-config.js"></script>
+    <script src="../assets/generated/typo-manifest.js"></script>
+  </head>
+  <body>
+    <div
+      id="result-root"
+      data-composition-id="scene-result"
+      data-start="0"
+      data-duration="8.1"
+      data-width="1080"
+      data-height="1920"
+    >
+      <!-- Shared SVG Definitions (Chromatic Aberration Filter & Corner Ornament Template) -->
+      <svg id="shared-svg-defs" width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
+        <defs>
+          <filter id="chroma-shock" x="-4%" y="-2%" width="108%" height="104%" color-interpolation-filters="sRGB">
+            <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r-only" />
+            <feOffset id="chroma-r-off" in="r-only" dx="0" dy="0" result="r-shift" />
+            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g-only" />
+            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b-only" />
+            <feOffset id="chroma-b-off" in="b-only" dx="0" dy="0" result="b-shift" />
+            <feBlend in="r-shift" in2="g-only" mode="screen" result="rg" />
+            <feBlend in="rg" in2="b-shift" mode="screen" />
+          </filter>
+          <g id="corner-ornament-shape">
+            <path d="M4 54 L4 12 Q4 4 12 4 L54 4" stroke="#fef08a" stroke-width="3.5" />
+            <path d="M12 40 L12 12 L40 12" stroke="#f59e0b" stroke-width="2" />
+            <circle cx="12" cy="12" r="4" fill="#fef08a" />
+          </g>
+        </defs>
+      </svg>
+
+      <div id="scene-result-stage" class="clip" data-start="0" data-duration="8.1" data-track-index="0">
+        <div id="result-rays" data-layout-allow-overflow></div>
+        <div id="result-halo" data-layout-allow-overflow></div>
+
+        <svg id="result-bg-ring" viewBox="0 0 800 800" fill="none" data-layout-allow-overflow>
+          <circle cx="400" cy="400" r="380" stroke="#fde047" stroke-width="3" stroke-dasharray="14 14" />
+          <circle cx="400" cy="400" r="340" stroke="#f5c451" stroke-width="2" />
+          <polygon points="400,45 707,222 707,578 400,755 93,578 93,222" stroke="#fde047" stroke-width="2" opacity="0.65" />
+        </svg>
+
+        <div id="card-stage">
+          <div id="ssr-card">
+            <!-- Card Back (Pure Geometric Emblem) -->
+            <div id="card-back-face" class="card-face card-back">
+              <div class="card-back-inner">
+                <svg width="560" height="560" viewBox="0 0 560 560" fill="none" style="position:absolute;opacity:0.85">
+                  <circle cx="280" cy="280" r="250" stroke="#fef08a" stroke-width="4" opacity="0.5" />
+                  <circle cx="280" cy="280" r="215" stroke="#f59e0b" stroke-width="2" stroke-dasharray="10 10" opacity="0.5" />
+                  <polygon points="280,55 475,392 85,392" stroke="#fef08a" stroke-width="3" opacity="0.45" />
+                  <polygon points="280,505 85,168 475,168" stroke="#fef08a" stroke-width="3" opacity="0.45" />
+                  <circle cx="280" cy="280" r="105" fill="#070b1a" stroke="#fef08a" stroke-width="3.5" />
+                  <polygon points="280,192 304,254 368,280 304,306 280,368 256,306 192,280 256,254" fill="#fef08a" stroke="#f59e0b" stroke-width="3" />
+                  <circle cx="280" cy="280" r="22" fill="#ffffff" />
+                </svg>
+              </div>
+            </div>
+
+            <!-- Card Front (Full-Bleed Photo + Physical Metallic Rainbow Frame + Frontmost Overlay) -->
+            <div class="card-face card-front">
+              <img id="mat-rainbow-frame" src="../assets/generated/mat_rainbow_frame.png" alt="" />
+              <div class="card-front-inner">
+                <div class="card-photo-area">
+                  <img id="card-photo" src="../assets/photo.jpg" alt="SSR Character Photo" data-layout-allow-overflow />
+                  <div class="photo-vignette"></div>
+                </div>
+
+                <img id="mat-window-depth" src="../assets/generated/mat_window_depth.png" alt="" />
+
+                <div id="holo-sweep-1" data-layout-allow-overflow></div>
+                <div id="holo-sweep-2" data-layout-allow-overflow></div>
+                <div id="holo-static-sheen"></div>
+
+                <svg class="corner-ornament co-tl" viewBox="0 0 60 60" fill="none"><use href="#corner-ornament-shape" /></svg>
+                <svg class="corner-ornament co-tr" viewBox="0 0 60 60" fill="none"><use href="#corner-ornament-shape" /></svg>
+                <svg class="corner-ornament co-bl" viewBox="0 0 60 60" fill="none"><use href="#corner-ornament-shape" /></svg>
+                <svg class="corner-ornament co-br" viewBox="0 0 60 60" fill="none"><use href="#corner-ornament-shape" /></svg>
+
+                <div id="ssr-emblem">
+                  <div id="ssr-emblem-img" role="img" aria-label="SSR"></div>
+                  <div id="ssr-emblem-text" data-layout-allow-safe-zone>SSR</div>
+                </div>
+
+                <div id="attr-badge" data-layout-allow-safe-zone></div>
+
+                <div id="card-overlay-layer">
+                  <div id="stars-row"></div>
+                  <div id="card-subtitle-wrap" class="typo-slot">
+                    <div id="card-subtitle-img" class="typo-img"></div>
+                    <div id="card-subtitle" data-layout-allow-safe-zone>【奇跡のテーブル55】</div>
+                  </div>
+                  <div id="card-title-wrap" class="typo-slot">
+                    <div id="card-title-img" class="typo-img"></div>
+                    <div id="card-title" data-layout-allow-safe-zone>ちいさな美食家</div>
+                  </div>
+                  <div id="card-flavor-wrap" class="typo-slot">
+                    <div id="card-flavor-img" class="typo-img"></div>
+                    <div id="card-flavor" data-layout-allow-safe-zone>黄金のたまご焼きを前に、世界一の幸せを召喚する。</div>
+                  </div>
+                  <div id="card-stats"></div>
+                </div>
+
+                <div id="card-no-corner">
+                  <div id="card-no-img"></div>
+                  <div id="card-no-text" data-layout-allow-safe-zone>NO.055-SSR</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="landing-shockwave" data-layout-allow-overflow></div>
+        <div id="celebration-layer" data-layout-allow-overflow></div>
+      </div>
+    </div>
+
+    <script src="./scene-result-setup.js"></script>
+    <script>
+      (function () {
+        const st = window.SSR_RESULT_STATE;
+        const at = st.at;
+        const cfg = st.cfg;
+        const chromaShockPx = st.chromaShockPx;
+        const starEls = st.starEls;
+        const sparkleData = st.sparkleData;
+        const confettiData = st.confettiData;
+
+        const tl = gsap.timeline({ paused: true });
+
+        tl.set("#scene-result-stage", { filter: "none", opacity: 0 }, 0);
+        tl.to("#scene-result-stage", { opacity: 1, duration: 0.05 }, at(7.05));
+
+        tl.fromTo("#result-rays", { rotation: 0, opacity: 0.25 }, { rotation: 48, opacity: 0.62, duration: 4.85, ease: "power2.out" }, at(7.15));
+        tl.fromTo("#result-bg-ring", { rotation: -40, scale: 0.82, opacity: 0 }, { rotation: 0, scale: 1.0, opacity: 0.34, duration: 4.85, ease: "power2.out" }, at(7.15));
+
+        tl.fromTo(
+          "#ssr-card",
+          {
+            opacity: 0,
+            scale: 0.18,
+            y: 120,
+            z: -600,
+            rotationY: -720,
+            rotationX: 16,
+            rotationZ: -8,
+          },
+          {
+            opacity: 1,
+            scale: 1.05,
+            y: -14,
+            z: 0,
+            rotationY: 0,
+            rotationX: 0,
+            rotationZ: 0,
+            duration: 2.15,
+            ease: "power3.out",
+          },
+          at(7.18)
+        );
+
+        tl.to("#card-back-face", { opacity: 0, duration: 0.05 }, at(9.35));
+        tl.to("#ssr-card", { scale: 1.0, y: 0, duration: 0.34, ease: "back.out(2.0)" }, at(9.33));
+
+        tl.fromTo("#landing-shockwave", { opacity: 0.95, scale: 0.55 }, { opacity: 0, scale: 3.6, duration: 0.85, ease: "power2.out", immediateRender: false }, at(9.3));
+        tl.to("#scene-result-stage", { y: 12, duration: 0.05 }, at(9.32));
+        tl.to("#scene-result-stage", { y: -8, duration: 0.06 }, at(9.37));
+        tl.to("#scene-result-stage", { y: 4, duration: 0.06 }, at(9.43));
+        tl.to("#scene-result-stage", { y: 0, duration: 0.08 }, at(9.49));
+
+        tl.fromTo("#holo-sweep-1", { x: 0 }, { x: 1850, duration: 1.05, ease: "power2.inOut" }, at(9.45));
+        tl.fromTo("#holo-sweep-1", { opacity: 0 }, { opacity: 0.92, duration: 0.25, ease: "power1.out" }, at(9.45));
+        tl.to("#holo-sweep-1", { opacity: 0, duration: 0.25, ease: "power1.in" }, at(10.25));
+
+        tl.fromTo("#holo-sweep-2", { x: 0 }, { x: 1850, duration: 1.05, ease: "power2.inOut" }, at(10.75));
+        tl.fromTo("#holo-sweep-2", { opacity: 0 }, { opacity: 0.78, duration: 0.25, ease: "power1.out" }, at(10.75));
+        tl.to("#holo-sweep-2", { opacity: 0, duration: 0.25, ease: "power1.in" }, at(11.55));
+
+        tl.fromTo("#holo-static-sheen", { opacity: 0 }, { opacity: 1, duration: 0.75, ease: "power2.out" }, at(11.2));
+
+        tl.fromTo(
+          "#ssr-emblem",
+          { opacity: 0, scale: 2.1, rotation: -12 },
+          { opacity: 1, scale: 1.0, rotation: 0, duration: 0.48, ease: "back.out(2.1)" },
+          at(9.42)
+        );
+        if (cfg.attribute) {
+          tl.fromTo("#attr-badge", { opacity: 0, x: 36 }, { opacity: 1, x: 0, duration: 0.42, ease: "power3.out" }, at(9.65));
+        }
+
+        starEls.forEach(function (star, idx) {
+          tl.fromTo(
+            star,
+            { opacity: 0, scale: 0.1, rotation: -45 },
+            { opacity: 1, scale: 1.0, rotation: 0, duration: 0.36, ease: "back.out(2.4)" },
+            at(9.65 + idx * 0.18)
+          );
+        });
+
+        tl.fromTo("#card-subtitle-wrap", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.42, ease: "power2.out" }, at(10.0));
+        tl.fromTo("#card-title-wrap", { opacity: 0, y: 24, scale: 0.92 }, { opacity: 1, y: 0, scale: 1.0, duration: 0.52, ease: "back.out(1.5)" }, at(10.22));
+        tl.fromTo("#card-flavor-wrap", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.42, ease: "power2.out" }, at(10.55));
+        if (cfg.stats.length > 0) {
+          tl.fromTo("#card-stats", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.48, ease: "power2.out" }, at(10.82));
+        }
+        tl.fromTo("#card-no-corner", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, at(10.95));
+
+        sparkleData.forEach(function (sp) {
+          tl.fromTo(
+            sp.el,
+            { x: 0, y: 0, opacity: 0, scale: 0.1, rotation: sp.rot - 90 },
+            { x: sp.endX, y: sp.endY, opacity: 0.92, scale: sp.finalScale, rotation: sp.rot, duration: 1.35, ease: "power3.out" },
+            sp.startAt
+          );
+        });
+
+        confettiData.forEach(function (cf, idx) {
+          const tStart = at(9.28 + (idx % 5) * 0.05);
+          tl.fromTo(
+            cf.el,
+            { x: 0, y: 0, opacity: 0, scale: 0.3, rotation: 0 },
+            { x: cf.midX, y: cf.midY, opacity: 1, scale: 1.0, rotation: cf.rot * 0.55, duration: 0.95, ease: "power3.out" },
+            tStart
+          );
+          tl.to(
+            cf.el,
+            { x: cf.endX, y: cf.endY, opacity: 0, rotation: cf.rot, duration: 1.35, ease: "power1.in" },
+            tStart + 0.95
+          );
+        });
+
+        function addChromaShock(targetSel, startAt, peakPx) {
+          if (!peakPx || peakPx <= 0) return;
+          tl.set(targetSel, { filter: "url(#chroma-shock)" }, startAt);
+          tl.fromTo("#chroma-r-off", { attr: { dx: 0 } }, { attr: { dx: -peakPx }, duration: 0.04, ease: "power2.out", immediateRender: false }, startAt);
+          tl.fromTo("#chroma-b-off", { attr: { dx: 0 } }, { attr: { dx: peakPx }, duration: 0.04, ease: "power2.out", immediateRender: false }, startAt);
+          tl.to("#chroma-r-off", { attr: { dx: peakPx * 0.45 }, duration: 0.06, ease: "power1.inOut" }, startAt + 0.04);
+          tl.to("#chroma-b-off", { attr: { dx: -peakPx * 0.45 }, duration: 0.06, ease: "power1.inOut" }, startAt + 0.04);
+          tl.to("#chroma-r-off", { attr: { dx: 0 }, duration: 0.10, ease: "power2.out" }, startAt + 0.10);
+          tl.to("#chroma-b-off", { attr: { dx: 0 }, duration: 0.10, ease: "power2.out" }, startAt + 0.10);
+          tl.set(targetSel, { filter: "none" }, startAt + 0.21);
+        }
+
+        addChromaShock("#scene-result-stage", at(9.32), chromaShockPx * 0.90);
+
+        tl.set("#result-root", {}, 8.1);
+
+        window.__timelines = window.__timelines || {};
+        window.__timelines["scene-result"] = tl;
+        tl.seek(0);
+      })();
+    </script>
+  </body>
+</html>

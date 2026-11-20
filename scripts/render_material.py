@@ -14,79 +14,23 @@ SSRGenerate — 虹金属箔フレーム＆内窓立体深度アセット生成�
 """
 from __future__ import annotations
 
-import json
 import math
-import subprocess
-from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import List, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = PROJECT_ROOT / "assets" / "generated"
-CONFIG_PATH = PROJECT_ROOT / "card-config.js"
+from _utils import OUT_DIR, load_card_config, make_linear_gradient, norm_std, resolve_seed
 
-
-def load_card_config() -> Dict[str, Any]:
-    if CONFIG_PATH.exists():
-        try:
-            res = subprocess.run(
-                [
-                    "node",
-                    "-e",
-                    (
-                        "const fs=require('fs');"
-                        "const window={};"
-                        "eval(fs.readFileSync(process.argv[1],'utf8'));"
-                        "process.stdout.write(JSON.stringify(window.SSR_CARD_CONFIG||{}));"
-                    ),
-                    str(CONFIG_PATH),
-                ],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                check=True,
-            )
-            return json.loads(res.stdout)
-        except Exception:
-            pass
-    return {}
-
-
-def _norm_std(arr: np.ndarray) -> np.ndarray:
-    mean = float(np.mean(arr))
-    std = float(np.std(arr))
-    if std < 1e-6:
-        return arr - mean
-    return (arr - mean) / std
-
-
-def _make_rainbow_gradient(h: int, w: int, angle_deg: float = 135.0) -> np.ndarray:
-    """高級ホログラム虹金グラデーション (H, W, 3) float32 [0, 1]"""
-    stops: List[Tuple[int, int, int]] = [
-        (255, 251, 235),  # #fffbeb
-        (250, 204, 21),   # #facc15
-        (244, 114, 182),  # #f472b6
-        (56, 189, 248),   # #38bdf8
-        (168, 85, 247),   # #a855f7
-        (250, 204, 21),   # #facc15
-        (255, 251, 235),  # #fffbeb
-    ]
-    th = math.radians(angle_deg)
-    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
-    nx = xx / max(1.0, float(w - 1)) - 0.5
-    ny = yy / max(1.0, float(h - 1)) - 0.5
-    proj = nx * math.cos(th) + ny * math.sin(th)
-    pmin, pmax = float(proj.min()), float(proj.max())
-    t = (proj - pmin) / max(1e-6, pmax - pmin)
-
-    n_stops = len(stops)
-    scaled = np.clip(t * (n_stops - 1), 0.0, float(n_stops - 1) - 1e-6)
-    idx = scaled.astype(np.int32)
-    frac = (scaled - idx)[:, :, None]
-    s_arr = np.array(stops, dtype=np.float32) / 255.0
-    return s_arr[idx] * (1.0 - frac) + s_arr[np.minimum(idx + 1, n_stops - 1)] * frac
+RAINBOW_STOPS: List[Tuple[int, int, int]] = [
+    (255, 251, 235),  # #fffbeb
+    (250, 204, 21),   # #facc15
+    (244, 114, 182),  # #f472b6
+    (56, 189, 248),   # #38bdf8
+    (168, 85, 247),   # #a855f7
+    (250, 204, 21),   # #facc15
+    (255, 251, 235),  # #fffbeb
+]
 
 
 def _make_rounded_rect_mask(w: int, h: int, pad: int, radius: int, ss: int = 2) -> np.ndarray:
@@ -118,7 +62,7 @@ def generate_rainbow_foil_frame(
     3. 箔圧着の低周波反射ムラ（有機的な光沢のうねり）
     4. マイクロホログラムラメ粒子（Glitter）
     """
-    rng = np.random.RandomState((seed * 747796405 + 31337) & 0xFFFFFFFF)
+    rng = np.random.default_rng((seed * 747796405 + 31337) & 0xFFFFFFFF)
 
     # 1. フレーム帯の透過マスク（外周角丸 − 内窓角丸）
     outer_mask = _make_rounded_rect_mask(w, h, pad=0, radius=outer_r, ss=2)
@@ -126,21 +70,20 @@ def generate_rainbow_foil_frame(
     frame_alpha = np.clip(outer_mask - inner_mask, 0.0, 1.0)
 
     # 2. ベース虹金グラデーション
-    rgb = _make_rainbow_gradient(h, w, angle_deg=135.0)
+    rgb = make_linear_gradient(h, w, RAINBOW_STOPS, angle_deg=135.0)
 
     # 3. 金属ヘアライン研磨目（斜め微細筋）＋ 微細エンボス法線勾配
     def noise_layer(lh: int, lw: int, resample: Image.Resampling) -> np.ndarray:
-        n = rng.normal(0.0, 1.0, (max(4, lh), max(4, lw))).astype(np.float32)
+        n = rng.standard_normal((max(4, lh), max(4, lw))).astype(np.float32)
         p = Image.fromarray(np.clip((n / 5.5 + 0.5) * 255.0, 0, 255).astype(np.uint8), mode="L")
         return np.array(p.resize((w, h), resample), dtype=np.float32)
 
-    # 縦横異方性ヘアライン＋高周波金属グレイン＋低周波圧着ムラ
     hair_h = noise_layer(int(h * 0.85), int(w * 0.06), Image.Resampling.BILINEAR)
     hair_v = noise_layer(int(h * 0.06), int(w * 0.85), Image.Resampling.BILINEAR)
     micro_g = noise_layer(int(h * 0.65), int(w * 0.65), Image.Resampling.BILINEAR)
     foil_wave = noise_layer(int(h / 28.0), int(w / 28.0), Image.Resampling.BICUBIC)
 
-    emboss_h = _norm_std(hair_h * 0.36 + hair_v * 0.36 + micro_g * 0.28)
+    emboss_h = norm_std(hair_h * 0.36 + hair_v * 0.36 + micro_g * 0.28)
     light_angle = math.radians(-132.0)
     lx, ly = math.cos(light_angle), math.sin(light_angle)
 
@@ -154,8 +97,8 @@ def generate_rainbow_foil_frame(
     dy[0, :] = emboss_h[1, :] - emboss_h[0, :]
     dy[-1, :] = emboss_h[-1, :] - emboss_h[-2, :]
 
-    relief = _norm_std(dx * lx + dy * ly)
-    wave_norm = _norm_std(foil_wave)
+    relief = norm_std(dx * lx + dy * ly)
+    wave_norm = norm_std(foil_wave)
 
     # 4. 立体ベベル面取り（フレーム帯の断面が丸く盛り上がり、左上から光が当たる物理陰影）
     y_px = np.arange(h, dtype=np.float32)[:, None]
@@ -166,16 +109,13 @@ def generate_rainbow_foil_frame(
     d_bot = (h - 1) - y_px
     dist_edge = np.minimum(np.minimum(d_left, d_right), np.minimum(d_top, d_bot))
 
-    # 帯の中心 (border * 0.5) で最も高く、外周・内周に向かって曲面状に落ちるプロファイル
     u_band = np.clip(dist_edge / max(1.0, float(border)), 0.0, 1.0)
-    dome = np.sin(u_band * math.pi)  # 0 -> 1 -> 0
-    # 上辺・左辺は光源向きで明るく、下辺・右辺はわずかに陰る方向性ベベル
+    dome = np.sin(u_band * math.pi)
     slope_dir = np.where((d_top <= d_bot) & (d_top <= np.minimum(d_left, d_right)), 1.0, 0.0)
     slope_dir += np.where((d_left < d_right) & (d_left < np.minimum(d_top, d_bot)), 0.75, 0.0)
     slope_dir -= np.where((d_bot < d_top) & (d_bot <= np.minimum(d_left, d_right)), 0.85, 0.0)
     slope_dir -= np.where((d_right < d_left) & (d_right < np.minimum(d_top, d_bot)), 0.65, 0.0)
 
-    # 外周縁のシャープな鏡面ハイライト筋（u_band ≈ 0.25）＋内周縁の繊細な金縁リム（u_band ≈ 0.86）
     spec_ridge = np.exp(-((u_band - 0.28) / 0.14) ** 2)
     inner_rim = np.exp(-((u_band - 0.88) / 0.09) ** 2)
 
@@ -194,7 +134,6 @@ def generate_rainbow_foil_frame(
         + wave_norm * (0.075 * brush_strength)
     )
     rgb = np.clip(rgb * mod[:, :, None], 0.0, 1.0)
-    # 鏡面ハイライト部は白方向へわずかにブリーチ（金属光沢感）
     spec_bleach = np.clip(spec_ridge * (0.16 + 0.12 * np.maximum(0.0, slope_dir)), 0.0, 0.35)
     rgb = np.clip(rgb + spec_bleach[:, :, None], 0.0, 1.0)
 
@@ -272,7 +211,7 @@ def main() -> None:
     mat_cfg = cfg.get("material", {})
     glitter = float(mat_cfg.get("frameFoilGlitter", 0.45))
     brush = float(mat_cfg.get("frameBrushStrength", 0.85))
-    seed = int(mat_cfg.get("seed", cfg.get("seed", 20261120)))
+    seed = resolve_seed(cfg, section="material")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 

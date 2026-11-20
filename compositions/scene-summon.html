@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="ja" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>SSRGenerate — Scene 1-2: Summon &amp; Promotion</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <script src="../card-config.js"></script>
+    <style>
+      @font-face {
+        font-family: "KleeOne";
+        src: url("../assets/fonts/KleeOne-Regular.ttf") format("truetype");
+        font-display: block;
+      }
+      @font-face {
+        font-family: "CineCaption";
+        src: url("../assets/fonts/cinecaption.ttf") format("truetype");
+        font-display: block;
+      }
+
+      :root {
+        --in-oklab: ;
+        --in-oklch: ;
+        --bg-void: #040611;
+        --ink-ivory: #f8f4ea;
+        --font-jp: "KleeOne", "Noto Sans JP", sans-serif;
+        --font-ui: "CineCaption", "Montserrat", "Noto Sans JP", sans-serif;
+      }
+
+      @supports (background: linear-gradient(in oklab, white, black)) {
+        :root {
+          --in-oklab: in oklab;
+          --in-oklch: in oklch;
+        }
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: transparent;
+        color: var(--ink-ivory);
+        font-family: var(--font-jp);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #summon-root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        isolation: isolate;
+      }
+
+      .clip {
+        position: absolute;
+        inset: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      #scene-summon-stage {
+        z-index: 10;
+        background: radial-gradient(circle at 50% 48% var(--in-oklab), #101b3f 0%, #060a1b 58%, #020309 100%);
+      }
+
+      .bg-aura {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1360px;
+        height: 1360px;
+        margin-left: -680px;
+        margin-top: -680px;
+        border-radius: 50%;
+        opacity: 0;
+      }
+
+      #aura-blue {
+        opacity: 0.45;
+        background: radial-gradient(
+          circle var(--in-oklab),
+          rgba(56, 189, 248, 0.58) 0%,
+          rgba(29, 78, 216, 0.3) 38%,
+          rgba(4, 6, 17, 0) 70%
+        );
+      }
+
+      #aura-gold {
+        background: radial-gradient(
+          circle var(--in-oklab),
+          rgba(254, 240, 138, 0.75) 0%,
+          rgba(245, 158, 11, 0.4) 38%,
+          rgba(4, 6, 17, 0) 72%
+        );
+      }
+
+      #aura-rainbow {
+        background: conic-gradient(
+          from 0deg var(--in-oklch),
+          rgba(255, 77, 148, 0.52),
+          rgba(255, 200, 55, 0.56),
+          rgba(62, 232, 165, 0.52),
+          rgba(56, 189, 248, 0.56),
+          rgba(168, 85, 247, 0.56),
+          rgba(255, 77, 148, 0.52)
+        );
+        -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.65) 45%, rgba(0, 0, 0, 0) 72%);
+        mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.65) 45%, rgba(0, 0, 0, 0) 72%);
+      }
+
+      #summon-godrays {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 2400px;
+        height: 2400px;
+        margin-left: -1200px;
+        margin-top: -1200px;
+        opacity: 0;
+        background: repeating-conic-gradient(
+          from 0deg var(--in-oklch),
+          rgba(255, 245, 200, 0.38) 0deg 6deg,
+          transparent 6deg 15deg,
+          rgba(56, 189, 248, 0.34) 15deg 21deg,
+          transparent 21deg 30deg,
+          rgba(244, 114, 182, 0.36) 30deg 36deg,
+          transparent 36deg 45deg
+        );
+        -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 8%, rgba(0, 0, 0, 0.6) 45%, transparent 72%);
+        mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 8%, rgba(0, 0, 0, 0.6) 45%, transparent 72%);
+      }
+
+      #light-pillar {
+        position: absolute;
+        left: 50%;
+        top: 0;
+        width: 280px;
+        height: 1920px;
+        margin-left: -140px;
+        opacity: 0;
+        background: linear-gradient(
+          to right var(--in-oklab),
+          transparent 0%,
+          rgba(254, 240, 138, 0.25) 28%,
+          rgba(255, 255, 255, 0.88) 50%,
+          rgba(254, 240, 138, 0.25) 72%,
+          transparent 100%
+        );
+      }
+
+      #magic-circle-wrap {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 900px;
+        height: 900px;
+        margin-left: -450px;
+        margin-top: -450px;
+        opacity: 0.85;
+      }
+
+      .mc-layer {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        mix-blend-mode: screen;
+      }
+
+      .mc-ring {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        transform-origin: 50% 50%;
+      }
+
+      #mc-gold,
+      #mc-rainbow {
+        opacity: 0;
+      }
+
+      #orb-wrap {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 300px;
+        height: 300px;
+        margin-left: -150px;
+        margin-top: -150px;
+        opacity: 0;
+      }
+
+      .orb-core {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+      }
+
+      #orb-blue {
+        background: radial-gradient(
+          circle at 36% 32% var(--in-oklab),
+          #ffffff 0%,
+          #bae6fd 20%,
+          #38bdf8 48%,
+          #1d4ed8 80%,
+          #0f172a 100%
+        );
+        box-shadow:
+          0 0 42px rgba(56, 189, 248, 0.92),
+          0 0 100px rgba(37, 99, 235, 0.72),
+          inset 0 0 36px rgba(255, 255, 255, 0.65);
+      }
+
+      #orb-gold {
+        opacity: 0;
+        background: radial-gradient(
+          circle at 36% 32% var(--in-oklab),
+          #ffffff 0%,
+          #fef9c3 22%,
+          #facc15 50%,
+          #d97706 82%,
+          #451a03 100%
+        );
+        box-shadow:
+          0 0 54px rgba(254, 240, 138, 0.96),
+          0 0 120px rgba(245, 158, 11, 0.82),
+          inset 0 0 40px rgba(255, 255, 255, 0.82);
+      }
+
+      #orb-rainbow {
+        opacity: 0;
+        background:
+          radial-gradient(circle at 36% 32% var(--in-oklab), rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.25) 38%, transparent 70%),
+          conic-gradient(
+            from 0deg var(--in-oklch),
+            #ff4d94,
+            #ffb703,
+            #34d399,
+            #38bdf8,
+            #a855f7,
+            #ff4d94
+          );
+        box-shadow:
+          0 0 64px rgba(255, 255, 255, 0.96),
+          0 0 135px rgba(244, 114, 182, 0.88),
+          0 0 215px rgba(56, 189, 248, 0.78),
+          inset 0 0 44px rgba(255, 255, 255, 0.9);
+      }
+
+      #orb-cracks {
+        position: absolute;
+        inset: -70px;
+        width: 440px;
+        height: 440px;
+        opacity: 0;
+        mix-blend-mode: screen;
+        display: block;
+      }
+
+      .shockwave {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 320px;
+        height: 320px;
+        margin-left: -160px;
+        margin-top: -160px;
+        border-radius: 50%;
+        opacity: 0;
+      }
+
+      #shock-blue {
+        border: 8px solid #7dd3fc;
+        box-shadow: 0 0 32px #38bdf8, inset 0 0 24px #38bdf8;
+      }
+
+      #shock-gold {
+        border: 10px solid #fef08a;
+        box-shadow: 0 0 44px #f59e0b, inset 0 0 32px #fbbf24;
+      }
+
+      #shock-rainbow {
+        border: 14px solid #ffffff;
+        box-shadow:
+          0 0 48px #f472b6,
+          0 0 90px #38bdf8,
+          inset 0 0 40px #fde047;
+      }
+
+      #summon-status {
+        position: absolute;
+        left: 90px;
+        right: 90px;
+        top: 330px;
+        text-align: center;
+        opacity: 0.92;
+      }
+
+      #summon-status-en {
+        font-family: var(--font-ui);
+        font-size: 34px;
+        font-weight: 800;
+        letter-spacing: 0.34em;
+        color: #e0f2fe;
+        text-shadow: 0 0 24px rgba(56, 189, 248, 0.9);
+      }
+
+      #summon-status-jp {
+        margin-top: 12px;
+        font-family: var(--font-jp);
+        font-size: 44px;
+        font-weight: 900;
+        letter-spacing: 0.22em;
+        color: var(--ink-ivory);
+        text-shadow: 0 3px 20px rgba(0, 0, 0, 0.9);
+      }
+
+      #converge-particles {
+        position: absolute;
+        inset: 0;
+      }
+
+      .c-particle {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        border-radius: 50%;
+        opacity: 0;
+      }
+
+      #cutin-band {
+        position: absolute;
+        left: -120px;
+        top: 50%;
+        width: 1320px;
+        height: 240px;
+        margin-top: -120px;
+        transform: rotate(-4deg);
+        opacity: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(
+          90deg var(--in-oklch),
+          rgba(15, 23, 42, 0.94) 0%,
+          rgba(126, 34, 206, 0.92) 22%,
+          rgba(219, 39, 119, 0.94) 50%,
+          rgba(2, 132, 199, 0.92) 78%,
+          rgba(15, 23, 42, 0.94) 100%
+        );
+        border-top: 6px solid #fef08a;
+        border-bottom: 6px solid #fef08a;
+        box-shadow:
+          0 0 60px rgba(254, 240, 138, 0.82),
+          0 0 110px rgba(236, 72, 153, 0.68);
+      }
+
+      .cutin-sub-img {
+        width: 305px;
+        height: 47px;
+        background-image: url("../assets/generated/typo_cutin_sub.png");
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
+
+      .cutin-main-img {
+        margin-top: 8px;
+        width: 722px;
+        height: 87px;
+        background-image: url("../assets/generated/typo_cutin_main.png");
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="summon-root"
+      data-composition-id="scene-summon"
+      data-start="0"
+      data-duration="7.4"
+      data-width="1080"
+      data-height="1920"
+    >
+      <svg id="chroma-shock-svg" width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
+        <defs>
+          <filter id="chroma-shock" x="-4%" y="-2%" width="108%" height="104%" color-interpolation-filters="sRGB">
+            <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r-only" />
+            <feOffset id="chroma-r-off" in="r-only" dx="0" dy="0" result="r-shift" />
+            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g-only" />
+            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b-only" />
+            <feOffset id="chroma-b-off" in="b-only" dx="0" dy="0" result="b-shift" />
+            <feBlend in="r-shift" in2="g-only" mode="screen" result="rg" />
+            <feBlend in="rg" in2="b-shift" mode="screen" />
+          </filter>
+        </defs>
+      </svg>
+
+      <div id="scene-summon-stage" class="clip" data-start="0" data-duration="7.4" data-track-index="0">
+        <div id="aura-blue" class="bg-aura" data-layout-allow-overflow></div>
+        <div id="aura-gold" class="bg-aura" data-layout-allow-overflow></div>
+        <div id="aura-rainbow" class="bg-aura" data-layout-allow-overflow></div>
+        <div id="summon-godrays" data-layout-allow-overflow></div>
+        <div id="light-pillar" data-layout-allow-overflow></div>
+
+        <div id="magic-circle-wrap" data-layout-allow-overflow>
+          <div id="mc-blue" class="mc-layer" data-layout-allow-overflow>
+            <img id="mc-ring-outer" class="mc-ring" src="../assets/generated/opt_mc_blue_outer.png" alt="" data-layout-allow-overflow />
+            <img id="mc-ring-mid" class="mc-ring" src="../assets/generated/opt_mc_blue_mid.png" alt="" data-layout-allow-overflow />
+            <img id="mc-ring-inner" class="mc-ring" src="../assets/generated/opt_mc_blue_inner.png" alt="" data-layout-allow-overflow />
+          </div>
+
+          <div id="mc-gold" class="mc-layer" data-layout-allow-overflow>
+            <img id="mc-gold-outer" class="mc-ring" src="../assets/generated/opt_mc_gold_outer.png" alt="" data-layout-allow-overflow />
+            <img id="mc-gold-mid" class="mc-ring" src="../assets/generated/opt_mc_gold_mid.png" alt="" data-layout-allow-overflow />
+            <img id="mc-gold-inner" class="mc-ring" src="../assets/generated/opt_mc_gold_inner.png" alt="" data-layout-allow-overflow />
+          </div>
+
+          <div id="mc-rainbow" class="mc-layer" data-layout-allow-overflow>
+            <img id="mc-rb-outer" class="mc-ring" src="../assets/generated/opt_mc_rainbow_outer.png" alt="" data-layout-allow-overflow />
+            <img id="mc-rb-mid" class="mc-ring" src="../assets/generated/opt_mc_rainbow_mid.png" alt="" data-layout-allow-overflow />
+            <img id="mc-rb-inner" class="mc-ring" src="../assets/generated/opt_mc_rainbow_inner.png" alt="" data-layout-allow-overflow />
+          </div>
+        </div>
+
+        <div id="converge-particles" data-layout-allow-overflow></div>
+
+        <div id="shock-blue" class="shockwave" data-layout-allow-overflow></div>
+        <div id="shock-gold" class="shockwave" data-layout-allow-overflow></div>
+        <div id="shock-rainbow" class="shockwave" data-layout-allow-overflow></div>
+
+        <div id="orb-wrap">
+          <div id="orb-blue" class="orb-core"></div>
+          <div id="orb-gold" class="orb-core"></div>
+          <div id="orb-rainbow" class="orb-core"></div>
+          <img id="orb-cracks" src="../assets/generated/opt_orb_cracks.png" alt="" data-layout-allow-overflow />
+        </div>
+
+        <div id="summon-status" data-layout-allow-safe-zone>
+          <div id="summon-status-en" data-layout-allow-safe-zone>SUMMONING</div>
+          <div id="summon-status-jp" data-layout-allow-safe-zone>召喚中...</div>
+        </div>
+
+        <div id="cutin-band" data-layout-allow-overflow data-layout-allow-safe-zone>
+          <div class="cutin-sub-img" data-layout-allow-safe-zone></div>
+          <div class="cutin-main-img" data-layout-allow-safe-zone></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        function createRng(seed) {
+          let s = seed >>> 0;
+          return function () {
+            s |= 0;
+            s = (s + 0x6d2b79f5) | 0;
+            let t = Math.imul(s ^ (s >>> 15), 1 | s);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+        }
+
+        const baseCfg = window.SSR_CARD_CONFIG || {};
+        const seed = typeof baseCfg.seed === "number" ? baseCfg.seed : 20261120;
+        const matCfg = baseCfg.material || {};
+        const chromaShockPx = typeof matCfg.chromaShockPx === "number" ? matCfg.chromaShockPx : 9;
+        const rng = createRng(seed);
+
+        const convergeContainer = document.getElementById("converge-particles");
+        const convergeData = [];
+        const convergeColors = ["#7dd3fc", "#38bdf8", "#e0f2fe", "#fef08a", "#f472b6"];
+        for (let i = 0; i < 28; i++) {
+          const el = document.createElement("div");
+          el.className = "c-particle";
+          el.setAttribute("data-layout-allow-overflow", "");
+          const size = 8 + Math.floor(rng() * 14);
+          const color = convergeColors[i % convergeColors.length];
+          el.style.width = size + "px";
+          el.style.height = size + "px";
+          el.style.marginLeft = -size / 2 + "px";
+          el.style.marginTop = -size / 2 + "px";
+          el.style.background = color;
+          el.style.boxShadow = "0 0 " + size * 2 + "px " + color;
+          convergeContainer.appendChild(el);
+
+          const angle = (i / 28) * Math.PI * 2 + (rng() - 0.5) * 0.28;
+          const dist = 390 + rng() * 240;
+          convergeData.push({
+            el: el,
+            startX: Math.cos(angle) * dist,
+            startY: Math.sin(angle) * dist,
+            delay: 0.65 + rng() * 0.9,
+            dur: 0.95 + rng() * 0.45,
+          });
+        }
+
+        const tl = gsap.timeline({ paused: true });
+
+        // ===== PHASE 1: Dark Abyss, Magic Circle & Orb Convergence (0.0s - 2.5s) =====
+        tl.set("#scene-summon-stage", { filter: "none" }, 0);
+        tl.fromTo("#aura-blue", { opacity: 0.45, scale: 0.72 }, { opacity: 0.9, scale: 1.0, duration: 1.4, ease: "power2.out" }, 0);
+        tl.fromTo("#summon-status", { opacity: 0.92, y: 0 }, { opacity: 1, y: -6, duration: 1.2, ease: "power2.out" }, 0);
+        tl.fromTo(
+          "#magic-circle-wrap",
+          { opacity: 0.72, scale: 0.68, rotation: -18 },
+          { opacity: 1, scale: 1.0, rotation: 0, duration: 1.4, ease: "power3.out" },
+          0
+        );
+
+        tl.to("#mc-ring-outer, #mc-gold-outer, #mc-rb-outer", { rotation: 210, duration: 7.0, ease: "power1.in" }, 0.15);
+        tl.to("#mc-ring-mid, #mc-gold-mid, #mc-rb-mid", { rotation: -260, duration: 7.0, ease: "power1.in" }, 0.15);
+        tl.to("#mc-ring-inner, #mc-gold-inner, #mc-rb-inner", { rotation: 340, duration: 7.0, ease: "power1.in" }, 0.15);
+
+        convergeData.forEach(function (p) {
+          tl.fromTo(
+            p.el,
+            { x: p.startX, y: p.startY, opacity: 0, scale: 1.2 },
+            { x: 0, y: 0, opacity: 0.95, scale: 0.25, duration: p.dur, ease: "power2.in" },
+            p.delay
+          );
+          tl.to(p.el, { opacity: 0, duration: 0.1 }, p.delay + p.dur);
+        });
+
+        tl.fromTo(
+          "#orb-wrap",
+          { opacity: 0, scale: 0.12 },
+          { opacity: 1, scale: 1.0, duration: 0.95, ease: "back.out(1.6)" },
+          1.45
+        );
+
+        // ===== PHASE 2: Heartbeat & Fake Upgrade (Blue -> Gold -> RAINBOW!) (2.5s - 7.4s) =====
+        tl.to("#orb-wrap", { scale: 1.18, duration: 0.16, ease: "power2.out" }, 2.7);
+        tl.to("#orb-wrap", { scale: 0.96, duration: 0.26, ease: "power2.inOut" }, 2.86);
+        tl.fromTo("#shock-blue", { opacity: 0.85, scale: 0.85 }, { opacity: 0, scale: 2.5, duration: 0.65, ease: "power2.out", immediateRender: false }, 2.72);
+
+        tl.to("#orb-wrap", { scale: 1.22, duration: 0.15, ease: "power2.out" }, 3.35);
+        tl.to("#orb-wrap", { scale: 0.84, duration: 0.22, ease: "power2.in" }, 3.5);
+
+        // --- GOLD PROMOTION at 3.8s ---
+        tl.to("#orb-gold", { opacity: 1, duration: 0.18 }, 3.8);
+        tl.to("#aura-gold", { opacity: 0.95, scale: 1.12, duration: 0.4, ease: "power2.out" }, 3.8);
+        tl.to("#aura-blue", { opacity: 0, duration: 0.3 }, 3.8);
+        tl.to("#mc-gold", { opacity: 1, duration: 0.22 }, 3.8);
+        tl.to("#mc-blue", { opacity: 0, duration: 0.26 }, 3.8);
+        tl.to("#orb-wrap", { scale: 1.32, duration: 0.22, ease: "back.out(2.2)" }, 3.82);
+        tl.to("#orb-wrap", { scale: 1.06, duration: 0.3, ease: "power2.inOut" }, 4.04);
+        tl.fromTo("#shock-gold", { opacity: 0.95, scale: 0.85 }, { opacity: 0, scale: 3.1, duration: 0.72, ease: "power2.out", immediateRender: false }, 3.8);
+        tl.fromTo("#light-pillar", { opacity: 0, scaleX: 0.25 }, { opacity: 0.85, scaleX: 1.15, duration: 0.32, ease: "power2.out" }, 3.82);
+        tl.to("#light-pillar", { opacity: 0.35, scaleX: 0.75, duration: 0.7 }, 4.14);
+
+        tl.to("#scene-summon-stage", { x: -10, y: 6, duration: 0.05 }, 3.82);
+        tl.to("#scene-summon-stage", { x: 10, y: -6, duration: 0.05 }, 3.87);
+        tl.to("#scene-summon-stage", { x: -6, y: 4, duration: 0.05 }, 3.92);
+        tl.to("#scene-summon-stage", { x: 0, y: 0, duration: 0.06 }, 3.97);
+
+        tl.to("#orb-wrap", { scale: 1.24, duration: 0.14 }, 4.5);
+        tl.to("#orb-wrap", { scale: 0.92, duration: 0.16 }, 4.64);
+        tl.to("#orb-cracks", { opacity: 0.85, scale: 1.0, duration: 0.18, ease: "power3.out" }, 4.88);
+        tl.to("#orb-wrap", { scale: 0.76, duration: 0.24, ease: "power3.in" }, 4.94);
+
+        // --- RAINBOW SSR PROMOTION at 5.2s ---
+        tl.to("#orb-rainbow", { opacity: 1, duration: 0.12 }, 5.2);
+        tl.to("#orb-cracks", { opacity: 1, scale: 1.28, rotation: 18, duration: 0.35, ease: "power2.out" }, 5.2);
+        tl.to("#mc-rainbow", { opacity: 1, duration: 0.18 }, 5.2);
+        tl.to("#mc-gold", { opacity: 0, duration: 0.24 }, 5.2);
+        tl.to("#aura-rainbow", { opacity: 1, scale: 1.22, rotation: 140, duration: 1.65, ease: "power1.in" }, 5.2);
+        tl.to("#summon-godrays", { opacity: 0.92, rotation: 95, duration: 1.75, ease: "power1.in" }, 5.2);
+        tl.to("#light-pillar", { opacity: 0.95, scaleX: 1.8, duration: 0.35, ease: "power2.out" }, 5.2);
+        tl.to("#orb-wrap", { scale: 1.48, duration: 0.24, ease: "back.out(2.2)" }, 5.22);
+        tl.fromTo("#shock-rainbow", { opacity: 1, scale: 0.7 }, { opacity: 0, scale: 3.9, duration: 0.85, ease: "power2.out", immediateRender: false }, 5.2);
+
+        tl.to("#summon-status", { opacity: 0, duration: 0.15 }, 5.2);
+
+        tl.to("#scene-summon-stage", { x: -16, y: 10, duration: 0.04 }, 5.22);
+        tl.to("#scene-summon-stage", { x: 16, y: -12, duration: 0.04 }, 5.26);
+        tl.to("#scene-summon-stage", { x: -12, y: 8, duration: 0.04 }, 5.3);
+        tl.to("#scene-summon-stage", { x: 8, y: -6, duration: 0.04 }, 5.34);
+        tl.to("#scene-summon-stage", { x: 0, y: 0, duration: 0.06 }, 5.38);
+
+        tl.fromTo(
+          "#cutin-band",
+          { opacity: 0, x: -320, scaleY: 0.15 },
+          { opacity: 1, x: 0, scaleY: 1, duration: 0.24, ease: "power4.out" },
+          5.38
+        );
+        tl.to("#cutin-band", { x: 24, duration: 0.82, ease: "none" }, 5.62);
+        tl.to("#cutin-band", { opacity: 0, x: 340, scaleY: 0.2, duration: 0.22, ease: "power3.in" }, 6.45);
+
+        tl.to("#orb-wrap", { scale: 2.8, duration: 0.42, ease: "power3.in" }, 6.48);
+        tl.to("#scene-summon-stage", { opacity: 0, duration: 0.05 }, 7.05);
+
+        function addChromaShock(targetSel, startAt, peakPx) {
+          if (!peakPx || peakPx <= 0) return;
+          tl.set(targetSel, { filter: "url(#chroma-shock)" }, startAt);
+          tl.fromTo("#chroma-r-off", { attr: { dx: 0 } }, { attr: { dx: -peakPx }, duration: 0.04, ease: "power2.out", immediateRender: false }, startAt);
+          tl.fromTo("#chroma-b-off", { attr: { dx: 0 } }, { attr: { dx: peakPx }, duration: 0.04, ease: "power2.out", immediateRender: false }, startAt);
+          tl.to("#chroma-r-off", { attr: { dx: peakPx * 0.45 }, duration: 0.06, ease: "power1.inOut" }, startAt + 0.04);
+          tl.to("#chroma-b-off", { attr: { dx: -peakPx * 0.45 }, duration: 0.06, ease: "power1.inOut" }, startAt + 0.04);
+          tl.to("#chroma-r-off", { attr: { dx: 0 }, duration: 0.10, ease: "power2.out" }, startAt + 0.10);
+          tl.to("#chroma-b-off", { attr: { dx: 0 }, duration: 0.10, ease: "power2.out" }, startAt + 0.10);
+          tl.set(targetSel, { filter: "none" }, startAt + 0.21);
+        }
+
+        addChromaShock("#scene-summon-stage", 3.81, chromaShockPx * 0.78);
+        addChromaShock("#scene-summon-stage", 5.21, chromaShockPx * 1.15);
+
+        tl.set("#summon-root", {}, 7.4);
+
+        window.__timelines = window.__timelines || {};
+        window.__timelines["scene-summon"] = tl;
+        tl.seek(0);
+      })();
+    </script>
+  </body>
+</html>

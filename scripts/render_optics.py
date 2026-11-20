@@ -11,18 +11,13 @@ FilmDateStamp の 6段階物理光学モデルを抽出し、SSRガチャ演出�
 """
 from __future__ import annotations
 
-import json
 import math
-import subprocess
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = PROJECT_ROOT / "assets" / "generated"
-CONFIG_PATH = PROJECT_ROOT / "card-config.js"
+from _utils import OUT_DIR, load_card_config, resolve_seed
 
 
 # ==============================================================================
@@ -65,32 +60,6 @@ OPTICAL_SPECTRA: Dict[str, Dict[str, Tuple[float, float, float]]] = {
         "tint": (1.00, 0.99, 0.96),
     },
 }
-
-
-def load_card_config() -> Dict[str, Any]:
-    if CONFIG_PATH.exists():
-        try:
-            res = subprocess.run(
-                [
-                    "node",
-                    "-e",
-                    (
-                        "const fs=require('fs');"
-                        "const window={};"
-                        "eval(fs.readFileSync(process.argv[1],'utf8'));"
-                        "process.stdout.write(JSON.stringify(window.SSR_CARD_CONFIG||{}));"
-                    ),
-                    str(CONFIG_PATH),
-                ],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                check=True,
-            )
-            return json.loads(res.stdout)
-        except Exception:
-            pass
-    return {}
 
 
 # ==============================================================================
@@ -470,7 +439,7 @@ def main() -> None:
     hal = float(opt_cfg.get("halation", 1.05))
     cg = float(opt_cfg.get("coreGlow", 1.15))
     irr = float(opt_cfg.get("irregularity", 0.85))
-    seed = int(opt_cfg.get("seed", cfg.get("seed", 20261120)))
+    seed = resolve_seed(cfg, section="optics")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -496,7 +465,7 @@ def main() -> None:
                 seed=seed + s_idx * 100 + r_idx * 17,
             )
             fname = f"opt_mc_{cname}_{rname}.png"
-            img.save(OUT_DIR / fname, format="PNG")
+            img.save(OUT_DIR / fname, format="PNG", optimize=True)
             print(f"[OK] {fname} ({img.width}x{img.height})")
 
     # 2. オーブ臨界亀裂
@@ -512,7 +481,7 @@ def main() -> None:
         prism_mode=True,
         seed=seed + 501,
     )
-    cracks_img.save(OUT_DIR / "opt_orb_cracks.png", format="PNG")
+    cracks_img.save(OUT_DIR / "opt_orb_cracks.png", format="PNG", optimize=True)
     print(f"[OK] opt_orb_cracks.png ({cracks_img.width}x{cracks_img.height})")
 
     # 3. リザルト星5つ
@@ -528,7 +497,7 @@ def main() -> None:
         prism_mode=False,
         seed=seed + 701,
     )
-    star_img.save(OUT_DIR / "opt_star_gold.png", format="PNG")
+    star_img.save(OUT_DIR / "opt_star_gold.png", format="PNG", optimize=True)
     print(f"[OK] opt_star_gold.png ({star_img.width}x{star_img.height})")
 
     # 4. 周囲スパークル 4色
@@ -551,7 +520,7 @@ def main() -> None:
             seed=seed + 901 + i * 31,
         )
         fname = f"opt_sparkle_{cname}.png"
-        sp_img.save(OUT_DIR / fname, format="PNG")
+        sp_img.save(OUT_DIR / fname, format="PNG", optimize=True)
         print(f"[OK] {fname} ({sp_img.width}x{sp_img.height})")
 
 

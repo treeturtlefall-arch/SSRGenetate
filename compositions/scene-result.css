@@ -1,0 +1,558 @@
+      @font-face {
+        font-family: "YujiSyuku";
+        src: url("../assets/fonts/YujiSyuku-Regular.ttf") format("truetype");
+        font-display: block;
+      }
+      @font-face {
+        font-family: "KleeOne";
+        src: url("../assets/fonts/KleeOne-Regular.ttf") format("truetype");
+        font-display: block;
+      }
+      @font-face {
+        font-family: "CineCaption";
+        src: url("../assets/fonts/cinecaption.ttf") format("truetype");
+        font-display: block;
+      }
+
+      :root {
+        --in-oklab: ;
+        --in-oklch: ;
+        --bg-void: #040611;
+        --ink-ivory: #f8f4ea;
+        --ink-gold-light: #fef08a;
+        --ink-gold: #f5c451;
+        --font-jp: "KleeOne", "Noto Sans JP", sans-serif;
+        --font-display: "YujiSyuku", "Playfair Display", serif;
+        --font-ui: "CineCaption", "Montserrat", "Noto Sans JP", sans-serif;
+      }
+
+      @supports (background: linear-gradient(in oklab, white, black)) {
+        :root {
+          --in-oklab: in oklab;
+          --in-oklch: in oklch;
+        }
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: transparent;
+        color: var(--ink-ivory);
+        font-family: var(--font-jp);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .clip {
+        position: absolute;
+        inset: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      #scene-result-stage {
+        z-index: 20;
+        opacity: 0;
+        background:
+          radial-gradient(circle at 50% 45% var(--in-oklab), #1e1b4b 0%, #0b0f26 52%, #040611 100%);
+      }
+
+      #result-rays {
+        position: absolute;
+        left: 50%;
+        top: 48%;
+        width: 2200px;
+        height: 2200px;
+        margin-left: -1100px;
+        margin-top: -1100px;
+        opacity: 0.55;
+        background: repeating-conic-gradient(
+          from 0deg var(--in-oklch),
+          rgba(254, 240, 138, 0.24) 0deg 5deg,
+          transparent 5deg 18deg,
+          rgba(244, 114, 182, 0.16) 18deg 23deg,
+          transparent 23deg 36deg,
+          rgba(56, 189, 248, 0.18) 36deg 41deg,
+          transparent 41deg 54deg
+        );
+        -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 0.95) 12%, rgba(0, 0, 0, 0.45) 48%, transparent 72%);
+        mask-image: radial-gradient(circle, rgba(0, 0, 0, 0.95) 12%, rgba(0, 0, 0, 0.45) 48%, transparent 72%);
+      }
+
+      #result-halo {
+        position: absolute;
+        left: 50%;
+        top: 48%;
+        width: 1120px;
+        height: 1120px;
+        margin-left: -560px;
+        margin-top: -560px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle var(--in-oklab),
+          rgba(254, 240, 138, 0.42) 0%,
+          rgba(236, 72, 153, 0.18) 38%,
+          rgba(56, 189, 248, 0.1) 58%,
+          transparent 75%
+        );
+      }
+
+      #result-bg-ring {
+        position: absolute;
+        left: 50%;
+        top: 49%;
+        width: 1020px;
+        height: 1020px;
+        margin-left: -510px;
+        margin-top: -510px;
+        opacity: 0.28;
+      }
+
+      #card-stage {
+        position: absolute;
+        left: 50%;
+        top: 130px;
+        width: 940px;
+        height: 1660px;
+        margin-left: -470px;
+        perspective: 1800px;
+        z-index: 30;
+      }
+
+      #ssr-card {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transform-style: preserve-3d;
+        opacity: 0;
+      }
+
+      .card-face {
+        position: absolute;
+        inset: 0;
+        border-radius: 40px;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+      }
+
+      .card-back {
+        transform: rotateY(180deg);
+        padding: 14px;
+        background: linear-gradient(
+          135deg var(--in-oklch),
+          #fef08a 0%,
+          #f59e0b 28%,
+          #ec4899 52%,
+          #38bdf8 78%,
+          #fef08a 100%
+        );
+        box-shadow:
+          0 28px 80px rgba(0, 0, 0, 0.85),
+          0 0 65px rgba(245, 196, 81, 0.65);
+      }
+
+      .card-back-inner {
+        width: 100%;
+        height: 100%;
+        border-radius: 26px;
+        background-color: #070b1a;
+        background-image: radial-gradient(circle at 50% 50% var(--in-oklab), #17153b 0%, #070b1a 72%, #040611 100%);
+        border: 3px solid rgba(254, 240, 138, 0.65);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card-front {
+        padding: 14px;
+        background: #090d1f;
+        box-shadow:
+          0 36px 90px rgba(0, 0, 0, 0.88),
+          0 0 56px rgba(254, 240, 138, 0.48),
+          0 0 115px rgba(236, 72, 153, 0.30);
+      }
+
+      #mat-rainbow-frame {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 40;
+        pointer-events: none;
+        display: block;
+      }
+
+      .card-front-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        border-radius: 26px;
+        overflow: hidden;
+        background: linear-gradient(180deg var(--in-oklab), #111631 0%, #090d1f 100%);
+        border: 2px solid rgba(254, 240, 138, 0.78);
+        display: flex;
+        flex-direction: column;
+        isolation: isolate;
+      }
+
+      .card-photo-area {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0b1024;
+        z-index: 1;
+      }
+
+      #card-photo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: 50% 42%;
+        display: block;
+      }
+
+      .photo-vignette {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(
+            to bottom var(--in-oklab),
+            rgba(6, 9, 22, 0.28) 0%,
+            transparent 16%,
+            transparent 52%,
+            rgba(6, 9, 22, 0.56) 72%,
+            rgba(4, 6, 17, 0.88) 100%
+          ),
+          radial-gradient(circle at 50% 44% var(--in-oklab), transparent 58%, rgba(4, 6, 17, 0.36) 100%);
+      }
+
+      #holo-sweep-1,
+      #holo-sweep-2 {
+        position: absolute;
+        top: -200px;
+        left: -650px;
+        width: 340px;
+        height: 1750px;
+        transform: rotate(24deg);
+        mix-blend-mode: screen;
+        opacity: 0;
+        background: linear-gradient(
+          90deg var(--in-oklch),
+          transparent 0%,
+          rgba(56, 189, 248, 0.44) 22%,
+          rgba(255, 255, 255, 0.9) 50%,
+          rgba(244, 114, 182, 0.46) 78%,
+          transparent 100%
+        );
+        z-index: 15;
+      }
+
+      #holo-static-sheen {
+        position: absolute;
+        inset: 0;
+        mix-blend-mode: screen;
+        opacity: 0;
+        background: linear-gradient(
+          128deg var(--in-oklch),
+          rgba(255, 255, 255, 0.16) 0%,
+          rgba(254, 240, 138, 0.08) 18%,
+          transparent 34%,
+          transparent 76%,
+          rgba(56, 189, 248, 0.1) 88%,
+          rgba(244, 114, 182, 0.16) 100%
+        );
+        z-index: 14;
+      }
+
+      #ssr-emblem {
+        position: absolute;
+        top: 28px;
+        left: 28px;
+        z-index: 32;
+        opacity: 0;
+        padding: 12px 28px 14px;
+        border-radius: 18px;
+        background: rgba(9, 13, 31, 0.86);
+        border: 3px solid #fef08a;
+        box-shadow:
+          0 10px 28px rgba(0, 0, 0, 0.78),
+          0 0 28px rgba(251, 191, 36, 0.68),
+          inset 0 1px 0 rgba(255, 255, 255, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #ssr-emblem-img {
+        display: none;
+        height: 58px;
+        width: auto;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
+
+      #ssr-emblem-text {
+        font-family: var(--font-display);
+        font-size: 60px;
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: 0.06em;
+        background: linear-gradient(
+          180deg var(--in-oklch),
+          #ffffff 0%,
+          #fef08a 42%,
+          #f59e0b 75%,
+          #f472b6 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.75));
+      }
+
+      #attr-badge {
+        position: absolute;
+        top: 32px;
+        right: 28px;
+        z-index: 32;
+        opacity: 0;
+        padding: 10px 24px;
+        border-radius: 999px;
+        background: rgba(9, 13, 31, 0.84);
+        border: 2px solid rgba(254, 240, 138, 0.85);
+        font-family: var(--font-jp);
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: #fef3c7;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.68);
+      }
+
+      #card-overlay-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 30;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 40px 44px 72px;
+        gap: 16px;
+        pointer-events: none;
+      }
+
+      #stars-row {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0px;
+        margin: -14px 0 -10px;
+      }
+
+      .star-item {
+        width: 92px;
+        height: 92px;
+        margin: 0 -10px;
+        opacity: 0;
+        mix-blend-mode: screen;
+        display: block;
+        background-image: url("../assets/generated/opt_star_gold.png");
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
+
+      .typo-slot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        opacity: 0;
+      }
+
+      .typo-img {
+        display: none;
+        max-width: 100%;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
+
+      #card-subtitle {
+        font-family: var(--font-jp);
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        color: #fde68a;
+        text-shadow: 0 3px 14px rgba(0, 0, 0, 0.95);
+      }
+
+      #card-title {
+        font-family: var(--font-display);
+        font-size: 68px;
+        font-weight: 900;
+        line-height: 1.2;
+        letter-spacing: 0.06em;
+        color: var(--ink-ivory);
+        text-align: center;
+        text-shadow:
+          0 4px 18px rgba(0, 0, 0, 0.95),
+          0 0 24px rgba(254, 240, 138, 0.42);
+      }
+
+      #card-flavor {
+        font-family: var(--font-jp);
+        font-size: 28px;
+        font-weight: 500;
+        line-height: 1.45;
+        letter-spacing: 0.03em;
+        color: #f1f5f9;
+        text-align: center;
+        text-shadow: 0 3px 14px rgba(0, 0, 0, 0.95);
+      }
+
+      #card-stats {
+        width: 100%;
+        display: none;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-top: 8px;
+        opacity: 0;
+      }
+
+      .stat-box {
+        padding: 12px 10px;
+        border-radius: 14px;
+        background: rgba(12, 18, 42, 0.78);
+        border: 1.5px solid rgba(254, 240, 138, 0.45);
+        text-align: center;
+      }
+
+      .stat-label {
+        font-family: var(--font-ui);
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        color: #fde68a;
+      }
+
+      .stat-value {
+        margin-top: 4px;
+        font-family: var(--font-jp);
+        font-size: 30px;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+        color: #ffffff;
+        letter-spacing: 0.03em;
+      }
+
+      #card-no-corner {
+        position: absolute;
+        right: 40px;
+        bottom: 24px;
+        z-index: 32;
+        opacity: 0;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+      }
+
+      #card-no-img {
+        display: none;
+        max-height: 38px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: right center;
+      }
+
+      #card-no-text {
+        font-family: var(--font-ui);
+        font-size: 22px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.12em;
+        color: rgba(241, 245, 249, 0.88);
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95);
+      }
+
+      .corner-ornament {
+        position: absolute;
+        width: 54px;
+        height: 54px;
+        z-index: 25;
+        opacity: 0.9;
+      }
+      .co-tl { top: 10px; left: 10px; }
+      .co-tr { top: 10px; right: 10px; transform: scaleX(-1); }
+      .co-bl { bottom: 10px; left: 10px; transform: scaleY(-1); }
+      .co-br { bottom: 10px; right: 10px; transform: scale(-1); }
+
+      #celebration-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 40;
+        pointer-events: none;
+      }
+
+      .sparkle-star {
+        position: absolute;
+        left: 50%;
+        top: 48%;
+        opacity: 0;
+        mix-blend-mode: screen;
+        display: block;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
+
+      .confetti-bit {
+        position: absolute;
+        left: 50%;
+        top: 48%;
+        border-radius: 3px;
+        opacity: 0;
+      }
+
+      #landing-shockwave {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 420px;
+        height: 420px;
+        margin-left: -210px;
+        margin-top: -210px;
+        border-radius: 50%;
+        border: 14px solid #fef08a;
+        box-shadow:
+          0 0 60px #facc15,
+          0 0 110px #f472b6,
+          inset 0 0 50px #ffffff;
+        opacity: 0;
+        z-index: 38;
+      }
+
+      #mat-window-depth {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 12;
+        pointer-events: none;
+        display: block;
+      }
