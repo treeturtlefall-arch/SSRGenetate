@@ -46,10 +46,10 @@
 | **Phase 0** | 確定バグ修正 ＆ 光・色基盤の正常化 | 3D破綻・顔被り・濁った光の解消と色・階調の統一 | `index.html`, `compositions/scene-result.*`, `compositions/scene-summon.html`, `scripts/_utils.py`, `package.json` | ★★★ 完了 |
 | **Phase 1** | リザルト画面の「脱Web UI化」＆ 光の微動呼吸 | バッジ・SVG・粒子・ホロ反射を最新3Dソシャゲ級へ刷新 | `compositions/scene-result.*`, `compositions/scene-result-setup.js`, `scripts/render_typography.py`, `scripts/render_material.py`, `AGENTS.md` | ★★★ 完了 |
 | **Phase 2A** | 取りこぼし修正・タイムライン骨格確定・定量QA | スペキュラはみ出し/曇り膜/光柱修正・昇格語彙差別化・真空の間・着地同期・`qa_video.py` | `index.html`, `compositions/scene-summon.html`, `compositions/scene-result.*`, `scripts/generate_se.py`, `scripts/qa_video.py`, `package.json` | ★★★ 完了 |
-| **Phase 2B** | 召喚〜昇格の「脱CSS ＆ 3D空間光学アセット化」 | カットイン脱ベタ帯・冒頭点火・3D床魔法陣・クリスタルオーブ・不規則ゴッドレイ（前後半） | `scripts/render_optics.py`, `scripts/render_typography.py`, `compositions/scene-summon.html`, `compositions/scene-summon.css`, `compositions/scene-result.*` | ★★☆ 完了 |
+| **Phase 2B** | 召喚〜昇格の「脱CSS ＆ 3D空間光学アセット化」＋ 天蓋・空域演出 | カットイン脱ベタ帯・冒頭点火・3D床魔法陣・クリスタルオーブ・不規則ゴッドレイ・天蓋アストロラーベ・流体ウィスプ・星屑 | `scripts/render_optics.py`, `scripts/render_typography.py`, `compositions/scene-summon.*`, `compositions/scene-summon-setup.js`, `compositions/scene-result.*` | ★★★ 完了 |
 | **Phase 3** | 音響の「現代ソシャゲ音像化」＆ 後半マイクロポリッシュ4点 | 脱ブラス・`fftconvolve`残響・14.8s余韻・-14 LUFS適正化 ＋ 縦版9:16の最後の一手仕上げ | `scripts/generate_se.py`, `.gitignore`, `compositions/scene-result.*`, `compositions/scene-result-setup.js`, `scripts/render_material.py` | ★★☆ 中〜高 |
 | **Phase 4** | 運用性・量産性強化 ＆ 5軸/複数素材検証 | 任意テキスト箔同期・オートレイアウト ＋ 5品質評価軸・不要要素削減・多様な素材検証 | `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js` | ★☆☆ 仕上げ |
-| **Phase 5** | 横動画（16:9）× 横型カード対応 | 風景・周辺情報込みの横写真向け 1920×1080 ワイド演出モード追加 | `card-config.js`, `index.html`, `compositions/*`, `scripts/_utils.py`, `scripts/render_material.py`, `scripts/render_typography.py`, `package.json` | ★☆☆ 拡張 |
+| **Phase 5** | 横動画（16:9）× 横型カード対応 | 風景・周辺情報込みの横写真向け 1920×1080 ワイド演出モード追加（詳細設計: [`LANDSCAPE_PLAN.md`](./LANDSCAPE_PLAN.md)） | `card-config.js`, `index.html`, `compositions/*`, `scripts/_utils.py`, `scripts/render_material.py`, `scripts/render_typography.py`, `package.json` | ★☆☆ 拡張 |
 
 ---
 
@@ -162,10 +162,20 @@
   - **対象**: `scripts/render_optics.py`, `compositions/scene-summon.html`, `compositions/scene-summon.css`, `compositions/scene-result.html`, `compositions/scene-result.css`
   - **課題**: `repeating-conic-gradient` による均等プロペラ放射線（前半 `#summon-godrays` と後半 `#result-rays` の両方）、CSS グラデの光柱 `#light-pillar`、太い単色ボーダーの `.shockwave` / `#landing-shockwave` がデジタル感を生んでいる。
   - **対策**: `idea.md` の `rave_lasers.hlsl` 式から太細不規則なゴッドレイ PNG を 2 枚生成し、**前半 `#summon-godrays` と後半 `#result-rays` の両方**を異速・逆回転の物理放射光へ差し替える。`#light-pillar` は `aurora_claude.hlsl` 式の縦ストリーク 2 層光学アセットへ、衝撃波は中心から外へ滲む光学リング＋微細光粒の飛散へ置換する。
+- [x] **2B-5. 画面上部・天蓋空域のプレミアム演出（Celestial Gate / Fluid Wisp / Sky Bolts / Parallax Shards / Centered HUD）**
+  - **対象**: `scripts/render_optics.py`, `compositions/scene-summon.html`, `compositions/scene-summon.css`, `compositions/scene-summon-setup.js`
+  - **課題**: 床面魔法陣と中央オーブの強化に伴い、画面上部（空域）の空間的密度がやや寂しく、演出全体の縦スケール感が不足していた。また、直進的・固まり感のある流星や、下部が寂しくなる浮遊星屑の配置バランス、虹昇格後の星屑ノイズ感が課題となっていた。
+  - **対策**:
+    1. **3D 天蓋アストロラーベゲート (`opt_gate_*`)**: 天井に仰角パース（`rotateX: -68°〜-44°`）の二重同心環ゲートを配置し、青・金・虹の昇格と同期して回転・拡大・色展開。
+    2. **流体ウィスプ流星 (`opt_meteor_blue.png`)**: 固まりの直進落下を廃止し、3 本の滑らかな正弦波スプライン軌道（計 54 ノード＋54 追従ダスト）で中央オーブへ吸い込まれる有機的流体軌道へ刷新。
+    3. **天頂雷撃 (`opt_bolt_gold.png`, `opt_bolt_prism.png`)**: 金・虹昇格トリガー瞬間に天蓋からオーブへ垂直に貫通する有機的分岐ボルトを投下。
+    4. **全域パララックス浮遊星屑 ＆ 昇格波動**: `y = 100〜1860px` 全域を漂う遠近二層の多面体クリスタル片＋星を配置。金・虹昇格時には床面から上方へ立ち上る 20 粒のバースト波を追加。虹昇格後（`5.20s+`）は星屑の不透明度を抑制（`0.42 / 0.30`）して主役（カード・オーブ・カットイン）を明瞭化。
+    5. **天蓋連動 1.3 倍 昇格 HUD**: 天蓋アストロラーベの中心孔に正確にセンタリングした 1.3 倍サイズの上端 HUD（`RESONANCE` → `ELEVATION` → `OVERDRIVE`）を実装し、下端不要キャプションを完全撤去。
 
 ### Phase 2B 完了基準（DoD）
 - `0.0s〜7.0s` に素 CSS パーツ（単層球・等間隔放射線・ボーダーリング・上下枠線ベタ帯）が残っていないこと、および後半 `#result-rays` からも等間隔プロペラ放射線が消えていること。
-- 3D 床パース魔法陣とクリスタルオーブにより空間の奥行きが感じられること。
+- 3D 床パース魔法陣、クリスタルオーブ、天蓋アストロラーベゲート、流体ウィスプ、浮遊星屑により空間の全域（上下・奥行き）に圧倒的な立体感・空気感が満ちていること。
+- 虹昇格後の画面整理とカットイン箔タイポの視認性が保たれていること。
 
 ---
 
@@ -223,6 +233,8 @@
 ---
 
 ## 9. Phase 5：横動画（16:9 / 1920×1080）× 横型カード対応（拡張）
+
+> **事前調査・詳細実装設計書**: 横画面対応における HyperFrames 解像度同期の制約、モジュール別の改修箇所（裏面紋章スケーリング・ホロ走査距離・スパークル/金箔/玉ボケ座標のカード半寸相対化など）、および Phase 3・4 との連携ポイントは **[`LANDSCAPE_PLAN.md`](./LANDSCAPE_PLAN.md)** にまとめています。Phase 5 着手時は必ず参照してください。
 
 縦（9:16）の演出・音響・運用性が Phase 0〜4 で完成した後に着手する、風景・集合写真など横長素材向けのワイドスクリーン対応フェーズです（パターン B）。
 

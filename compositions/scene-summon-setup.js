@@ -177,23 +177,24 @@
     }
   }
 
-  // 3. [D] 上空2層パララックス浮遊クリスタル破片 & 遠景星屑
+  // 3. [D] 全画面縦フルレンジ 2層パララックス浮遊クリスタル破片・星屑 & 昇格時の床湧き上がりダストウェーブ
   const farContainer = document.getElementById("sky-shards-far");
   const nearContainer = document.getElementById("sky-shards-near");
   const farShards = [];
   const nearShards = [];
+  const waveShards = [];
   const skySparkles = [];
 
   if (farContainer) {
-    // 遠景クリスタル破片 (20個: 主に上空 y=90..860px に分布)
-    for (let i = 0; i < 20; i++) {
+    // 遠景クリスタル破片 (36個: 縦フルレンジ y=100..1780px を層別サンプリング、遠景は控えめ上昇で視差強調)
+    for (let i = 0; i < 36; i++) {
       const el = document.createElement("div");
       const kind = i % 3;
       el.className = "sky-shard sky-shard-far";
       el.setAttribute("data-layout-allow-overflow", "");
-      const size = 28 + Math.floor(rng() * 30);
-      const x0 = 65 + rng() * 950;
-      const y0 = 110 + rng() * 760;
+      const size = 22 + Math.floor(rng() * 32);
+      const x0 = 55 + rng() * 970;
+      const y0 = Math.max(80, Math.min(1840, 100 + (i / 36) * 1680 + (rng() - 0.5) * 90));
       el.style.cssText =
         "width:" +
         size +
@@ -214,27 +215,27 @@
       farShards.push({
         el: el,
         rot0: -45 + rng() * 90,
-        drot1: (rng() < 0.5 ? -1 : 1) * (28 + rng() * 44),
-        drot2: (rng() < 0.5 ? -1 : 1) * (65 + rng() * 95),
-        dx1: (rng() - 0.5) * 44,
-        dy1: -(55 + rng() * 75),
-        dy2: -(130 + rng() * 120),
-        dy3: -(260 + rng() * 180),
-        baseAlpha: 0.42 + rng() * 0.34,
-        scale0: 0.72 + rng() * 0.42,
+        drot1: (rng() < 0.5 ? -1 : 1) * (24 + rng() * 40),
+        drot2: (rng() < 0.5 ? -1 : 1) * (55 + rng() * 85),
+        dx1: (rng() - 0.5) * 42,
+        dy1: -(35 + rng() * 48),
+        dy2: -(85 + rng() * 80),
+        dy3: -(170 + rng() * 130),
+        baseAlpha: 0.36 + rng() * 0.36,
+        scale0: 0.68 + rng() * 0.44,
       });
     }
 
-    // 上空の微細星屑スパークル (12個: y=75..640px)
+    // 縦全域の微細星屑スパークル (20個: y=80..1700px)
     const spColors = ["cyan", "white", "gold", "pink"];
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 20; i++) {
       const el = document.createElement("div");
       const cname = spColors[i % spColors.length];
       el.className = "sky-star sky-star-g" + (i % 3);
       el.setAttribute("data-layout-allow-overflow", "");
-      const size = 20 + Math.floor(rng() * 20);
-      const x0 = 70 + rng() * 940;
-      const y0 = 80 + rng() * 560;
+      const size = 18 + Math.floor(rng() * 20);
+      const x0 = 65 + rng() * 950;
+      const y0 = Math.max(70, Math.min(1780, 80 + (i / 20) * 1620 + (rng() - 0.5) * 90));
       el.style.cssText =
         "width:" +
         size +
@@ -257,16 +258,16 @@
   }
 
   if (nearContainer) {
-    // 近景前ボケ大粒クリスタル破片 (8個: 左右端〜上空に配置し中央オーブ・カットインを避ける)
-    for (let i = 0; i < 8; i++) {
+    // 近景前ボケ大粒クリスタル破片 (14個: 左右端寄り・縦フルレンジ y=150..1860px で中央オーブ/カットインを避ける)
+    for (let i = 0; i < 14; i++) {
       const el = document.createElement("div");
       const kind = (i + 1) % 3;
       el.className = "sky-shard sky-shard-near";
       el.setAttribute("data-layout-allow-overflow", "");
-      const size = 82 + Math.floor(rng() * 44);
+      const size = 78 + Math.floor(rng() * 46);
       const isLeft = i % 2 === 0;
-      const x0 = isLeft ? 55 + rng() * 210 : 815 + rng() * 210;
-      const y0 = 150 + (i >> 1) * 185 + rng() * 95;
+      const x0 = isLeft ? 50 + rng() * 195 : 835 + rng() * 195;
+      const y0 = 150 + (i >> 1) * 245 + rng() * 110;
       el.style.cssText =
         "width:" +
         size +
@@ -287,16 +288,71 @@
       nearShards.push({
         el: el,
         rot0: -60 + rng() * 120,
-        drot1: (isLeft ? 1 : -1) * (40 + rng() * 50),
-        drot2: (isLeft ? 1 : -1) * (90 + rng() * 110),
+        drot1: (isLeft ? 1 : -1) * (38 + rng() * 48),
+        drot2: (isLeft ? 1 : -1) * (85 + rng() * 105),
         dx1: (isLeft ? 1 : -1) * (18 + rng() * 28),
-        dy1: -(110 + rng() * 90),
-        dy2: -(230 + rng() * 130),
-        dy3: -(420 + rng() * 200),
-        baseAlpha: 0.36 + rng() * 0.24,
+        dy1: -(90 + rng() * 70),
+        dy2: -(195 + rng() * 115),
+        dy3: -(360 + rng() * 180),
+        baseAlpha: 0.34 + rng() * 0.24,
         scale0: 0.85 + rng() * 0.3,
       });
     }
+  }
+
+  // 昇格時の「床魔法陣からの後発ダストウェーブ」(金8個 @3.78s + 虹12個 @5.20s = 計20個)
+  if (farContainer && nearContainer) {
+    const waveConfigs = [
+      // 金昇格ウェーブ (8個: 遠景5 + 近景3)
+      { count: 8, baseTime: 3.78, spreadT: 0.28, nearRatio: 3, kindPool: [1, 2, 1], yMin: 1280, yMax: 1940 },
+      // 虹昇格ウェーブ (12個: 遠景8 + 近景4)
+      { count: 12, baseTime: 5.2, spreadT: 0.45, nearRatio: 4, kindPool: [2, 0, 1], yMin: 1320, yMax: 1980 },
+    ];
+    waveConfigs.forEach(function (wc) {
+      for (let i = 0; i < wc.count; i++) {
+        const isNear = i < wc.nearRatio;
+        const container = isNear ? nearContainer : farContainer;
+        const el = document.createElement("div");
+        const kind = wc.kindPool[i % wc.kindPool.length];
+        el.className = "sky-shard " + (isNear ? "sky-shard-near" : "sky-shard-far");
+        el.setAttribute("data-layout-allow-overflow", "");
+        const size = isNear ? 76 + Math.floor(rng() * 44) : 20 + Math.floor(rng() * 26);
+        const isLeft = i % 2 === 0;
+        const x0 = isNear ? (isLeft ? 55 + rng() * 210 : 815 + rng() * 210) : 65 + rng() * 950;
+        const y0 = wc.yMin + rng() * (wc.yMax - wc.yMin);
+        el.style.cssText =
+          "width:" +
+          size +
+          "px;height:" +
+          size +
+          "px;left:" +
+          x0.toFixed(1) +
+          "px;top:" +
+          y0.toFixed(1) +
+          "px;margin-left:" +
+          (-size / 2).toFixed(1) +
+          "px;margin-top:" +
+          (-size / 2).toFixed(1) +
+          'px;background-image:url("../assets/generated/opt_shard_' +
+          (isNear ? "near" : "far") +
+          "_" +
+          kind +
+          '.png")';
+        container.appendChild(el);
+        waveShards.push({
+          el: el,
+          isNear: isNear,
+          isGoldWave: wc.baseTime < 4.5,
+          spawnAt: +(wc.baseTime + rng() * wc.spreadT).toFixed(3),
+          rot0: -50 + rng() * 100,
+          drot: (rng() < 0.5 ? -1 : 1) * (65 + rng() * 95),
+          dx: (rng() - 0.5) * (isNear ? 70 : 54),
+          riseY: -(isNear ? 340 + rng() * 260 : 210 + rng() * 190),
+          peakAlpha: isNear ? 0.36 + rng() * 0.24 : 0.44 + rng() * 0.36,
+          scale0: 0.72 + rng() * 0.42,
+        });
+      }
+    });
   }
 
   function bindLoopsAndHelpers(tl) {
@@ -400,8 +456,28 @@
       );
       tl.to(
         s.el,
-        { y: s.dy3, rotation: s.rot0 + s.drot1 * 1.85 + s.drot2, scale: s.scale0 * 1.24, opacity: Math.min(1, s.baseAlpha * 1.38), duration: 1.8, ease: "power2.out" },
+        { y: s.dy3, rotation: s.rot0 + s.drot1 * 1.85 + s.drot2, scale: s.scale0 * 1.24, opacity: +(s.baseAlpha * 0.85).toFixed(3), duration: 1.8, ease: "power2.out" },
         5.2
+      );
+    });
+
+    // 昇格時の床魔法陣からの後発ダストウェーブ（親コンテナの真空暗転 5.06-5.18s と自動同期）
+    waveShards.forEach(function (ws) {
+      const endT = 7.0;
+      const moveDur = Math.max(0.5, +(endT - ws.spawnAt).toFixed(3));
+      tl.set(ws.el, { x: 0, y: 0, rotation: ws.rot0, opacity: 0, scale: ws.scale0 * 0.65 }, 0);
+      tl.to(ws.el, { opacity: ws.peakAlpha, scale: ws.scale0, duration: 0.34, ease: "sine.out" }, ws.spawnAt);
+      tl.to(
+        ws.el,
+        {
+          x: +ws.dx.toFixed(1),
+          y: +ws.riseY.toFixed(1),
+          rotation: +(ws.rot0 + ws.drot).toFixed(1),
+          scale: +(ws.scale0 * 1.18).toFixed(2),
+          duration: moveDur,
+          ease: ws.isGoldWave ? "power1.inOut" : "power2.out",
+        },
+        ws.spawnAt
       );
     });
 
