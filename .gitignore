@@ -1,0 +1,15 @@
+node_modules/
+renders/*.mp4
+renders/*.webm
+.media/
+.hyperframes/
+*.log
+__pycache__/
+*.pyc
+
+# Private input photos
+assets/*.jpg
+assets/*.jpeg
+assets/*.png
+assets/*.webp
+assets/*.heic

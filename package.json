@@ -1,0 +1,11 @@
+{
+  "name": "ssrgenerate",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.9.72 preview",
+    "check": "npx --yes hyperframes@0.9.72 check",
+    "render": "npx --yes hyperframes@0.9.72 render -o renders/ssr_gacha.mp4",
+    "publish": "npx --yes hyperframes@0.9.72 publish"
+  }
+}

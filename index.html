@@ -1,0 +1,1629 @@
+<!doctype html>
+<html
+  lang="ja"
+  data-resolution="portrait"
+  data-composition-variables='[
+    {"id":"photo","type":"string","label":"Photo Path","default":""},
+    {"id":"title","type":"string","label":"Card Title","default":""},
+    {"id":"subtitle","type":"string","label":"Card Subtitle","default":""},
+    {"id":"rarity","type":"string","label":"Rarity","default":""},
+    {"id":"flavor","type":"string","label":"Flavor Text","default":""}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>SSRGenerate — 15s SSR Gacha Reveal</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <script src="./card-config.js"></script>
+    <style>
+      :root {
+        --in-oklab: ;
+        --in-oklch: ;
+        --bg-void: #040611;
+        --ink-ivory: #f8f4ea;
+        --ink-gold-light: #fef08a;
+        --ink-gold: #f5c451;
+        --font-jp: "Noto Sans JP", sans-serif;
+        --font-display: "Playfair Display", "EB Garamond", serif;
+        --font-ui: "Montserrat", "Noto Sans JP", sans-serif;
+      }
+
+      @supports (background: linear-gradient(in oklab, white, black)) {
+        :root {
+          --in-oklab: in oklab;
+          --in-oklch: in oklch;
+        }
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--bg-void);
+        color: var(--ink-ivory);
+        font-family: var(--font-jp);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--bg-void);
+        isolation: isolate;
+      }
+
+      .clip {
+        position: absolute;
+        inset: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      /* =========================================================
+         Phase 1-2: Summon Background & Energy Auras
+         ========================================================= */
+      #scene-summon {
+        z-index: 10;
+        background: radial-gradient(circle at 50% 48% var(--in-oklab), #101b3f 0%, #060a1b 58%, #020309 100%);
+      }
+
+      .bg-aura {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1360px;
+        height: 1360px;
+        margin-left: -680px;
+        margin-top: -680px;
+        border-radius: 50%;
+        opacity: 0;
+      }
+
+      #aura-blue {
+        opacity: 0.45;
+        background: radial-gradient(
+          circle var(--in-oklab),
+          rgba(56, 189, 248, 0.58) 0%,
+          rgba(29, 78, 216, 0.3) 38%,
+          rgba(4, 6, 17, 0) 70%
+        );
+      }
+
+      #aura-gold {
+        background: radial-gradient(
+          circle var(--in-oklab),
+          rgba(254, 240, 138, 0.75) 0%,
+          rgba(245, 158, 11, 0.4) 38%,
+          rgba(4, 6, 17, 0) 72%
+        );
+      }
+
+      #aura-rainbow {
+        background: conic-gradient(
+          from 0deg var(--in-oklch),
+          rgba(255, 77, 148, 0.52),
+          rgba(255, 200, 55, 0.56),
+          rgba(62, 232, 165, 0.52),
+          rgba(56, 189, 248, 0.56),
+          rgba(168, 85, 247, 0.56),
+          rgba(255, 77, 148, 0.52)
+        );
+        -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.65) 45%, rgba(0, 0, 0, 0) 72%);
+        mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.65) 45%, rgba(0, 0, 0, 0) 72%);
+      }
+
+      #summon-godrays {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 2400px;
+        height: 2400px;
+        margin-left: -1200px;
+        margin-top: -1200px;
+        opacity: 0;
+        background: repeating-conic-gradient(
+          from 0deg var(--in-oklch),
+          rgba(255, 245, 200, 0.38) 0deg 6deg,
+          transparent 6deg 15deg,
+          rgba(56, 189, 248, 0.34) 15deg 21deg,
+          transparent 21deg 30deg,
+          rgba(244, 114, 182, 0.36) 30deg 36deg,
+          transparent 36deg 45deg
+        );
+        -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 8%, rgba(0, 0, 0, 0.6) 45%, transparent 72%);
+        mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 8%, rgba(0, 0, 0, 0.6) 45%, transparent 72%);
+      }
+
+      #light-pillar {
+        position: absolute;
+        left: 50%;
+        top: 0;
+        width: 280px;
+        height: 1920px;
+        margin-left: -140px;
+        opacity: 0;
+        background: linear-gradient(
+          to right var(--in-oklab),
+          transparent 0%,
+          rgba(254, 240, 138, 0.25) 28%,
+          rgba(255, 255, 255, 0.88) 50%,
+          rgba(254, 240, 138, 0.25) 72%,
+          transparent 100%
+        );
+      }
+
+      /* Magic Circle SVG Container */
+      #magic-circle-wrap {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 900px;
+        height: 900px;
+        margin-left: -450px;
+        margin-top: -450px;
+        opacity: 0.72;
+      }
+
+      .mc-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        filter: drop-shadow(0 0 18px rgba(56, 189, 248, 0.78));
+      }
+
+      #mc-gold {
+        opacity: 0;
+        filter: drop-shadow(0 0 22px rgba(251, 191, 36, 0.88));
+      }
+
+      #mc-rainbow {
+        opacity: 0;
+        filter: drop-shadow(0 0 28px rgba(244, 114, 182, 0.88)) drop-shadow(0 0 48px rgba(56, 189, 248, 0.7));
+      }
+
+      /* Summoning Orb */
+      #orb-wrap {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 300px;
+        height: 300px;
+        margin-left: -150px;
+        margin-top: -150px;
+        opacity: 0;
+      }
+
+      .orb-core {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+      }
+
+      #orb-blue {
+        background: radial-gradient(
+          circle at 36% 32% var(--in-oklab),
+          #ffffff 0%,
+          #bae6fd 20%,
+          #38bdf8 48%,
+          #1d4ed8 80%,
+          #0f172a 100%
+        );
+        box-shadow:
+          0 0 42px rgba(56, 189, 248, 0.92),
+          0 0 100px rgba(37, 99, 235, 0.72),
+          inset 0 0 36px rgba(255, 255, 255, 0.65);
+      }
+
+      #orb-gold {
+        opacity: 0;
+        background: radial-gradient(
+          circle at 36% 32% var(--in-oklab),
+          #ffffff 0%,
+          #fef9c3 22%,
+          #facc15 50%,
+          #d97706 82%,
+          #451a03 100%
+        );
+        box-shadow:
+          0 0 54px rgba(254, 240, 138, 0.96),
+          0 0 120px rgba(245, 158, 11, 0.82),
+          inset 0 0 40px rgba(255, 255, 255, 0.82);
+      }
+
+      #orb-rainbow {
+        opacity: 0;
+        background:
+          radial-gradient(circle at 36% 32% var(--in-oklab), rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.25) 38%, transparent 70%),
+          conic-gradient(
+            from 0deg var(--in-oklch),
+            #ff4d94,
+            #ffb703,
+            #34d399,
+            #38bdf8,
+            #a855f7,
+            #ff4d94
+          );
+        box-shadow:
+          0 0 64px rgba(255, 255, 255, 0.96),
+          0 0 135px rgba(244, 114, 182, 0.88),
+          0 0 215px rgba(56, 189, 248, 0.78),
+          inset 0 0 44px rgba(255, 255, 255, 0.9);
+      }
+
+      #orb-cracks {
+        position: absolute;
+        inset: -70px;
+        width: 440px;
+        height: 440px;
+        opacity: 0;
+        filter: drop-shadow(0 0 14px #ffffff) drop-shadow(0 0 28px #f472b6);
+      }
+
+      /* Shockwave Rings */
+      .shockwave {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 320px;
+        height: 320px;
+        margin-left: -160px;
+        margin-top: -160px;
+        border-radius: 50%;
+        opacity: 0;
+      }
+
+      #shock-blue {
+        border: 8px solid #7dd3fc;
+        box-shadow: 0 0 32px #38bdf8, inset 0 0 24px #38bdf8;
+      }
+
+      #shock-gold {
+        border: 10px solid #fef08a;
+        box-shadow: 0 0 44px #f59e0b, inset 0 0 32px #fbbf24;
+      }
+
+      #shock-rainbow {
+        border: 14px solid #ffffff;
+        box-shadow:
+          0 0 48px #f472b6,
+          0 0 90px #38bdf8,
+          inset 0 0 40px #fde047;
+      }
+
+      /* Summon Status Banner (Inside safe zone) */
+      #summon-status {
+        position: absolute;
+        left: 90px;
+        right: 90px;
+        top: 330px;
+        text-align: center;
+        opacity: 0.92;
+      }
+
+      #summon-status-en {
+        font-family: var(--font-ui);
+        font-size: 34px;
+        font-weight: 800;
+        letter-spacing: 0.34em;
+        color: #e0f2fe;
+        text-shadow: 0 0 24px rgba(56, 189, 248, 0.9);
+      }
+
+      #summon-status-jp {
+        margin-top: 12px;
+        font-family: var(--font-jp);
+        font-size: 44px;
+        font-weight: 900;
+        letter-spacing: 0.22em;
+        color: var(--ink-ivory);
+        text-shadow: 0 3px 20px rgba(0, 0, 0, 0.9);
+      }
+
+      /* Converging Particles Layer */
+      #converge-particles {
+        position: absolute;
+        inset: 0;
+      }
+
+      .c-particle {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        border-radius: 50%;
+        opacity: 0;
+      }
+
+      /* Rainbow Promotion Cut-In */
+      #cutin-band {
+        position: absolute;
+        left: -120px;
+        top: 50%;
+        width: 1320px;
+        height: 240px;
+        margin-top: -120px;
+        transform: rotate(-4deg);
+        opacity: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(
+          90deg var(--in-oklch),
+          rgba(15, 23, 42, 0.94) 0%,
+          rgba(126, 34, 206, 0.92) 22%,
+          rgba(219, 39, 119, 0.94) 50%,
+          rgba(2, 132, 199, 0.92) 78%,
+          rgba(15, 23, 42, 0.94) 100%
+        );
+        border-top: 6px solid #fef08a;
+        border-bottom: 6px solid #fef08a;
+        box-shadow:
+          0 0 60px rgba(254, 240, 138, 0.82),
+          0 0 110px rgba(236, 72, 153, 0.68);
+      }
+
+      .cutin-sub {
+        font-family: var(--font-ui);
+        font-size: 30px;
+        font-weight: 800;
+        letter-spacing: 0.32em;
+        color: #fef9c3;
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+      }
+
+      .cutin-main {
+        margin-top: 8px;
+        font-family: var(--font-jp);
+        font-size: 66px;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        color: #ffffff;
+        text-shadow:
+          0 4px 18px rgba(0, 0, 0, 0.92),
+          0 0 36px rgba(254, 240, 138, 0.95);
+      }
+
+      /* =========================================================
+         Phase 3-5: Result Scene & 3D SSR Card
+         ========================================================= */
+      #scene-result {
+        z-index: 20;
+        opacity: 0;
+        background:
+          radial-gradient(circle at 50% 45% var(--in-oklab), #1e1b4b 0%, #0b0f26 52%, #040611 100%);
+      }
+
+      #result-rays {
+        position: absolute;
+        left: 50%;
+        top: 48%;
+        width: 2200px;
+        height: 2200px;
+        margin-left: -1100px;
+        margin-top: -1100px;
+        opacity: 0.55;
+        background: repeating-conic-gradient(
+          from 0deg var(--in-oklch),
+          rgba(254, 240, 138, 0.24) 0deg 5deg,
+          transparent 5deg 18deg,
+          rgba(244, 114, 182, 0.16) 18deg 23deg,
+          transparent 23deg 36deg,
+          rgba(56, 189, 248, 0.18) 36deg 41deg,
+          transparent 41deg 54deg
+        );
+        -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 0.95) 12%, rgba(0, 0, 0, 0.45) 48%, transparent 72%);
+        mask-image: radial-gradient(circle, rgba(0, 0, 0, 0.95) 12%, rgba(0, 0, 0, 0.45) 48%, transparent 72%);
+      }
+
+      #result-halo {
+        position: absolute;
+        left: 50%;
+        top: 48%;
+        width: 1120px;
+        height: 1120px;
+        margin-left: -560px;
+        margin-top: -560px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle var(--in-oklab),
+          rgba(254, 240, 138, 0.42) 0%,
+          rgba(236, 72, 153, 0.18) 38%,
+          rgba(56, 189, 248, 0.1) 58%,
+          transparent 75%
+        );
+      }
+
+      #result-bg-ring {
+        position: absolute;
+        left: 50%;
+        top: 49%;
+        width: 1020px;
+        height: 1020px;
+        margin-left: -510px;
+        margin-top: -510px;
+        opacity: 0.28;
+      }
+
+      /* Result Top Header */
+      #result-header {
+        position: absolute;
+        left: 80px;
+        right: 80px;
+        top: 100px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 35;
+        opacity: 0;
+      }
+
+      .header-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        padding: 10px 36px;
+        border-radius: 999px;
+        background: #090e24;
+        border: 2.5px solid #f5c451;
+        box-shadow:
+          0 0 28px rgba(245, 196, 81, 0.48),
+          inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      }
+
+      .header-pill-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #fef08a;
+        box-shadow: 0 0 12px #fef08a;
+      }
+
+      #header-badge-text {
+        font-family: var(--font-ui);
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: 0.24em;
+        color: #fef08a;
+      }
+
+      #header-summon-label {
+        margin-top: 14px;
+        font-family: var(--font-display);
+        font-size: 48px;
+        font-weight: 900;
+        letter-spacing: 0.18em;
+        color: #fffbeb;
+        text-shadow:
+          0 4px 16px rgba(0, 0, 0, 0.9),
+          0 0 28px rgba(251, 191, 36, 0.72);
+      }
+
+      /* 3D Card Stage */
+      #card-stage {
+        position: absolute;
+        left: 50%;
+        top: 280px;
+        width: 836px;
+        height: 1300px;
+        margin-left: -418px;
+        perspective: 1800px;
+        z-index: 30;
+      }
+
+      #ssr-card {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transform-style: preserve-3d;
+        opacity: 0;
+      }
+
+      .card-face {
+        position: absolute;
+        inset: 0;
+        border-radius: 40px;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+      }
+
+      /* Card Back (Visible during 3D spin) */
+      .card-back {
+        transform: rotateY(180deg);
+        padding: 14px;
+        background: linear-gradient(
+          135deg var(--in-oklch),
+          #fef08a 0%,
+          #f59e0b 28%,
+          #ec4899 52%,
+          #38bdf8 78%,
+          #fef08a 100%
+        );
+        box-shadow:
+          0 28px 80px rgba(0, 0, 0, 0.85),
+          0 0 65px rgba(245, 196, 81, 0.65);
+      }
+
+      .card-back-inner {
+        width: 100%;
+        height: 100%;
+        border-radius: 26px;
+        background-color: #070b1a;
+        background-image: radial-gradient(circle at 50% 50% var(--in-oklab), #17153b 0%, #070b1a 72%, #040611 100%);
+        border: 3px solid rgba(254, 240, 138, 0.65);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card-back-monogram {
+        font-family: var(--font-display);
+        font-size: 132px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        color: #ffffff;
+        background-color: #070b1a;
+        padding: 12px 38px;
+        border-radius: 20px;
+        border: 2px solid rgba(254, 240, 138, 0.55);
+        text-shadow: 0 0 36px rgba(251, 191, 36, 0.9);
+      }
+
+      /* Card Front (Main SSR Card) */
+      .card-front {
+        padding: 14px;
+        background: linear-gradient(
+          135deg var(--in-oklch),
+          #fffbeb 0%,
+          #facc15 16%,
+          #f472b6 36%,
+          #38bdf8 56%,
+          #a855f7 76%,
+          #facc15 90%,
+          #fffbeb 100%
+        );
+        box-shadow:
+          0 36px 90px rgba(0, 0, 0, 0.88),
+          0 0 60px rgba(254, 240, 138, 0.55),
+          0 0 120px rgba(236, 72, 153, 0.34);
+      }
+
+      .card-front-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        border-radius: 26px;
+        overflow: hidden;
+        background: linear-gradient(180deg var(--in-oklab), #111631 0%, #090d1f 100%);
+        border: 2px solid rgba(254, 240, 138, 0.78);
+        display: flex;
+        flex-direction: column;
+        isolation: isolate;
+      }
+
+      /* Photo Window */
+      .card-photo-area {
+        position: relative;
+        width: 100%;
+        height: 825px;
+        overflow: hidden;
+        background: #0b1024;
+      }
+
+      #card-photo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: 50% 42%;
+        display: block;
+      }
+
+      .photo-vignette {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(to bottom var(--in-oklab), rgba(9, 13, 31, 0.34) 0%, transparent 18%, transparent 74%, rgba(9, 13, 31, 0.96) 100%),
+          radial-gradient(circle at 50% 46% var(--in-oklab), transparent 58%, rgba(4, 6, 17, 0.42) 100%);
+      }
+
+      .photo-divider {
+        position: relative;
+        height: 4px;
+        width: 100%;
+        background: linear-gradient(
+          90deg var(--in-oklch),
+          transparent 0%,
+          #f59e0b 15%,
+          #fef08a 50%,
+          #f59e0b 85%,
+          transparent 100%
+        );
+        box-shadow: 0 0 18px rgba(254, 240, 138, 0.9);
+      }
+
+      /* Hologram Shimmer Layers */
+      #holo-sweep-1,
+      #holo-sweep-2 {
+        position: absolute;
+        top: -200px;
+        left: -650px;
+        width: 340px;
+        height: 1750px;
+        transform: rotate(24deg);
+        mix-blend-mode: screen;
+        opacity: 0;
+        background: linear-gradient(
+          90deg var(--in-oklch),
+          transparent 0%,
+          rgba(56, 189, 248, 0.44) 22%,
+          rgba(255, 255, 255, 0.9) 50%,
+          rgba(244, 114, 182, 0.46) 78%,
+          transparent 100%
+        );
+        z-index: 15;
+      }
+
+      #holo-static-sheen {
+        position: absolute;
+        inset: 0;
+        mix-blend-mode: screen;
+        opacity: 0;
+        background: linear-gradient(
+          128deg var(--in-oklch),
+          rgba(255, 255, 255, 0.16) 0%,
+          rgba(254, 240, 138, 0.08) 18%,
+          transparent 34%,
+          transparent 76%,
+          rgba(56, 189, 248, 0.1) 88%,
+          rgba(244, 114, 182, 0.16) 100%
+        );
+        z-index: 14;
+      }
+
+      /* Top-Left SSR Emblem */
+      #ssr-emblem {
+        position: absolute;
+        top: 24px;
+        left: 24px;
+        z-index: 25;
+        opacity: 0;
+        padding: 12px 30px 14px;
+        border-radius: 18px;
+        background: #0d1229;
+        border: 3px solid #fef08a;
+        box-shadow:
+          0 10px 28px rgba(0, 0, 0, 0.78),
+          0 0 28px rgba(251, 191, 36, 0.75),
+          inset 0 1px 0 rgba(255, 255, 255, 0.5);
+      }
+
+      #ssr-emblem-text {
+        font-family: var(--font-display);
+        font-size: 62px;
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: 0.06em;
+        background: linear-gradient(
+          180deg var(--in-oklch),
+          #ffffff 0%,
+          #fef08a 42%,
+          #f59e0b 75%,
+          #f472b6 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.75));
+      }
+
+      /* Top-Right Attribute Badge */
+      #attr-badge {
+        position: absolute;
+        top: 28px;
+        right: 26px;
+        z-index: 25;
+        opacity: 0;
+        padding: 10px 24px;
+        border-radius: 999px;
+        background: #090d1f;
+        border: 2px solid rgba(254, 240, 138, 0.85);
+        font-family: var(--font-jp);
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: #fef3c7;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.68);
+      }
+
+      /* 5 Stars Row */
+      #stars-row {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 758px;
+        z-index: 25;
+        display: flex;
+        justify-content: center;
+        gap: 14px;
+      }
+
+      .star-item {
+        width: 56px;
+        height: 56px;
+        opacity: 0;
+        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 18px rgba(251, 191, 36, 0.95));
+      }
+
+      /* Card Bottom Info Panel */
+      .card-info {
+        flex: 1;
+        padding: 26px 38px 28px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        background: linear-gradient(180deg var(--in-oklab), #0d132b 0%, #070a18 100%);
+        position: relative;
+        z-index: 20;
+      }
+
+      .card-text-group {
+        text-align: center;
+        width: 100%;
+      }
+
+      #card-subtitle {
+        font-family: var(--font-jp);
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        color: #fde68a;
+        opacity: 0;
+      }
+
+      #card-title {
+        margin-top: 8px;
+        font-family: var(--font-jp);
+        font-size: 64px;
+        font-weight: 900;
+        line-height: 1.2;
+        letter-spacing: 0.06em;
+        color: var(--ink-ivory);
+        text-shadow:
+          0 4px 18px rgba(0, 0, 0, 0.92),
+          0 0 24px rgba(254, 240, 138, 0.38);
+        opacity: 0;
+      }
+
+      #card-flavor {
+        margin-top: 12px;
+        font-family: var(--font-jp);
+        font-size: 28px;
+        font-weight: 500;
+        line-height: 1.45;
+        letter-spacing: 0.03em;
+        color: #f1f5f9;
+        opacity: 0;
+      }
+
+      /* Stats Bar */
+      #card-stats {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-top: 12px;
+        opacity: 0;
+      }
+
+      .stat-box {
+        padding: 14px 10px;
+        border-radius: 14px;
+        background: #121836;
+        border: 1.5px solid rgba(254, 240, 138, 0.45);
+        text-align: center;
+      }
+
+      .stat-label {
+        font-family: var(--font-ui);
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        color: #fde68a;
+      }
+
+      .stat-value {
+        margin-top: 4px;
+        font-family: var(--font-jp);
+        font-size: 34px;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+        color: #ffffff;
+        letter-spacing: 0.03em;
+      }
+
+      /* Corner ornaments inside card */
+      .corner-ornament {
+        position: absolute;
+        width: 54px;
+        height: 54px;
+        z-index: 22;
+        opacity: 0.9;
+      }
+      .co-tl { top: 10px; left: 10px; }
+      .co-tr { top: 10px; right: 10px; transform: scaleX(-1); }
+      .co-bl { bottom: 10px; left: 10px; transform: scaleY(-1); }
+      .co-br { bottom: 10px; right: 10px; transform: scale(-1); }
+
+      /* Result Bottom Footer */
+      #result-footer {
+        position: absolute;
+        left: 90px;
+        right: 90px;
+        bottom: 100px;
+        z-index: 35;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 34px;
+        border-radius: 18px;
+        background: #090d1f;
+        border: 1.5px solid rgba(254, 240, 138, 0.55);
+        opacity: 0;
+      }
+
+      .footer-left {
+        font-family: var(--font-ui);
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: 0.2em;
+        color: #fef08a;
+      }
+
+      #footer-card-no {
+        font-family: var(--font-ui);
+        font-size: 28px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.1em;
+        color: #f1f5f9;
+      }
+
+      /* Celebration Particles & Sparkles */
+      #celebration-layer {
+        z-index: 40;
+      }
+
+      .sparkle-star {
+        position: absolute;
+        left: 50%;
+        top: 48%;
+        opacity: 0;
+      }
+
+      .confetti-bit {
+        position: absolute;
+        left: 50%;
+        top: 48%;
+        border-radius: 3px;
+        opacity: 0;
+      }
+
+      /* Card Landing Shockwave */
+      #landing-shockwave {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 420px;
+        height: 420px;
+        margin-left: -210px;
+        margin-top: -210px;
+        border-radius: 50%;
+        border: 14px solid #fef08a;
+        box-shadow:
+          0 0 60px #facc15,
+          0 0 110px #f472b6,
+          inset 0 0 50px #ffffff;
+        opacity: 0;
+        z-index: 38;
+      }
+
+      /* Global Whiteout Flash Layer */
+      #flash-layer {
+        z-index: 60;
+        background: radial-gradient(circle at 50% 50% var(--in-oklab), #ffffff 0%, #fffbeb 55%, #fef08a 100%);
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="15"
+      data-width="1080"
+      data-height="1920"
+    >
+      <!-- =====================================================
+           Audio Tracks (Procedural WAVs synced to timeline)
+           ===================================================== -->
+      <audio
+        id="audio-summon"
+        src="assets/se_summon.wav"
+        data-start="0"
+        data-duration="3.5"
+        data-volume="0.85"
+        data-track-index="10"
+      ></audio>
+      <audio
+        id="audio-upgrade"
+        src="assets/se_upgrade.wav"
+        data-start="2.5"
+        data-duration="4.8"
+        data-volume="0.92"
+        data-track-index="11"
+      ></audio>
+      <audio
+        id="audio-fanfare"
+        src="assets/se_fanfare.wav"
+        data-start="6.8"
+        data-duration="8.0"
+        data-volume="0.95"
+        data-track-index="12"
+      ></audio>
+
+      <!-- =====================================================
+           Scene 1 & 2: Summon Circle, Orb & Fake Upgrade (0.0s - 7.4s)
+           ===================================================== -->
+      <div id="scene-summon" class="clip" data-start="0" data-duration="7.4" data-track-index="0">
+        <div id="aura-blue" class="bg-aura" data-layout-allow-overflow></div>
+        <div id="aura-gold" class="bg-aura" data-layout-allow-overflow></div>
+        <div id="aura-rainbow" class="bg-aura" data-layout-allow-overflow></div>
+        <div id="summon-godrays" data-layout-allow-overflow></div>
+        <div id="light-pillar" data-layout-allow-overflow></div>
+
+        <!-- 3-Tier Geometric Magic Circle -->
+        <div id="magic-circle-wrap" data-layout-allow-overflow>
+          <svg id="mc-blue" class="mc-svg" viewBox="0 0 800 800" fill="none" data-layout-allow-overflow>
+            <g id="mc-ring-outer" data-layout-allow-overflow>
+              <circle cx="400" cy="400" r="372" stroke="#38bdf8" stroke-width="5" opacity="0.9" />
+              <circle cx="400" cy="400" r="348" stroke="#7dd3fc" stroke-width="2" stroke-dasharray="14 10" />
+              <circle cx="400" cy="400" r="312" stroke="#38bdf8" stroke-width="3" opacity="0.75" />
+            </g>
+            <g id="mc-ring-mid" data-layout-allow-overflow>
+              <polygon points="400,66 689,233 689,567 400,734 111,567 111,233" stroke="#7dd3fc" stroke-width="3.5" opacity="0.88" />
+              <polygon points="400,66 636,164 734,400 636,636 400,734 164,636 66,400 164,164" stroke="#38bdf8" stroke-width="2.5" opacity="0.7" />
+              <polygon points="400,115 647,542 153,542" stroke="#bae6fd" stroke-width="3" opacity="0.8" />
+              <polygon points="400,685 153,258 647,258" stroke="#bae6fd" stroke-width="3" opacity="0.8" />
+            </g>
+            <g id="mc-ring-inner" data-layout-allow-overflow>
+              <circle cx="400" cy="400" r="215" stroke="#bae6fd" stroke-width="4" />
+              <circle cx="400" cy="400" r="192" stroke="#38bdf8" stroke-width="2" stroke-dasharray="6 8" />
+            </g>
+          </svg>
+
+          <svg id="mc-gold" class="mc-svg" viewBox="0 0 800 800" fill="none" data-layout-allow-overflow>
+            <g id="mc-gold-outer" data-layout-allow-overflow>
+              <circle cx="400" cy="400" r="372" stroke="#fde047" stroke-width="6" />
+              <circle cx="400" cy="400" r="348" stroke="#fbbf24" stroke-width="3" stroke-dasharray="16 10" />
+              <circle cx="400" cy="400" r="312" stroke="#f59e0b" stroke-width="4" />
+            </g>
+            <g id="mc-gold-mid" data-layout-allow-overflow>
+              <polygon points="400,66 689,233 689,567 400,734 111,567 111,233" stroke="#fef08a" stroke-width="4.5" />
+              <polygon points="400,115 647,542 153,542" stroke="#fde047" stroke-width="4" />
+              <polygon points="400,685 153,258 647,258" stroke="#fde047" stroke-width="4" />
+            </g>
+            <g id="mc-gold-inner" data-layout-allow-overflow>
+              <circle cx="400" cy="400" r="215" stroke="#fef9c3" stroke-width="5" />
+            </g>
+          </svg>
+
+          <svg id="mc-rainbow" class="mc-svg" viewBox="0 0 800 800" fill="none" data-layout-allow-overflow>
+            <defs>
+              <linearGradient id="prismGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ff4d94" />
+                <stop offset="25%" stop-color="#fde047" />
+                <stop offset="50%" stop-color="#34d399" />
+                <stop offset="75%" stop-color="#38bdf8" />
+                <stop offset="100%" stop-color="#c084fc" />
+              </linearGradient>
+            </defs>
+            <g id="mc-rb-outer" data-layout-allow-overflow>
+              <circle cx="400" cy="400" r="374" stroke="url(#prismGrad)" stroke-width="8" />
+              <circle cx="400" cy="400" r="344" stroke="#ffffff" stroke-width="3" stroke-dasharray="18 8" />
+              <circle cx="400" cy="400" r="308" stroke="url(#prismGrad)" stroke-width="5" />
+            </g>
+            <g id="mc-rb-mid" data-layout-allow-overflow>
+              <polygon points="400,66 689,233 689,567 400,734 111,567 111,233" stroke="url(#prismGrad)" stroke-width="6" />
+              <polygon points="400,115 647,542 153,542" stroke="#ffffff" stroke-width="4.5" />
+              <polygon points="400,685 153,258 647,258" stroke="#ffffff" stroke-width="4.5" />
+            </g>
+            <g id="mc-rb-inner" data-layout-allow-overflow>
+              <circle cx="400" cy="400" r="215" stroke="url(#prismGrad)" stroke-width="6" />
+            </g>
+          </svg>
+        </div>
+
+        <div id="converge-particles" data-layout-allow-overflow></div>
+
+        <div id="shock-blue" class="shockwave" data-layout-allow-overflow></div>
+        <div id="shock-gold" class="shockwave" data-layout-allow-overflow></div>
+        <div id="shock-rainbow" class="shockwave" data-layout-allow-overflow></div>
+
+        <div id="orb-wrap">
+          <div id="orb-blue" class="orb-core"></div>
+          <div id="orb-gold" class="orb-core"></div>
+          <div id="orb-rainbow" class="orb-core"></div>
+          <svg id="orb-cracks" viewBox="0 0 440 440" fill="none" data-layout-allow-overflow>
+            <path d="M220 220 L165 130 L120 95 M220 220 L295 145 L355 110 M220 220 L315 265 L380 315 M220 220 L145 300 L90 365 M220 220 L232 98 L248 45 M220 220 L92 210 L35 190" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M165 130 L195 102 M295 145 L285 95 M315 265 L350 232 M145 300 L185 352" stroke="#fef08a" stroke-width="4" stroke-linecap="round" />
+          </svg>
+        </div>
+
+        <div id="summon-status" data-layout-allow-safe-zone>
+          <div id="summon-status-en" data-layout-allow-safe-zone>SUMMONING</div>
+          <div id="summon-status-jp" data-layout-allow-safe-zone>召喚中...</div>
+        </div>
+
+        <div id="cutin-band" data-layout-allow-overflow data-layout-allow-safe-zone>
+          <div class="cutin-sub" data-layout-allow-safe-zone>RAINBOW PROMOTION</div>
+          <div class="cutin-main" data-layout-allow-safe-zone>★ 昇格 — SSR 確定 ★</div>
+        </div>
+      </div>
+
+      <!-- =====================================================
+           Scene 3-5: 3D SSR Card Reveal & Fixed Result (6.9s - 15.0s)
+           ===================================================== -->
+      <div id="scene-result" class="clip" data-start="6.9" data-duration="8.1" data-track-index="1">
+        <div id="result-rays" data-layout-allow-overflow></div>
+        <div id="result-halo" data-layout-allow-overflow></div>
+
+        <svg id="result-bg-ring" viewBox="0 0 800 800" fill="none" data-layout-allow-overflow>
+          <circle cx="400" cy="400" r="380" stroke="#fde047" stroke-width="3" stroke-dasharray="14 14" />
+          <circle cx="400" cy="400" r="340" stroke="#f5c451" stroke-width="2" />
+          <polygon points="400,45 707,222 707,578 400,755 93,578 93,222" stroke="#fde047" stroke-width="2" opacity="0.65" />
+        </svg>
+
+        <div id="result-header" data-layout-allow-safe-zone>
+          <div class="header-pill">
+            <span class="header-pill-dot"></span>
+            <span id="header-badge-text" data-layout-allow-safe-zone>NEW ARRIVAL</span>
+            <span class="header-pill-dot"></span>
+          </div>
+          <div id="header-summon-label" data-layout-allow-safe-zone>LEGENDARY SUMMON</div>
+        </div>
+
+        <div id="card-stage">
+          <div id="ssr-card">
+            <!-- Card Back -->
+            <div id="card-back-face" class="card-face card-back">
+              <div class="card-back-inner">
+                <svg width="560" height="560" viewBox="0 0 560 560" fill="none" style="position:absolute;opacity:0.35">
+                  <circle cx="280" cy="280" r="250" stroke="#fef08a" stroke-width="4" />
+                  <circle cx="280" cy="280" r="215" stroke="#f59e0b" stroke-width="2" stroke-dasharray="10 10" />
+                  <polygon points="280,55 475,392 85,392" stroke="#fef08a" stroke-width="3" />
+                  <polygon points="280,505 85,168 475,168" stroke="#fef08a" stroke-width="3" />
+                </svg>
+                <div class="card-back-monogram" data-layout-allow-safe-zone>SSR</div>
+              </div>
+            </div>
+
+            <!-- Card Front -->
+            <div class="card-face card-front">
+              <div class="card-front-inner">
+                <div class="card-photo-area">
+                  <img id="card-photo" src="assets/photo.jpg" alt="SSR Character Photo" data-layout-allow-overflow />
+                  <div class="photo-vignette"></div>
+                </div>
+
+                <div class="photo-divider"></div>
+
+                <div id="holo-sweep-1" data-layout-allow-overflow></div>
+                <div id="holo-sweep-2" data-layout-allow-overflow></div>
+                <div id="holo-static-sheen"></div>
+
+                <svg class="corner-ornament co-tl" viewBox="0 0 60 60" fill="none">
+                  <path d="M4 54 L4 12 Q4 4 12 4 L54 4" stroke="#fef08a" stroke-width="3.5" />
+                  <path d="M12 40 L12 12 L40 12" stroke="#f59e0b" stroke-width="2" />
+                  <circle cx="12" cy="12" r="4" fill="#fef08a" />
+                </svg>
+                <svg class="corner-ornament co-tr" viewBox="0 0 60 60" fill="none">
+                  <path d="M4 54 L4 12 Q4 4 12 4 L54 4" stroke="#fef08a" stroke-width="3.5" />
+                  <path d="M12 40 L12 12 L40 12" stroke="#f59e0b" stroke-width="2" />
+                  <circle cx="12" cy="12" r="4" fill="#fef08a" />
+                </svg>
+                <svg class="corner-ornament co-bl" viewBox="0 0 60 60" fill="none">
+                  <path d="M4 54 L4 12 Q4 4 12 4 L54 4" stroke="#fef08a" stroke-width="3.5" />
+                  <path d="M12 40 L12 12 L40 12" stroke="#f59e0b" stroke-width="2" />
+                  <circle cx="12" cy="12" r="4" fill="#fef08a" />
+                </svg>
+                <svg class="corner-ornament co-br" viewBox="0 0 60 60" fill="none">
+                  <path d="M4 54 L4 12 Q4 4 12 4 L54 4" stroke="#fef08a" stroke-width="3.5" />
+                  <path d="M12 40 L12 12 L40 12" stroke="#f59e0b" stroke-width="2" />
+                  <circle cx="12" cy="12" r="4" fill="#fef08a" />
+                </svg>
+
+                <div id="ssr-emblem">
+                  <div id="ssr-emblem-text" data-layout-allow-safe-zone>SSR</div>
+                </div>
+
+                <div id="attr-badge" data-layout-allow-safe-zone>光属性 / SMILE</div>
+
+                <div id="stars-row"></div>
+
+                <div class="card-info">
+                  <div class="card-text-group">
+                    <div id="card-subtitle" data-layout-allow-safe-zone>【奇跡のテーブル55】</div>
+                    <div id="card-title" data-layout-allow-safe-zone>ちいさな美食家</div>
+                    <div id="card-flavor" data-layout-allow-safe-zone>黄金のたまご焼きを前に、世界一の幸せを召喚する。</div>
+                  </div>
+                  <div id="card-stats"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="landing-shockwave" data-layout-allow-overflow></div>
+
+        <div id="result-footer" data-layout-allow-safe-zone>
+          <div class="footer-left" data-layout-allow-safe-zone>★ CONGRATULATIONS ★</div>
+          <div id="footer-card-no" data-layout-allow-safe-zone>NO.055-SSR</div>
+        </div>
+      </div>
+
+      <!-- =====================================================
+           Celebration Sparkles & Confetti (9.0s - 15.0s, static from 12.0s)
+           ===================================================== -->
+      <div id="celebration-layer" class="clip" data-start="9.0" data-duration="6.0" data-track-index="2" data-layout-allow-overflow></div>
+
+      <!-- =====================================================
+           Whiteout Flash Transition Layer (3.7s - 8.2s)
+           ===================================================== -->
+      <div id="flash-layer" class="clip" data-start="3.7" data-duration="4.5" data-track-index="3"></div>
+    </div>
+
+    <script>
+      (function () {
+        // 1. Deterministic PRNG (Mulberry32) — NO Math.random / Date.now
+        function createRng(seed) {
+          let s = seed >>> 0;
+          return function () {
+            s |= 0;
+            s = (s + 0x6d2b79f5) | 0;
+            let t = Math.imul(s ^ (s >>> 15), 1 | s);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+        }
+
+        // 2. Load Card Config + Merge HyperFrames CLI Variables
+        const baseCfg = window.SSR_CARD_CONFIG || {};
+        const hfVars =
+          window.__hyperframes && typeof window.__hyperframes.getVariables === "function"
+            ? window.__hyperframes.getVariables()
+            : {};
+
+        function pick(varVal, cfgVal, fallback) {
+          if (typeof varVal === "string" && varVal.trim() !== "") return varVal;
+          if (cfgVal !== undefined && cfgVal !== null && cfgVal !== "") return cfgVal;
+          return fallback;
+        }
+
+        const cfg = {
+          photo: pick(hfVars.photo, baseCfg.photo, "assets/photo.jpg"),
+          photoFit: baseCfg.photoFit || "cover",
+          photoPosition: baseCfg.photoPosition || "50% 42%",
+          photoZoom: typeof baseCfg.photoZoom === "number" ? baseCfg.photoZoom : 1.04,
+          rarity: pick(hfVars.rarity, baseCfg.rarity, "SSR"),
+          stars: typeof baseCfg.stars === "number" ? baseCfg.stars : 5,
+          badgeText: baseCfg.badgeText || "NEW ARRIVAL",
+          summonLabel: baseCfg.summonLabel || "LEGENDARY SUMMON",
+          attribute: baseCfg.attribute || "光属性 / SMILE",
+          subtitle: pick(hfVars.subtitle, baseCfg.subtitle, "【奇跡のテーブル55】"),
+          title: pick(hfVars.title, baseCfg.title, "ちいさな美食家"),
+          flavor: pick(hfVars.flavor, baseCfg.flavor, "黄金のたまご焼きを前に、世界一の幸せを召喚する。"),
+          stats: Array.isArray(baseCfg.stats) && baseCfg.stats.length > 0
+            ? baseCfg.stats.slice(0, 3)
+            : [
+                { label: "HP", value: "9999" },
+                { label: "CUTE", value: "MAX" },
+                { label: "LUCK", value: "★★★★★" },
+              ],
+          cardNo: baseCfg.cardNo || "NO.055-SSR",
+          seed: typeof baseCfg.seed === "number" ? baseCfg.seed : 20261120,
+        };
+
+        // Bind config to DOM
+        const photoEl = document.getElementById("card-photo");
+        photoEl.src = cfg.photo;
+        photoEl.style.objectFit = cfg.photoFit;
+        photoEl.style.objectPosition = cfg.photoPosition;
+        photoEl.style.transform = "scale(" + cfg.photoZoom + ")";
+
+        document.getElementById("header-badge-text").textContent = cfg.badgeText;
+        document.getElementById("header-summon-label").textContent = cfg.summonLabel;
+        document.getElementById("ssr-emblem-text").textContent = cfg.rarity;
+        document.getElementById("attr-badge").textContent = cfg.attribute;
+        document.getElementById("card-subtitle").textContent = cfg.subtitle;
+        document.getElementById("card-title").textContent = cfg.title;
+        document.getElementById("card-flavor").textContent = cfg.flavor;
+        document.getElementById("footer-card-no").textContent = cfg.cardNo;
+        document.querySelector(".card-back-monogram").textContent = cfg.rarity;
+
+        // Build Stars
+        const starsRow = document.getElementById("stars-row");
+        const starCount = Math.max(1, Math.min(6, cfg.stars));
+        const starEls = [];
+        for (let i = 0; i < starCount; i++) {
+          const svgNS = "http://www.w3.org/2000/svg";
+          const svg = document.createElementNS(svgNS, "svg");
+          svg.setAttribute("viewBox", "0 0 64 64");
+          svg.setAttribute("class", "star-item");
+          svg.innerHTML =
+            '<defs><linearGradient id="sg' + i + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
+            '<stop offset="0%" stop-color="#ffffff"/>' +
+            '<stop offset="35%" stop-color="#fef08a"/>' +
+            '<stop offset="100%" stop-color="#f59e0b"/>' +
+            '</linearGradient></defs>' +
+            '<polygon points="32,4 40.5,22.2 60.5,24.6 45.6,38.4 49.6,58.2 32,48.4 14.4,58.2 18.4,38.4 3.5,24.6 23.5,22.2" ' +
+            'fill="url(#sg' + i + ')" stroke="#fffbeb" stroke-width="2.5" stroke-linejoin="round"/>';
+          starsRow.appendChild(svg);
+          starEls.push(svg);
+        }
+
+        // Build Stats
+        const statsEl = document.getElementById("card-stats");
+        cfg.stats.forEach(function (st) {
+          const box = document.createElement("div");
+          box.className = "stat-box";
+          const lbl = document.createElement("div");
+          lbl.className = "stat-label";
+          lbl.setAttribute("data-layout-allow-safe-zone", "");
+          lbl.textContent = st.label;
+          const val = document.createElement("div");
+          val.className = "stat-value";
+          val.setAttribute("data-layout-allow-safe-zone", "");
+          val.textContent = st.value;
+          box.appendChild(lbl);
+          box.appendChild(val);
+          statsEl.appendChild(box);
+        });
+
+        // 3. Deterministic Particle Generation
+        const rng = createRng(cfg.seed);
+
+        const convergeContainer = document.getElementById("converge-particles");
+        const convergeData = [];
+        const convergeColors = ["#7dd3fc", "#38bdf8", "#e0f2fe", "#fef08a", "#f472b6"];
+        for (let i = 0; i < 28; i++) {
+          const el = document.createElement("div");
+          el.className = "c-particle";
+          el.setAttribute("data-layout-allow-overflow", "");
+          const size = 8 + Math.floor(rng() * 14);
+          const color = convergeColors[i % convergeColors.length];
+          el.style.width = size + "px";
+          el.style.height = size + "px";
+          el.style.marginLeft = -size / 2 + "px";
+          el.style.marginTop = -size / 2 + "px";
+          el.style.background = color;
+          el.style.boxShadow = "0 0 " + size * 2 + "px " + color;
+          convergeContainer.appendChild(el);
+
+          const angle = (i / 28) * Math.PI * 2 + (rng() - 0.5) * 0.28;
+          const dist = 390 + rng() * 240;
+          convergeData.push({
+            el: el,
+            startX: Math.cos(angle) * dist,
+            startY: Math.sin(angle) * dist,
+            delay: 0.65 + rng() * 0.9,
+            dur: 0.95 + rng() * 0.45,
+          });
+        }
+
+        const celebLayer = document.getElementById("celebration-layer");
+        const sparkleData = [];
+        const sparklePalette = ["#fef08a", "#ffffff", "#f472b6", "#38bdf8", "#fde047"];
+        const rimAnchors = [
+          { x: -455, y: -560 }, { x: 455, y: -545 },
+          { x: -480, y: -250 }, { x: 475, y: -220 },
+          { x: -475, y: 120 },  { x: 470, y: 150 },
+          { x: -455, y: 490 },  { x: 450, y: 500 },
+          { x: -435, y: -765 }, { x: 435, y: -765 },
+          { x: -240, y: 745 },  { x: 255, y: 740 },
+          { x: -465, y: -40 },  { x: 465, y: -35 },
+          { x: -435, y: 655 },  { x: 435, y: 650 },
+        ];
+
+        for (let i = 0; i < rimAnchors.length; i++) {
+          const svgNS = "http://www.w3.org/2000/svg";
+          const size = 34 + Math.floor(rng() * 34);
+          const color = sparklePalette[i % sparklePalette.length];
+          const svg = document.createElementNS(svgNS, "svg");
+          svg.setAttribute("viewBox", "0 0 64 64");
+          svg.setAttribute("class", "sparkle-star");
+          svg.setAttribute("data-layout-allow-overflow", "");
+          svg.style.width = size + "px";
+          svg.style.height = size + "px";
+          svg.style.marginLeft = -size / 2 + "px";
+          svg.style.marginTop = -size / 2 + "px";
+          svg.style.filter = "drop-shadow(0 0 12px " + color + ")";
+          svg.innerHTML =
+            '<path d="M32 2 C34 22 42 30 62 32 C42 34 34 42 32 62 C30 42 22 34 2 32 C22 30 30 22 32 2 Z" fill="' +
+            color +
+            '"/>';
+          celebLayer.appendChild(svg);
+
+          sparkleData.push({
+            el: svg,
+            endX: rimAnchors[i].x + (rng() - 0.5) * 26,
+            endY: rimAnchors[i].y + (rng() - 0.5) * 26,
+            rot: (rng() - 0.5) * 60,
+            finalScale: 0.72 + rng() * 0.42,
+            startAt: 9.25 + (i % 6) * 0.14,
+          });
+        }
+
+        const confettiData = [];
+        const confettiColors = ["#fde047", "#f472b6", "#38bdf8", "#a855f7", "#34d399", "#ffffff"];
+        for (let i = 0; i < 22; i++) {
+          const el = document.createElement("div");
+          el.className = "confetti-bit";
+          el.setAttribute("data-layout-allow-overflow", "");
+          const w = 12 + Math.floor(rng() * 14);
+          const h = 22 + Math.floor(rng() * 18);
+          el.style.width = w + "px";
+          el.style.height = h + "px";
+          el.style.marginLeft = -w / 2 + "px";
+          el.style.marginTop = -h / 2 + "px";
+          el.style.background = confettiColors[i % confettiColors.length];
+          celebLayer.appendChild(el);
+
+          const angle = (i / 22) * Math.PI * 2 + (rng() - 0.5) * 0.25;
+          const dist = 410 + rng() * 220;
+          confettiData.push({
+            el: el,
+            midX: Math.cos(angle) * dist * 0.82,
+            midY: Math.sin(angle) * dist * 0.82 - 80,
+            endX: Math.cos(angle) * dist * 0.98,
+            endY: Math.sin(angle) * dist * 0.82 + 210 + rng() * 140,
+            rot: (rng() > 0.5 ? 1 : -1) * (240 + rng() * 320),
+          });
+        }
+
+        // 4. Master GSAP Timeline (0.0s -> 12.0s active, 12.0s -> 15.0s STATIC)
+        const tl = gsap.timeline({ paused: true });
+
+        // ===== PHASE 1: Dark Abyss, Magic Circle & Orb Convergence (0.0s - 2.5s) =====
+        // Frame 0 already shows glowing blue magic circle & SUMMONING label for thumbnail readiness
+        tl.fromTo("#aura-blue", { opacity: 0.45, scale: 0.72 }, { opacity: 0.9, scale: 1.0, duration: 1.4, ease: "power2.out" }, 0);
+        tl.fromTo("#summon-status", { opacity: 0.92, y: 0 }, { opacity: 1, y: -6, duration: 1.2, ease: "power2.out" }, 0);
+        tl.fromTo(
+          "#magic-circle-wrap",
+          { opacity: 0.72, scale: 0.68, rotation: -18 },
+          { opacity: 1, scale: 1.0, rotation: 0, duration: 1.4, ease: "power3.out" },
+          0
+        );
+
+        // True SVG center rotation using svgOrigin: "400 400" (Zero pivot drift!)
+        tl.to("#mc-ring-outer, #mc-gold-outer, #mc-rb-outer", { rotation: 210, svgOrigin: "400 400", duration: 7.0, ease: "power1.in" }, 0.15);
+        tl.to("#mc-ring-mid, #mc-gold-mid, #mc-rb-mid", { rotation: -260, svgOrigin: "400 400", duration: 7.0, ease: "power1.in" }, 0.15);
+        tl.to("#mc-ring-inner, #mc-gold-inner, #mc-rb-inner", { rotation: 340, svgOrigin: "400 400", duration: 7.0, ease: "power1.in" }, 0.15);
+
+        convergeData.forEach(function (p) {
+          tl.fromTo(
+            p.el,
+            { x: p.startX, y: p.startY, opacity: 0, scale: 1.2 },
+            { x: 0, y: 0, opacity: 0.95, scale: 0.25, duration: p.dur, ease: "power2.in" },
+            p.delay
+          );
+          tl.to(p.el, { opacity: 0, duration: 0.1 }, p.delay + p.dur);
+        });
+
+        tl.fromTo(
+          "#orb-wrap",
+          { opacity: 0, scale: 0.12 },
+          { opacity: 1, scale: 1.0, duration: 0.95, ease: "back.out(1.6)" },
+          1.45
+        );
+
+        // ===== PHASE 2: Heartbeat & Fake Upgrade (Blue -> Gold -> RAINBOW!) (2.5s - 6.8s) =====
+        tl.to("#orb-wrap", { scale: 1.18, duration: 0.16, ease: "power2.out" }, 2.7);
+        tl.to("#orb-wrap", { scale: 0.96, duration: 0.26, ease: "power2.inOut" }, 2.86);
+        tl.fromTo("#shock-blue", { opacity: 0.85, scale: 0.85 }, { opacity: 0, scale: 2.5, duration: 0.65, ease: "power2.out", immediateRender: false }, 2.72);
+
+        tl.to("#orb-wrap", { scale: 1.22, duration: 0.15, ease: "power2.out" }, 3.35);
+        tl.to("#orb-wrap", { scale: 0.84, duration: 0.22, ease: "power2.in" }, 3.5);
+
+        // --- GOLD PROMOTION at 3.8s ---
+        tl.fromTo("#flash-layer", { opacity: 0 }, { opacity: 0.68, duration: 0.08, ease: "power2.out" }, 3.78);
+        tl.to("#flash-layer", { opacity: 0, duration: 0.34, ease: "power2.in" }, 3.86);
+
+        tl.to("#orb-gold", { opacity: 1, duration: 0.18 }, 3.8);
+        tl.to("#aura-gold", { opacity: 0.95, scale: 1.12, duration: 0.4, ease: "power2.out" }, 3.8);
+        tl.to("#aura-blue", { opacity: 0, duration: 0.3 }, 3.8);
+        tl.to("#mc-gold", { opacity: 1, duration: 0.22 }, 3.8);
+        tl.to("#orb-wrap", { scale: 1.32, duration: 0.22, ease: "back.out(2.2)" }, 3.82);
+        tl.to("#orb-wrap", { scale: 1.06, duration: 0.3, ease: "power2.inOut" }, 4.04);
+        tl.fromTo("#shock-gold", { opacity: 0.95, scale: 0.85 }, { opacity: 0, scale: 3.1, duration: 0.72, ease: "power2.out", immediateRender: false }, 3.8);
+        tl.fromTo("#light-pillar", { opacity: 0, scaleX: 0.25 }, { opacity: 0.85, scaleX: 1.15, duration: 0.32, ease: "power2.out" }, 3.82);
+        tl.to("#light-pillar", { opacity: 0.35, scaleX: 0.75, duration: 0.7 }, 4.14);
+
+        tl.to("#scene-summon", { x: -10, y: 6, duration: 0.05 }, 3.82);
+        tl.to("#scene-summon", { x: 10, y: -6, duration: 0.05 }, 3.87);
+        tl.to("#scene-summon", { x: -6, y: 4, duration: 0.05 }, 3.92);
+        tl.to("#scene-summon", { x: 0, y: 0, duration: 0.06 }, 3.97);
+
+        tl.to("#orb-wrap", { scale: 1.24, duration: 0.14 }, 4.5);
+        tl.to("#orb-wrap", { scale: 0.92, duration: 0.16 }, 4.64);
+        tl.to("#orb-cracks", { opacity: 0.85, scale: 1.0, duration: 0.18, ease: "power3.out" }, 4.88);
+        tl.to("#orb-wrap", { scale: 0.76, duration: 0.24, ease: "power3.in" }, 4.94);
+
+        // --- RAINBOW SSR PROMOTION at 5.2s ---
+        tl.fromTo("#flash-layer", { opacity: 0 }, { opacity: 0.88, duration: 0.08, immediateRender: false }, 5.18);
+        tl.to("#flash-layer", { opacity: 0, duration: 0.35, ease: "power2.out" }, 5.26);
+
+        tl.to("#orb-rainbow", { opacity: 1, duration: 0.12 }, 5.2);
+        tl.to("#orb-cracks", { opacity: 1, scale: 1.28, rotation: 18, duration: 0.35, ease: "power2.out" }, 5.2);
+        tl.to("#mc-rainbow", { opacity: 1, duration: 0.18 }, 5.2);
+        tl.to("#aura-rainbow", { opacity: 1, scale: 1.22, rotation: 140, duration: 1.65, ease: "power1.in" }, 5.2);
+        tl.to("#summon-godrays", { opacity: 0.92, rotation: 95, duration: 1.75, ease: "power1.in" }, 5.2);
+        tl.to("#light-pillar", { opacity: 0.95, scaleX: 1.8, duration: 0.35, ease: "power2.out" }, 5.2);
+        tl.to("#orb-wrap", { scale: 1.48, duration: 0.24, ease: "back.out(2.2)" }, 5.22);
+        tl.fromTo("#shock-rainbow", { opacity: 1, scale: 0.7 }, { opacity: 0, scale: 3.9, duration: 0.85, ease: "power2.out", immediateRender: false }, 5.2);
+
+        tl.to("#summon-status", { opacity: 0, duration: 0.15 }, 5.2);
+
+        tl.to("#scene-summon", { x: -16, y: 10, duration: 0.04 }, 5.22);
+        tl.to("#scene-summon", { x: 16, y: -12, duration: 0.04 }, 5.26);
+        tl.to("#scene-summon", { x: -12, y: 8, duration: 0.04 }, 5.3);
+        tl.to("#scene-summon", { x: 8, y: -6, duration: 0.04 }, 5.34);
+        tl.to("#scene-summon", { x: 0, y: 0, duration: 0.06 }, 5.38);
+
+        // Rainbow Cut-In Banner (Non-overlapping x tweens)
+        tl.fromTo(
+          "#cutin-band",
+          { opacity: 0, x: -320, scaleY: 0.15 },
+          { opacity: 1, x: 0, scaleY: 1, duration: 0.24, ease: "power4.out" },
+          5.38
+        );
+        tl.to("#cutin-band", { x: 24, duration: 0.82, ease: "none" }, 5.62);
+        tl.to("#cutin-band", { opacity: 0, x: 340, scaleY: 0.2, duration: 0.22, ease: "power3.in" }, 6.45);
+
+        // Orb Critical Overcharge -> Whiteout (6.5s - 7.86s)
+        tl.to("#orb-wrap", { scale: 2.8, duration: 0.42, ease: "power3.in" }, 6.48);
+        tl.fromTo("#flash-layer", { opacity: 0 }, { opacity: 1, duration: 0.28, ease: "power2.in", immediateRender: false }, 6.72);
+        tl.to("#scene-summon", { opacity: 0, duration: 0.05 }, 7.05);
+        tl.to("#scene-result", { opacity: 1, duration: 0.05 }, 7.05);
+        tl.to("#flash-layer", { opacity: 0, duration: 0.68, ease: "power2.out" }, 7.18);
+
+        // ===== PHASE 3: 3D SSR Card Arrival & Spin (7.15s - 9.67s) =====
+        tl.fromTo("#result-rays", { rotation: 0, opacity: 0.25 }, { rotation: 48, opacity: 0.62, duration: 4.85, ease: "power2.out" }, 7.15);
+        tl.fromTo("#result-bg-ring", { rotation: -40, scale: 0.82, opacity: 0 }, { rotation: 0, scale: 1.0, opacity: 0.34, duration: 4.85, ease: "power2.out" }, 7.15);
+
+        tl.fromTo(
+          "#ssr-card",
+          {
+            opacity: 0,
+            scale: 0.18,
+            y: 120,
+            z: -600,
+            rotationY: -720,
+            rotationX: 16,
+            rotationZ: -8,
+          },
+          {
+            opacity: 1,
+            scale: 1.05,
+            y: -14,
+            z: 0,
+            rotationY: 0,
+            rotationX: 0,
+            rotationZ: 0,
+            duration: 2.15,
+            ease: "power3.out",
+          },
+          7.18
+        );
+
+        // Hide card-back cleanly once front faces camera so contrast/a11y stays clean
+        tl.to("#card-back-face", { opacity: 0, duration: 0.05 }, 9.35);
+
+        tl.to("#ssr-card", { scale: 1.0, y: 0, duration: 0.34, ease: "back.out(2.0)" }, 9.33);
+
+        tl.fromTo("#landing-shockwave", { opacity: 0.95, scale: 0.55 }, { opacity: 0, scale: 3.6, duration: 0.85, ease: "power2.out", immediateRender: false }, 9.3);
+        tl.to("#scene-result", { y: 12, duration: 0.05 }, 9.32);
+        tl.to("#scene-result", { y: -8, duration: 0.06 }, 9.37);
+        tl.to("#scene-result", { y: 4, duration: 0.06 }, 9.43);
+        tl.to("#scene-result", { y: 0, duration: 0.08 }, 9.49);
+
+        // ===== PHASE 4: SSR Hologram, Badges, Stars & Result UI (9.35s - 12.0s) =====
+        // Hologram Shimmer Sweep #1 (Non-overlapping opacity & x tweens)
+        tl.fromTo("#holo-sweep-1", { x: 0 }, { x: 1850, duration: 1.05, ease: "power2.inOut" }, 9.45);
+        tl.fromTo("#holo-sweep-1", { opacity: 0 }, { opacity: 0.92, duration: 0.25, ease: "power1.out" }, 9.45);
+        tl.to("#holo-sweep-1", { opacity: 0, duration: 0.25, ease: "power1.in" }, 10.25);
+
+        // Hologram Shimmer Sweep #2
+        tl.fromTo("#holo-sweep-2", { x: 0 }, { x: 1850, duration: 1.05, ease: "power2.inOut" }, 10.75);
+        tl.fromTo("#holo-sweep-2", { opacity: 0 }, { opacity: 0.78, duration: 0.25, ease: "power1.out" }, 10.75);
+        tl.to("#holo-sweep-2", { opacity: 0, duration: 0.25, ease: "power1.in" }, 11.55);
+
+        tl.fromTo("#holo-static-sheen", { opacity: 0 }, { opacity: 1, duration: 0.75, ease: "power2.out" }, 11.2);
+
+        tl.fromTo(
+          "#ssr-emblem",
+          { opacity: 0, scale: 2.1, rotation: -12 },
+          { opacity: 1, scale: 1.0, rotation: 0, duration: 0.48, ease: "back.out(2.1)" },
+          9.42
+        );
+        tl.fromTo("#attr-badge", { opacity: 0, x: 36 }, { opacity: 1, x: 0, duration: 0.42, ease: "power3.out" }, 9.65);
+
+        starEls.forEach(function (star, idx) {
+          tl.fromTo(
+            star,
+            { opacity: 0, scale: 0.1, rotation: -45 },
+            { opacity: 1, scale: 1.0, rotation: 0, duration: 0.36, ease: "back.out(2.4)" },
+            9.65 + idx * 0.18
+          );
+        });
+
+        tl.fromTo("#card-subtitle", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.42, ease: "power2.out" }, 10.0);
+        tl.fromTo("#card-title", { opacity: 0, y: 24, scale: 0.92 }, { opacity: 1, y: 0, scale: 1.0, duration: 0.52, ease: "back.out(1.5)" }, 10.22);
+        tl.fromTo("#card-flavor", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.42, ease: "power2.out" }, 10.55);
+        tl.fromTo("#card-stats", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.48, ease: "power2.out" }, 10.82);
+
+        tl.fromTo("#result-header", { opacity: 0, y: -32 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, 9.85);
+        tl.fromTo("#result-footer", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.52, ease: "power3.out" }, 11.05);
+
+        sparkleData.forEach(function (sp) {
+          tl.fromTo(
+            sp.el,
+            { x: 0, y: 0, opacity: 0, scale: 0.1, rotation: sp.rot - 90 },
+            { x: sp.endX, y: sp.endY, opacity: 0.92, scale: sp.finalScale, rotation: sp.rot, duration: 1.35, ease: "power3.out" },
+            sp.startAt
+          );
+        });
+
+        confettiData.forEach(function (cf, idx) {
+          const st = 9.28 + (idx % 5) * 0.05;
+          tl.fromTo(
+            cf.el,
+            { x: 0, y: 0, opacity: 0, scale: 0.3, rotation: 0 },
+            { x: cf.midX, y: cf.midY, opacity: 1, scale: 1.0, rotation: cf.rot * 0.55, duration: 0.95, ease: "power3.out" },
+            st
+          );
+          tl.to(
+            cf.el,
+            { x: cf.endX, y: cf.endY, opacity: 0, rotation: cf.rot, duration: 1.35, ease: "power1.in" },
+            st + 0.95
+          );
+        });
+
+        // ===== PHASE 5: STATIC RESULT HOLD (12.0s - 15.0s) =====
+        tl.set("#root", {}, 15.0);
+
+        window.__timelines = window.__timelines || {};
+        window.__timelines["main"] = tl;
+        tl.seek(0);
+      })();
+    </script>
+  </body>
+</html>
