@@ -165,7 +165,7 @@
         );
       }
 
-      /* Magic Circle SVG Container */
+      /* Magic Circle Optical Layers (FilmDateStamp H&D Burn-in PNGs) */
       #magic-circle-wrap {
         position: absolute;
         left: 50%;
@@ -174,26 +174,29 @@
         height: 900px;
         margin-left: -450px;
         margin-top: -450px;
-        opacity: 0.72;
+        opacity: 0.85;
       }
 
-      .mc-svg {
+      .mc-layer {
         position: absolute;
         inset: 0;
         width: 100%;
         height: 100%;
-        overflow: visible;
-        filter: drop-shadow(0 0 18px rgba(56, 189, 248, 0.78));
+        mix-blend-mode: screen;
       }
 
-      #mc-gold {
-        opacity: 0;
-        filter: drop-shadow(0 0 22px rgba(251, 191, 36, 0.88));
+      .mc-ring {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        transform-origin: 50% 50%;
       }
 
+      #mc-gold,
       #mc-rainbow {
         opacity: 0;
-        filter: drop-shadow(0 0 28px rgba(244, 114, 182, 0.88)) drop-shadow(0 0 48px rgba(56, 189, 248, 0.7));
       }
 
       /* Summoning Orb */
@@ -271,7 +274,8 @@
         width: 440px;
         height: 440px;
         opacity: 0;
-        filter: drop-shadow(0 0 14px #ffffff) drop-shadow(0 0 28px #f472b6);
+        mix-blend-mode: screen;
+        display: block;
       }
 
       /* Shockwave Rings */
@@ -715,19 +719,22 @@
         pointer-events: none;
       }
 
-      /* 5 Stars Row */
+      /* 5 Stars Row (Physical Optical Burn-in Stars) */
       #stars-row {
         display: flex;
         justify-content: center;
-        gap: 16px;
-        margin-bottom: 4px;
+        align-items: center;
+        gap: 0px;
+        margin: -14px 0 -10px;
       }
 
       .star-item {
-        width: 54px;
-        height: 54px;
+        width: 92px;
+        height: 92px;
+        margin: 0 -10px;
         opacity: 0;
-        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 18px rgba(251, 191, 36, 0.95));
+        mix-blend-mode: screen;
+        display: block;
       }
 
       .typo-slot {
@@ -864,6 +871,8 @@
         left: 50%;
         top: 48%;
         opacity: 0;
+        mix-blend-mode: screen;
+        display: block;
       }
 
       .confetti-bit {
@@ -948,66 +957,25 @@
         <div id="summon-godrays" data-layout-allow-overflow></div>
         <div id="light-pillar" data-layout-allow-overflow></div>
 
-        <!-- 3-Tier Geometric Magic Circle -->
+        <!-- 3-Tier Optical Magic Circle (H&D Burn-in PNG Layers) -->
         <div id="magic-circle-wrap" data-layout-allow-overflow>
-          <svg id="mc-blue" class="mc-svg" viewBox="0 0 800 800" fill="none" data-layout-allow-overflow>
-            <g id="mc-ring-outer" data-layout-allow-overflow>
-              <circle cx="400" cy="400" r="372" stroke="#38bdf8" stroke-width="5" opacity="0.9" />
-              <circle cx="400" cy="400" r="348" stroke="#7dd3fc" stroke-width="2" stroke-dasharray="14 10" />
-              <circle cx="400" cy="400" r="312" stroke="#38bdf8" stroke-width="3" opacity="0.75" />
-            </g>
-            <g id="mc-ring-mid" data-layout-allow-overflow>
-              <polygon points="400,66 689,233 689,567 400,734 111,567 111,233" stroke="#7dd3fc" stroke-width="3.5" opacity="0.88" />
-              <polygon points="400,66 636,164 734,400 636,636 400,734 164,636 66,400 164,164" stroke="#38bdf8" stroke-width="2.5" opacity="0.7" />
-              <polygon points="400,115 647,542 153,542" stroke="#bae6fd" stroke-width="3" opacity="0.8" />
-              <polygon points="400,685 153,258 647,258" stroke="#bae6fd" stroke-width="3" opacity="0.8" />
-            </g>
-            <g id="mc-ring-inner" data-layout-allow-overflow>
-              <circle cx="400" cy="400" r="215" stroke="#bae6fd" stroke-width="4" />
-              <circle cx="400" cy="400" r="192" stroke="#38bdf8" stroke-width="2" stroke-dasharray="6 8" />
-            </g>
-          </svg>
+          <div id="mc-blue" class="mc-layer" data-layout-allow-overflow>
+            <img id="mc-ring-outer" class="mc-ring" src="assets/generated/opt_mc_blue_outer.png" alt="" data-layout-allow-overflow />
+            <img id="mc-ring-mid" class="mc-ring" src="assets/generated/opt_mc_blue_mid.png" alt="" data-layout-allow-overflow />
+            <img id="mc-ring-inner" class="mc-ring" src="assets/generated/opt_mc_blue_inner.png" alt="" data-layout-allow-overflow />
+          </div>
 
-          <svg id="mc-gold" class="mc-svg" viewBox="0 0 800 800" fill="none" data-layout-allow-overflow>
-            <g id="mc-gold-outer" data-layout-allow-overflow>
-              <circle cx="400" cy="400" r="372" stroke="#fde047" stroke-width="6" />
-              <circle cx="400" cy="400" r="348" stroke="#fbbf24" stroke-width="3" stroke-dasharray="16 10" />
-              <circle cx="400" cy="400" r="312" stroke="#f59e0b" stroke-width="4" />
-            </g>
-            <g id="mc-gold-mid" data-layout-allow-overflow>
-              <polygon points="400,66 689,233 689,567 400,734 111,567 111,233" stroke="#fef08a" stroke-width="4.5" />
-              <polygon points="400,115 647,542 153,542" stroke="#fde047" stroke-width="4" />
-              <polygon points="400,685 153,258 647,258" stroke="#fde047" stroke-width="4" />
-            </g>
-            <g id="mc-gold-inner" data-layout-allow-overflow>
-              <circle cx="400" cy="400" r="215" stroke="#fef9c3" stroke-width="5" />
-            </g>
-          </svg>
+          <div id="mc-gold" class="mc-layer" data-layout-allow-overflow>
+            <img id="mc-gold-outer" class="mc-ring" src="assets/generated/opt_mc_gold_outer.png" alt="" data-layout-allow-overflow />
+            <img id="mc-gold-mid" class="mc-ring" src="assets/generated/opt_mc_gold_mid.png" alt="" data-layout-allow-overflow />
+            <img id="mc-gold-inner" class="mc-ring" src="assets/generated/opt_mc_gold_inner.png" alt="" data-layout-allow-overflow />
+          </div>
 
-          <svg id="mc-rainbow" class="mc-svg" viewBox="0 0 800 800" fill="none" data-layout-allow-overflow>
-            <defs>
-              <linearGradient id="prismGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#ff4d94" />
-                <stop offset="25%" stop-color="#fde047" />
-                <stop offset="50%" stop-color="#34d399" />
-                <stop offset="75%" stop-color="#38bdf8" />
-                <stop offset="100%" stop-color="#c084fc" />
-              </linearGradient>
-            </defs>
-            <g id="mc-rb-outer" data-layout-allow-overflow>
-              <circle cx="400" cy="400" r="374" stroke="url(#prismGrad)" stroke-width="8" />
-              <circle cx="400" cy="400" r="344" stroke="#ffffff" stroke-width="3" stroke-dasharray="18 8" />
-              <circle cx="400" cy="400" r="308" stroke="url(#prismGrad)" stroke-width="5" />
-            </g>
-            <g id="mc-rb-mid" data-layout-allow-overflow>
-              <polygon points="400,66 689,233 689,567 400,734 111,567 111,233" stroke="url(#prismGrad)" stroke-width="6" />
-              <polygon points="400,115 647,542 153,542" stroke="#ffffff" stroke-width="4.5" />
-              <polygon points="400,685 153,258 647,258" stroke="#ffffff" stroke-width="4.5" />
-            </g>
-            <g id="mc-rb-inner" data-layout-allow-overflow>
-              <circle cx="400" cy="400" r="215" stroke="url(#prismGrad)" stroke-width="6" />
-            </g>
-          </svg>
+          <div id="mc-rainbow" class="mc-layer" data-layout-allow-overflow>
+            <img id="mc-rb-outer" class="mc-ring" src="assets/generated/opt_mc_rainbow_outer.png" alt="" data-layout-allow-overflow />
+            <img id="mc-rb-mid" class="mc-ring" src="assets/generated/opt_mc_rainbow_mid.png" alt="" data-layout-allow-overflow />
+            <img id="mc-rb-inner" class="mc-ring" src="assets/generated/opt_mc_rainbow_inner.png" alt="" data-layout-allow-overflow />
+          </div>
         </div>
 
         <div id="converge-particles" data-layout-allow-overflow></div>
@@ -1020,10 +988,7 @@
           <div id="orb-blue" class="orb-core"></div>
           <div id="orb-gold" class="orb-core"></div>
           <div id="orb-rainbow" class="orb-core"></div>
-          <svg id="orb-cracks" viewBox="0 0 440 440" fill="none" data-layout-allow-overflow>
-            <path d="M220 220 L165 130 L120 95 M220 220 L295 145 L355 110 M220 220 L315 265 L380 315 M220 220 L145 300 L90 365 M220 220 L232 98 L248 45 M220 220 L92 210 L35 190" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
-            <path d="M165 130 L195 102 M295 145 L285 95 M315 265 L350 232 M145 300 L185 352" stroke="#fef08a" stroke-width="4" stroke-linecap="round" />
-          </svg>
+          <img id="orb-cracks" src="assets/generated/opt_orb_cracks.png" alt="" data-layout-allow-overflow />
         </div>
 
         <div id="summon-status" data-layout-allow-safe-zone>
@@ -1239,25 +1204,17 @@
 
         document.querySelector(".card-back-monogram").textContent = cfg.rarity;
 
-        // Build Stars
+        // Build Stars (Physical Optical Burn-in PNG)
         const starsRow = document.getElementById("stars-row");
         const starCount = Math.max(1, Math.min(6, cfg.stars));
         const starEls = [];
         for (let i = 0; i < starCount; i++) {
-          const svgNS = "http://www.w3.org/2000/svg";
-          const svg = document.createElementNS(svgNS, "svg");
-          svg.setAttribute("viewBox", "0 0 64 64");
-          svg.setAttribute("class", "star-item");
-          svg.innerHTML =
-            '<defs><linearGradient id="sg' + i + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
-            '<stop offset="0%" stop-color="#ffffff"/>' +
-            '<stop offset="35%" stop-color="#fef08a"/>' +
-            '<stop offset="100%" stop-color="#f59e0b"/>' +
-            '</linearGradient></defs>' +
-            '<polygon points="32,4 40.5,22.2 60.5,24.6 45.6,38.4 49.6,58.2 32,48.4 14.4,58.2 18.4,38.4 3.5,24.6 23.5,22.2" ' +
-            'fill="url(#sg' + i + ')" stroke="#fffbeb" stroke-width="2.5" stroke-linejoin="round"/>';
-          starsRow.appendChild(svg);
-          starEls.push(svg);
+          const img = document.createElement("img");
+          img.src = "assets/generated/opt_star_gold.png";
+          img.alt = "";
+          img.className = "star-item";
+          starsRow.appendChild(img);
+          starEls.push(img);
         }
 
         // Build Stats (Only shown when cfg.stats is non-empty)
@@ -1326,31 +1283,31 @@
           { x: -495, y: 790 },  { x: 495, y: 790 },
         ];
 
+        const sparkleSources = [
+          "assets/generated/opt_sparkle_gold.png",
+          "assets/generated/opt_sparkle_white.png",
+          "assets/generated/opt_sparkle_pink.png",
+          "assets/generated/opt_sparkle_cyan.png",
+        ];
         for (let i = 0; i < rimAnchors.length; i++) {
-          const svgNS = "http://www.w3.org/2000/svg";
-          const size = 34 + Math.floor(rng() * 34);
-          const color = sparklePalette[i % sparklePalette.length];
-          const svg = document.createElementNS(svgNS, "svg");
-          svg.setAttribute("viewBox", "0 0 64 64");
-          svg.setAttribute("class", "sparkle-star");
-          svg.setAttribute("data-layout-allow-overflow", "");
-          svg.style.width = size + "px";
-          svg.style.height = size + "px";
-          svg.style.marginLeft = -size / 2 + "px";
-          svg.style.marginTop = -size / 2 + "px";
-          svg.style.filter = "drop-shadow(0 0 12px " + color + ")";
-          svg.innerHTML =
-            '<path d="M32 2 C34 22 42 30 62 32 C42 34 34 42 32 62 C30 42 22 34 2 32 C22 30 30 22 32 2 Z" fill="' +
-            color +
-            '"/>';
-          celebLayer.appendChild(svg);
+          const size = 66 + Math.floor(rng() * 54);
+          const img = document.createElement("img");
+          img.src = sparkleSources[i % sparkleSources.length];
+          img.alt = "";
+          img.className = "sparkle-star";
+          img.setAttribute("data-layout-allow-overflow", "");
+          img.style.width = size + "px";
+          img.style.height = size + "px";
+          img.style.marginLeft = -size / 2 + "px";
+          img.style.marginTop = -size / 2 + "px";
+          celebLayer.appendChild(img);
 
           sparkleData.push({
-            el: svg,
+            el: img,
             endX: rimAnchors[i].x + (rng() - 0.5) * 26,
             endY: rimAnchors[i].y + (rng() - 0.5) * 26,
             rot: (rng() - 0.5) * 60,
-            finalScale: 0.72 + rng() * 0.42,
+            finalScale: 0.78 + rng() * 0.42,
             startAt: 9.25 + (i % 6) * 0.14,
           });
         }
@@ -1396,10 +1353,10 @@
           0
         );
 
-        // True SVG center rotation using svgOrigin: "400 400" (Zero pivot drift!)
-        tl.to("#mc-ring-outer, #mc-gold-outer, #mc-rb-outer", { rotation: 210, svgOrigin: "400 400", duration: 7.0, ease: "power1.in" }, 0.15);
-        tl.to("#mc-ring-mid, #mc-gold-mid, #mc-rb-mid", { rotation: -260, svgOrigin: "400 400", duration: 7.0, ease: "power1.in" }, 0.15);
-        tl.to("#mc-ring-inner, #mc-gold-inner, #mc-rb-inner", { rotation: 340, svgOrigin: "400 400", duration: 7.0, ease: "power1.in" }, 0.15);
+        // Center rotation of optical magic circle PNG rings (Zero pivot drift!)
+        tl.to("#mc-ring-outer, #mc-gold-outer, #mc-rb-outer", { rotation: 210, duration: 7.0, ease: "power1.in" }, 0.15);
+        tl.to("#mc-ring-mid, #mc-gold-mid, #mc-rb-mid", { rotation: -260, duration: 7.0, ease: "power1.in" }, 0.15);
+        tl.to("#mc-ring-inner, #mc-gold-inner, #mc-rb-inner", { rotation: 340, duration: 7.0, ease: "power1.in" }, 0.15);
 
         convergeData.forEach(function (p) {
           tl.fromTo(
@@ -1434,6 +1391,7 @@
         tl.to("#aura-gold", { opacity: 0.95, scale: 1.12, duration: 0.4, ease: "power2.out" }, 3.8);
         tl.to("#aura-blue", { opacity: 0, duration: 0.3 }, 3.8);
         tl.to("#mc-gold", { opacity: 1, duration: 0.22 }, 3.8);
+        tl.to("#mc-blue", { opacity: 0, duration: 0.26 }, 3.8);
         tl.to("#orb-wrap", { scale: 1.32, duration: 0.22, ease: "back.out(2.2)" }, 3.82);
         tl.to("#orb-wrap", { scale: 1.06, duration: 0.3, ease: "power2.inOut" }, 4.04);
         tl.fromTo("#shock-gold", { opacity: 0.95, scale: 0.85 }, { opacity: 0, scale: 3.1, duration: 0.72, ease: "power2.out", immediateRender: false }, 3.8);
@@ -1457,6 +1415,7 @@
         tl.to("#orb-rainbow", { opacity: 1, duration: 0.12 }, 5.2);
         tl.to("#orb-cracks", { opacity: 1, scale: 1.28, rotation: 18, duration: 0.35, ease: "power2.out" }, 5.2);
         tl.to("#mc-rainbow", { opacity: 1, duration: 0.18 }, 5.2);
+        tl.to("#mc-gold", { opacity: 0, duration: 0.24 }, 5.2);
         tl.to("#aura-rainbow", { opacity: 1, scale: 1.22, rotation: 140, duration: 1.65, ease: "power1.in" }, 5.2);
         tl.to("#summon-godrays", { opacity: 0.92, rotation: 95, duration: 1.75, ease: "power1.in" }, 5.2);
         tl.to("#light-pillar", { opacity: 0.95, scaleX: 1.8, duration: 0.35, ease: "power2.out" }, 5.2);

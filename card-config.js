@@ -42,6 +42,14 @@ window.SSR_CARD_CONFIG = {
     seed: 20261120,
   },
 
+  // 物理光学発光設定（scripts/render_optics.py が参照：FilmDateStamp 由来 H&D 分光モデル）
+  optics: {
+    halation: 1.05,       // 多重 PSF ハレーションの広がり（0.5..2.0）
+    coreGlow: 1.15,       // 中心尾根の白飛び（Core Bleach）強度（0.5..2.0）
+    irregularity: 0.85,   // 3階層有機ゆらぎ（光量差・波打ち・裾野ちぎれ）
+    seed: 20261120,
+  },
+
   // パーティクル配置用の決定論シード値（数値を変えると星屑や紙吹雪の配置パターンが変化）
   seed: 20261120,
 };
