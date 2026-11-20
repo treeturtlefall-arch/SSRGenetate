@@ -536,23 +536,24 @@
         text-shadow: 0 0 36px rgba(251, 191, 36, 0.9);
       }
 
-      /* Card Front (Main SSR Card) */
+      /* Card Front (Main SSR Card — Physical Metallic Rainbow Foil Bezel) */
       .card-front {
         padding: 14px;
-        background: linear-gradient(
-          135deg var(--in-oklch),
-          #fffbeb 0%,
-          #facc15 16%,
-          #f472b6 36%,
-          #38bdf8 56%,
-          #a855f7 76%,
-          #facc15 90%,
-          #fffbeb 100%
-        );
+        background: #090d1f;
         box-shadow:
           0 36px 90px rgba(0, 0, 0, 0.88),
-          0 0 60px rgba(254, 240, 138, 0.55),
-          0 0 120px rgba(236, 72, 153, 0.34);
+          0 0 56px rgba(254, 240, 138, 0.48),
+          0 0 115px rgba(236, 72, 153, 0.30);
+      }
+
+      #mat-rainbow-frame {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 40;
+        pointer-events: none;
+        display: block;
       }
 
       .card-front-inner {
@@ -902,6 +903,17 @@
         z-index: 38;
       }
 
+      /* Card Physical Inner Window Depth Layer (Edge-only shadow & rim highlight) */
+      #mat-window-depth {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 12;
+        pointer-events: none;
+        display: block;
+      }
+
       /* Global Whiteout Flash Layer */
       #flash-layer {
         z-index: 60;
@@ -919,6 +931,20 @@
       data-width="1080"
       data-height="1920"
     >
+      <!-- Hidden SVG Filter for Peak-Moment Chromatic Aberration (rec-frame derived) -->
+      <svg id="chroma-shock-svg" width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
+        <defs>
+          <filter id="chroma-shock" x="-4%" y="-2%" width="108%" height="104%" color-interpolation-filters="sRGB">
+            <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r-only" />
+            <feOffset id="chroma-r-off" in="r-only" dx="0" dy="0" result="r-shift" />
+            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g-only" />
+            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b-only" />
+            <feOffset id="chroma-b-off" in="b-only" dx="0" dy="0" result="b-shift" />
+            <feBlend in="r-shift" in2="g-only" mode="screen" result="rg" />
+            <feBlend in="rg" in2="b-shift" mode="screen" />
+          </filter>
+        </defs>
+      </svg>
       <!-- =====================================================
            Audio Tracks (Procedural WAVs synced to timeline)
            ===================================================== -->
@@ -1030,13 +1056,16 @@
               </div>
             </div>
 
-            <!-- Card Front (Full-Bleed Photo + Frontmost Overlay) -->
+            <!-- Card Front (Full-Bleed Photo + Physical Metallic Rainbow Frame + Frontmost Overlay) -->
             <div class="card-face card-front">
+              <img id="mat-rainbow-frame" src="assets/generated/mat_rainbow_frame.png" alt="" />
               <div class="card-front-inner">
                 <div class="card-photo-area">
                   <img id="card-photo" src="assets/photo.jpg" alt="SSR Character Photo" data-layout-allow-overflow />
                   <div class="photo-vignette"></div>
                 </div>
+
+                <img id="mat-window-depth" src="assets/generated/mat_window_depth.png" alt="" />
 
                 <div id="holo-sweep-1" data-layout-allow-overflow></div>
                 <div id="holo-sweep-2" data-layout-allow-overflow></div>
@@ -1152,8 +1181,17 @@
             ? baseCfg.stats.slice(0, 3)
             : [],
           cardNo: baseCfg.cardNo || "NO.055-SSR",
+          material: baseCfg.material || {},
           seed: typeof baseCfg.seed === "number" ? baseCfg.seed : 20261120,
         };
+
+        // Apply inner window depth opacity & chroma shock config (photo stays 100% clean)
+        const matCfg = cfg.material;
+        const depthEl = document.getElementById("mat-window-depth");
+        if (depthEl && typeof matCfg.windowDepthOpacity === "number") {
+          depthEl.style.opacity = String(matCfg.windowDepthOpacity);
+        }
+        const chromaShockPx = typeof matCfg.chromaShockPx === "number" ? matCfg.chromaShockPx : 9;
 
         // Bind config to DOM (Humanized PNG from typo-manifest with HTML fallback)
         const photoEl = document.getElementById("card-photo");
@@ -1550,6 +1588,24 @@
             st + 0.95
           );
         });
+
+        // Helper: Peak-moment non-destructive RGB Chromatic Aberration shock (rec-frame derived)
+        function addChromaShock(targetSel, startAt, peakPx) {
+          if (!peakPx || peakPx <= 0) return;
+          tl.set(targetSel, { filter: "url(#chroma-shock)" }, startAt);
+          tl.fromTo("#chroma-r-off", { attr: { dx: 0 } }, { attr: { dx: -peakPx }, duration: 0.04, ease: "power2.out", immediateRender: false }, startAt);
+          tl.fromTo("#chroma-b-off", { attr: { dx: 0 } }, { attr: { dx: peakPx }, duration: 0.04, ease: "power2.out", immediateRender: false }, startAt);
+          tl.to("#chroma-r-off", { attr: { dx: peakPx * 0.45 }, duration: 0.06, ease: "power1.inOut" }, startAt + 0.04);
+          tl.to("#chroma-b-off", { attr: { dx: -peakPx * 0.45 }, duration: 0.06, ease: "power1.inOut" }, startAt + 0.04);
+          tl.to("#chroma-r-off", { attr: { dx: 0 }, duration: 0.10, ease: "power2.out" }, startAt + 0.10);
+          tl.to("#chroma-b-off", { attr: { dx: 0 }, duration: 0.10, ease: "power2.out" }, startAt + 0.10);
+          tl.set(targetSel, { filter: "none" }, startAt + 0.21);
+        }
+
+        // Gold promotion shock, Rainbow promotion shock, Card landing shock
+        addChromaShock("#scene-summon", 3.81, chromaShockPx * 0.78);
+        addChromaShock("#scene-summon", 5.21, chromaShockPx * 1.15);
+        addChromaShock("#scene-result", 9.32, chromaShockPx * 0.90);
 
         // ===== PHASE 5: STATIC RESULT HOLD (12.0s - 15.0s) =====
         tl.set("#root", {}, 15.0);

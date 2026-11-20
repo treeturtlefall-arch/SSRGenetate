@@ -5,7 +5,8 @@
   "scripts": {
     "build:typo": "python scripts/render_typography.py",
     "build:optics": "python scripts/render_optics.py",
-    "build:assets": "npm run build:typo && npm run build:optics",
+    "build:material": "python scripts/render_material.py",
+    "build:assets": "npm run build:typo && npm run build:optics && npm run build:material",
     "dev": "npx --yes hyperframes@0.9.72 preview",
     "check": "npx --yes hyperframes@0.9.72 check",
     "render": "npx --yes hyperframes@0.9.72 render -o renders/ssr_gacha.mp4",
