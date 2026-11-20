@@ -59,6 +59,13 @@ window.SSR_CARD_CONFIG = {
     seed: 20261120,
   },
 
+  // 召喚フェーズの魔法陣回転設定（compositions/scene-summon.html が参照）
+  summon: {
+    magicCircleSpeed: 1.0,                 // 全体速度倍率（0.5=重厚低速, 1.0=標準, 1.5=高速）
+    magicCircleCurve: "dramatic",          // "dramatic"（昇格ギアチェンジ＆真空急停止）| "steady" | "overdrive"
+    magicCircleRingRatios: [1.0, -1.3, 1.7], // [外周, 中段, 内周] の相対倍率（負値で逆回転）
+  },
+
   // パーティクル配置用の決定論シード値（数値を変えると星屑や紙吹雪の配置パターンが変化）
   seed: 20261120,
 };
