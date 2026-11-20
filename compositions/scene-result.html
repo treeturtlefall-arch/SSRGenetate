@@ -50,9 +50,9 @@
             <feBlend in="rg" in2="b-shift" mode="screen" />
           </filter>
           <g id="corner-ornament-shape">
-            <path d="M4 54 L4 12 Q4 4 12 4 L54 4" stroke="#fef08a" stroke-width="3.5" />
-            <path d="M12 40 L12 12 L40 12" stroke="#f59e0b" stroke-width="2" />
-            <circle cx="12" cy="12" r="4" fill="#fef08a" />
+            <path d="M4 54 L4 12 Q4 4 12 4 L54 4" stroke="#f2dfb3" stroke-width="3.5" />
+            <path d="M12 40 L12 12 L40 12" stroke="#d4a24c" stroke-width="2" />
+            <circle cx="12" cy="12" r="4" fill="#fffdf7" />
           </g>
         </defs>
       </svg>
@@ -62,10 +62,13 @@
         <div id="result-halo" data-layout-allow-overflow></div>
 
         <svg id="result-bg-ring" viewBox="0 0 800 800" fill="none" data-layout-allow-overflow>
-          <circle cx="400" cy="400" r="380" stroke="#fde047" stroke-width="3" stroke-dasharray="14 14" />
-          <circle cx="400" cy="400" r="340" stroke="#f5c451" stroke-width="2" />
-          <polygon points="400,45 707,222 707,578 400,755 93,578 93,222" stroke="#fde047" stroke-width="2" opacity="0.65" />
+          <circle cx="400" cy="400" r="380" stroke="#f2dfb3" stroke-width="3" stroke-dasharray="14 14" />
+          <circle cx="400" cy="400" r="340" stroke="#d4a24c" stroke-width="2" />
+          <polygon points="400,45 707,222 707,578 400,755 93,578 93,222" stroke="#f2dfb3" stroke-width="2" opacity="0.65" />
         </svg>
+
+        <div id="result-grain" data-layout-allow-overflow></div>
+        <div id="landing-shockwave" data-layout-allow-overflow></div>
 
         <div id="card-stage">
           <div id="ssr-card">
@@ -73,13 +76,13 @@
             <div id="card-back-face" class="card-face card-back">
               <div class="card-back-inner">
                 <svg width="560" height="560" viewBox="0 0 560 560" fill="none" style="position:absolute;opacity:0.85">
-                  <circle cx="280" cy="280" r="250" stroke="#fef08a" stroke-width="4" opacity="0.5" />
-                  <circle cx="280" cy="280" r="215" stroke="#f59e0b" stroke-width="2" stroke-dasharray="10 10" opacity="0.5" />
-                  <polygon points="280,55 475,392 85,392" stroke="#fef08a" stroke-width="3" opacity="0.45" />
-                  <polygon points="280,505 85,168 475,168" stroke="#fef08a" stroke-width="3" opacity="0.45" />
-                  <circle cx="280" cy="280" r="105" fill="#070b1a" stroke="#fef08a" stroke-width="3.5" />
-                  <polygon points="280,192 304,254 368,280 304,306 280,368 256,306 192,280 256,254" fill="#fef08a" stroke="#f59e0b" stroke-width="3" />
-                  <circle cx="280" cy="280" r="22" fill="#ffffff" />
+                  <circle cx="280" cy="280" r="250" stroke="#f2dfb3" stroke-width="4" opacity="0.5" />
+                  <circle cx="280" cy="280" r="215" stroke="#d4a24c" stroke-width="2" stroke-dasharray="10 10" opacity="0.5" />
+                  <polygon points="280,55 475,392 85,392" stroke="#f2dfb3" stroke-width="3" opacity="0.45" />
+                  <polygon points="280,505 85,168 475,168" stroke="#f2dfb3" stroke-width="3" opacity="0.45" />
+                  <circle cx="280" cy="280" r="105" fill="#070b1a" stroke="#f2dfb3" stroke-width="3.5" />
+                  <polygon points="280,192 304,254 368,280 304,306 280,368 256,306 192,280 256,254" fill="#f2dfb3" stroke="#d4a24c" stroke-width="3" />
+                  <circle cx="280" cy="280" r="22" fill="#fffdf7" />
                 </svg>
               </div>
             </div>
@@ -137,7 +140,6 @@
           </div>
         </div>
 
-        <div id="landing-shockwave" data-layout-allow-overflow></div>
         <div id="celebration-layer" data-layout-allow-overflow></div>
       </div>
     </div>
@@ -161,10 +163,11 @@
         tl.fromTo("#result-rays", { rotation: 0, opacity: 0.25 }, { rotation: 48, opacity: 0.62, duration: 4.85, ease: "power2.out" }, at(7.15));
         tl.fromTo("#result-bg-ring", { rotation: -40, scale: 0.82, opacity: 0 }, { rotation: 0, scale: 1.0, opacity: 0.34, duration: 4.85, ease: "power2.out" }, at(7.15));
 
+        tl.fromTo("#card-stage", { opacity: 0 }, { opacity: 1, duration: 0.28, ease: "power2.out" }, at(7.18));
+
         tl.fromTo(
           "#ssr-card",
           {
-            opacity: 0,
             scale: 0.18,
             y: 120,
             z: -600,
@@ -173,7 +176,6 @@
             rotationZ: -8,
           },
           {
-            opacity: 1,
             scale: 1.05,
             y: -14,
             z: 0,
@@ -186,7 +188,6 @@
           at(7.18)
         );
 
-        tl.to("#card-back-face", { opacity: 0, duration: 0.05 }, at(9.35));
         tl.to("#ssr-card", { scale: 1.0, y: 0, duration: 0.34, ease: "back.out(2.0)" }, at(9.33));
 
         tl.fromTo("#landing-shockwave", { opacity: 0.95, scale: 0.55 }, { opacity: 0, scale: 3.6, duration: 0.85, ease: "power2.out", immediateRender: false }, at(9.3));

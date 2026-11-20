@@ -12,27 +12,27 @@ window.SSR_TYPO_MANIFEST = {
     },
     "subtitle": {
       "src": "assets/generated/typo_subtitle.png",
-      "width": 336,
-      "height": 51,
-      "text": "【奇跡のテーブル55】"
+      "width": 220,
+      "height": 52,
+      "text": "【覚醒の眼光】"
     },
     "title": {
       "src": "assets/generated/typo_title.png",
-      "width": 537,
-      "height": 92,
-      "text": "ちいさな美食家"
+      "width": 459,
+      "height": 89,
+      "text": "ちいさな覇王"
     },
     "flavor": {
       "src": "assets/generated/typo_flavor.png",
-      "width": 714,
+      "width": 745,
       "height": 45,
-      "text": "黄金のたまご焼きを前に、世界一の幸せを召喚する。"
+      "text": "溢れ出す鼻水は強者の証。その鋭き流し目に平伏せよ。"
     },
     "cardNo": {
       "src": "assets/generated/typo_cardno.png",
       "width": 142,
-      "height": 36,
-      "text": "NO.055-SSR"
+      "height": 37,
+      "text": "NO.077-SSR"
     },
     "cutinSub": {
       "src": "assets/generated/typo_cutin_sub.png",

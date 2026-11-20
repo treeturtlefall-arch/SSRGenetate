@@ -45,14 +45,14 @@ OPTICAL_SPECTRA: Dict[str, Dict[str, Tuple[float, float, float]]] = {
         "tint": (1.00, 0.99, 0.90),
     },
     "sparkle_pink": {
-        "sens": (3.10, 0.45, 2.30),
-        "scatter": (1.00, 0.14, 0.62),
-        "tint": (1.00, 0.90, 0.98),
+        "sens": (3.05, 0.78, 2.05),
+        "scatter": (1.00, 0.24, 0.58),
+        "tint": (1.00, 0.92, 0.96),
     },
     "sparkle_cyan": {
-        "sens": (0.45, 2.25, 3.30),
-        "scatter": (0.05, 0.55, 1.00),
-        "tint": (0.88, 0.98, 1.00),
+        "sens": (0.62, 2.30, 3.15),
+        "scatter": (0.10, 0.60, 1.00),
+        "tint": (0.90, 0.98, 1.00),
     },
     "sparkle_white": {
         "sens": (2.95, 2.90, 2.85),

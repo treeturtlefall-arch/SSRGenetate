@@ -185,7 +185,7 @@
   }
 
   const confettiData = [];
-  const confettiColors = ["#fde047", "#f472b6", "#38bdf8", "#a855f7", "#34d399", "#ffffff"];
+  const confettiColors = ["#f2dfb3", "#e88db4", "#76d4ee", "#a286eb", "#6ee0d0", "#fffcf5"];
   for (let i = 0; i < 22; i++) {
     const el = document.createElement("div");
     el.className = "confetti-bit";

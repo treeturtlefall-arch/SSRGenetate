@@ -10,7 +10,7 @@
     "build:assets": "npm run build:typo && npm run build:optics && npm run build:material && npm run build:se",
     "dev": "npx --yes hyperframes@0.9.72 preview",
     "check": "npx --yes hyperframes@0.9.72 check",
-    "render": "npx --yes hyperframes@0.9.72 render -o renders/ssr_gacha.mp4",
+    "render": "npx --yes hyperframes@0.9.72 render -q delivery --crf 12 -o renders/ssr_gacha.mp4",
     "publish": "npx --yes hyperframes@0.9.72 publish"
   }
 }

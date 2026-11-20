@@ -70,7 +70,13 @@
 
       #flash-layer {
         z-index: 60;
-        background: radial-gradient(circle at 50% 50% var(--in-oklab), #ffffff 0%, #fffbeb 55%, #fef08a 100%);
+        mix-blend-mode: screen;
+        background: radial-gradient(
+          circle at 50% 50% var(--in-oklab),
+          #ffffff 0%,
+          #fdfeff 58%,
+          #f2f6ff 100%
+        );
         opacity: 0;
       }
     </style>
@@ -171,9 +177,9 @@
         tl.fromTo("#flash-layer", { opacity: 0 }, { opacity: 0.88, duration: 0.08, immediateRender: false }, 5.18);
         tl.to("#flash-layer", { opacity: 0, duration: 0.35, ease: "power2.out" }, 5.26);
 
-        // Critical whiteout transition (6.72s -> 7.86s)
+        // Critical whiteout transition (6.72s -> 7.72s, hold pure white 3 frames)
         tl.fromTo("#flash-layer", { opacity: 0 }, { opacity: 1, duration: 0.28, ease: "power2.in", immediateRender: false }, 6.72);
-        tl.to("#flash-layer", { opacity: 0, duration: 0.68, ease: "power2.out" }, 7.18);
+        tl.to("#flash-layer", { opacity: 0, duration: 0.62, ease: "power3.out" }, 7.10);
 
         // Anchor 15.0s total duration
         tl.set("#root", {}, 15.0);

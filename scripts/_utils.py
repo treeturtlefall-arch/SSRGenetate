@@ -122,3 +122,21 @@ def generate_micro_emboss_height(h: int, w: int, rng: np.random.Generator) -> np
         dtype=np.float32,
     )
     return norm_std(a1 * 0.6 + a2 * 0.4)
+
+
+def generate_film_grain_overlay(
+    w: int = 1080,
+    h: int = 1920,
+    sigma: float = 14.0,
+    seed: int = DEFAULT_SEED,
+) -> Image.Image:
+    """
+    暗部バンディング解消用の決定論的フィルムグレイン（中性グレー128中心のグレースケール画像）を生成する。
+    高周波の微細粒子とわずかな中周波シボをブレンドし、overlay/soft-light 合成で自然な階調補間を行う。
+    """
+    rng = np.random.default_rng((int(seed) * 2654435761 + 97) & 0xFFFFFFFF)
+    fine = rng.standard_normal((h, w)).astype(np.float32)
+    mid = generate_micro_emboss_height(h, w, rng)
+    combined = norm_std(fine * 0.78 + mid * 0.22)
+    arr = np.clip(128.0 + combined * sigma, 0.0, 255.0).astype(np.uint8)
+    return Image.fromarray(arr, mode="L")

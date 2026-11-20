@@ -20,16 +20,24 @@ from typing import List, Tuple
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from _utils import OUT_DIR, load_card_config, make_linear_gradient, norm_std, resolve_seed
+from _utils import (
+    OUT_DIR,
+    generate_film_grain_overlay,
+    load_card_config,
+    make_linear_gradient,
+    norm_std,
+    resolve_seed,
+)
 
+# 薄膜干渉（Iridescence）＋シャンパンゴールド基調の連続スペクトル
 RAINBOW_STOPS: List[Tuple[int, int, int]] = [
-    (255, 251, 235),  # #fffbeb
-    (250, 204, 21),   # #facc15
-    (244, 114, 182),  # #f472b6
-    (56, 189, 248),   # #38bdf8
-    (168, 85, 247),   # #a855f7
-    (250, 204, 21),   # #facc15
-    (255, 251, 235),  # #fffbeb
+    (255, 252, 245),  # 白金パール (#fffcf5)
+    (242, 213, 143),  # シャンパンゴールド (#f2d58f)
+    (232, 141, 180),  # 干渉ローズ (#e88db4)
+    (162, 134, 235),  # 薄膜バイオレット (#a286eb)
+    (118, 212, 238),  # プリズムアクア (#76d4ee)
+    (242, 213, 143),  # シャンパンゴールド (#f2d58f)
+    (255, 252, 245),  # 白金パール (#fffcf5)
 ]
 
 
@@ -233,6 +241,11 @@ def main() -> None:
     depth_img = generate_window_depth(912, 1632)
     depth_img.save(OUT_DIR / "mat_window_depth.png", format="PNG", optimize=True)
     print(f"[OK] mat_window_depth.png ({depth_img.width}x{depth_img.height})")
+
+    # 3. 暗部バンディング解消用フィルムグレイン (1080x1920)
+    grain_img = generate_film_grain_overlay(1080, 1920, sigma=14.0, seed=seed + 101)
+    grain_img.save(OUT_DIR / "mat_film_grain.png", format="PNG", optimize=True)
+    print(f"[OK] mat_film_grain.png ({grain_img.width}x{grain_img.height})")
 
 
 if __name__ == "__main__":

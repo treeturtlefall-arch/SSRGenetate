@@ -14,24 +14,24 @@ window.SSR_CARD_CONFIG = {
 
   // 写真の表示調整（cover / contain、および object-position）
   photoFit: "cover",
-  photoPosition: "50% 42%",
-  photoZoom: 1.02,
+  photoPosition: "50% 35%",
+  photoZoom: 1.05,
 
   // レアリティ・星の数
   rarity: "SSR",
   stars: 5,
 
   // カード情報（空文字・空配列にすると非表示になります）
-  attribute: "", // 例: "光属性 / SMILE"（デフォルトはミニマル・写真主役のため非表示）
-  subtitle: "【奇跡のテーブル55】",
-  title: "ちいさな美食家",
-  flavor: "黄金のたまご焼きを前に、世界一の幸せを召喚する。",
+  attribute: "光属性 / BABY", // 例: "光属性 / SMILE"
+  subtitle: "【覚醒の眼光】",
+  title: "ちいさな覇王",
+  flavor: "溢れ出す鼻水は強者の証。その鋭き流し目に平伏せよ。",
 
   // カード下部ステータス（デフォルトは写真主役のため非表示。最大3項目まで任意表示可）
   stats: [],
 
   // シリアル番号風フッター表記（カード右下隅へ控えめに刻印）
-  cardNo: "NO.055-SSR",
+  cardNo: "NO.077-SSR",
 
   // 文字ヒューマナイズ＆箔物理設定（scripts/render_typography.py が参照）
   typography: {
