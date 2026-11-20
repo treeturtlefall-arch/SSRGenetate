@@ -153,21 +153,156 @@
         mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 8%, rgba(0, 0, 0, 0.6) 45%, transparent 72%);
       }
 
-      #light-pillar {
+      #light-pillar,
+      #light-pillar-rainbow {
         position: absolute;
         left: 50%;
-        top: 0;
-        width: 280px;
-        height: 1920px;
-        margin-left: -140px;
+        top: 120px;
+        width: 240px;
+        height: 1680px;
+        margin-left: -120px;
         opacity: 0;
         mix-blend-mode: screen;
+        -webkit-mask-image: linear-gradient(
+          to bottom,
+          transparent 0%,
+          rgba(0, 0, 0, 0.72) 22%,
+          rgba(0, 0, 0, 1) 48%,
+          rgba(0, 0, 0, 0.78) 76%,
+          transparent 100%
+        );
+        mask-image: linear-gradient(
+          to bottom,
+          transparent 0%,
+          rgba(0, 0, 0, 0.72) 22%,
+          rgba(0, 0, 0, 1) 48%,
+          rgba(0, 0, 0, 0.78) 76%,
+          transparent 100%
+        );
+      }
+
+      #light-pillar {
         background: linear-gradient(
           to right var(--in-oklab),
           transparent 0%,
-          rgba(242, 223, 179, 0.24) 28%,
-          rgba(255, 253, 247, 0.88) 50%,
-          rgba(242, 223, 179, 0.24) 72%,
+          rgba(212, 162, 76, 0.14) 22%,
+          rgba(242, 223, 179, 0.46) 42%,
+          rgba(255, 253, 245, 0.96) 50%,
+          rgba(242, 223, 179, 0.46) 58%,
+          rgba(212, 162, 76, 0.14) 78%,
+          transparent 100%
+        );
+      }
+
+      #light-pillar-rainbow {
+        background: linear-gradient(
+          to right var(--in-oklab),
+          transparent 0%,
+          rgba(118, 212, 238, 0.22) 20%,
+          rgba(232, 141, 180, 0.48) 38%,
+          rgba(255, 254, 250, 0.98) 50%,
+          rgba(118, 212, 238, 0.48) 62%,
+          rgba(162, 134, 235, 0.22) 80%,
+          transparent 100%
+        );
+      }
+
+      #summon-camera {
+        position: absolute;
+        inset: 0;
+        width: 1080px;
+        height: 1920px;
+        transform-origin: 50% 50%;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      #vacuum-dimmer {
+        position: absolute;
+        inset: -80px;
+        background: radial-gradient(
+          circle at 50% 50%,
+          rgba(2, 3, 9, 0.35) 0%,
+          rgba(2, 3, 9, 0.88) 46%,
+          rgba(2, 3, 9, 0.96) 100%
+        );
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #flash-gold,
+      #flash-rainbow-core {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        border-radius: 50%;
+        mix-blend-mode: screen;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #flash-gold {
+        width: 1400px;
+        height: 1400px;
+        margin-left: -700px;
+        margin-top: -700px;
+        background: radial-gradient(
+          circle closest-side var(--in-oklab),
+          rgba(255, 254, 248, 1) 0%,
+          rgba(255, 245, 214, 0.90) 20%,
+          rgba(242, 223, 179, 0.48) 44%,
+          rgba(212, 162, 76, 0.14) 72%,
+          transparent 100%
+        );
+      }
+
+      #flash-rainbow-core {
+        width: 1560px;
+        height: 1560px;
+        margin-left: -780px;
+        margin-top: -780px;
+        background: radial-gradient(
+          circle closest-side var(--in-oklab),
+          rgba(255, 255, 255, 1) 0%,
+          rgba(245, 249, 255, 0.84) 22%,
+          rgba(232, 141, 180, 0.38) 48%,
+          rgba(118, 212, 238, 0.16) 74%,
+          transparent 100%
+        );
+      }
+
+      #flash-rainbow-streak {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: 1080px;
+        height: 220px;
+        margin-top: -110px;
+        mix-blend-mode: screen;
+        opacity: 0;
+        pointer-events: none;
+        background: linear-gradient(
+          to bottom var(--in-oklab),
+          transparent 0%,
+          rgba(118, 212, 238, 0.42) 32%,
+          rgba(255, 254, 250, 1) 50%,
+          rgba(232, 141, 180, 0.42) 68%,
+          transparent 100%
+        );
+        -webkit-mask-image: linear-gradient(
+          to right,
+          transparent 0%,
+          rgba(0, 0, 0, 0.85) 22%,
+          #000 50%,
+          rgba(0, 0, 0, 0.85) 78%,
+          transparent 100%
+        );
+        mask-image: linear-gradient(
+          to right,
+          transparent 0%,
+          rgba(0, 0, 0, 0.85) 22%,
+          #000 50%,
+          rgba(0, 0, 0, 0.85) 78%,
           transparent 100%
         );
       }
@@ -318,7 +453,8 @@
         position: absolute;
         left: 90px;
         right: 90px;
-        top: 330px;
+        top: 230px;
+        z-index: 20;
         text-align: center;
         opacity: 0.92;
       }
@@ -363,6 +499,7 @@
         width: 1320px;
         height: 240px;
         margin-top: -120px;
+        z-index: 30;
         transform: rotate(-4deg);
         opacity: 0;
         display: flex;
@@ -429,43 +566,53 @@
 
       <div id="scene-summon-stage" class="clip" data-start="0" data-duration="7.4" data-track-index="0">
         <div id="summon-grain" data-layout-allow-overflow></div>
-        <div id="aura-blue" class="bg-aura" data-layout-allow-overflow></div>
-        <div id="aura-gold" class="bg-aura" data-layout-allow-overflow></div>
-        <div id="aura-rainbow" class="bg-aura" data-layout-allow-overflow></div>
-        <div id="summon-godrays" data-layout-allow-overflow></div>
-        <div id="light-pillar" data-layout-allow-overflow></div>
 
-        <div id="magic-circle-wrap" data-layout-allow-overflow>
-          <div id="mc-blue" class="mc-layer" data-layout-allow-overflow>
-            <img id="mc-ring-outer" class="mc-ring" src="../assets/generated/opt_mc_blue_outer.png" alt="" data-layout-allow-overflow />
-            <img id="mc-ring-mid" class="mc-ring" src="../assets/generated/opt_mc_blue_mid.png" alt="" data-layout-allow-overflow />
-            <img id="mc-ring-inner" class="mc-ring" src="../assets/generated/opt_mc_blue_inner.png" alt="" data-layout-allow-overflow />
+        <div id="summon-camera" data-layout-allow-overflow>
+          <div id="aura-blue" class="bg-aura" data-layout-allow-overflow></div>
+          <div id="aura-gold" class="bg-aura" data-layout-allow-overflow></div>
+          <div id="aura-rainbow" class="bg-aura" data-layout-allow-overflow></div>
+          <div id="summon-godrays" data-layout-allow-overflow></div>
+          <div id="light-pillar" data-layout-allow-overflow></div>
+          <div id="light-pillar-rainbow" data-layout-allow-overflow></div>
+
+          <div id="magic-circle-wrap" data-layout-allow-overflow>
+            <div id="mc-blue" class="mc-layer" data-layout-allow-overflow>
+              <img id="mc-ring-outer" class="mc-ring" src="../assets/generated/opt_mc_blue_outer.png" alt="" data-layout-allow-overflow />
+              <img id="mc-ring-mid" class="mc-ring" src="../assets/generated/opt_mc_blue_mid.png" alt="" data-layout-allow-overflow />
+              <img id="mc-ring-inner" class="mc-ring" src="../assets/generated/opt_mc_blue_inner.png" alt="" data-layout-allow-overflow />
+            </div>
+
+            <div id="mc-gold" class="mc-layer" data-layout-allow-overflow>
+              <img id="mc-gold-outer" class="mc-ring" src="../assets/generated/opt_mc_gold_outer.png" alt="" data-layout-allow-overflow />
+              <img id="mc-gold-mid" class="mc-ring" src="../assets/generated/opt_mc_gold_mid.png" alt="" data-layout-allow-overflow />
+              <img id="mc-gold-inner" class="mc-ring" src="../assets/generated/opt_mc_gold_inner.png" alt="" data-layout-allow-overflow />
+            </div>
+
+            <div id="mc-rainbow" class="mc-layer" data-layout-allow-overflow>
+              <img id="mc-rb-outer" class="mc-ring" src="../assets/generated/opt_mc_rainbow_outer.png" alt="" data-layout-allow-overflow />
+              <img id="mc-rb-mid" class="mc-ring" src="../assets/generated/opt_mc_rainbow_mid.png" alt="" data-layout-allow-overflow />
+              <img id="mc-rb-inner" class="mc-ring" src="../assets/generated/opt_mc_rainbow_inner.png" alt="" data-layout-allow-overflow />
+            </div>
           </div>
 
-          <div id="mc-gold" class="mc-layer" data-layout-allow-overflow>
-            <img id="mc-gold-outer" class="mc-ring" src="../assets/generated/opt_mc_gold_outer.png" alt="" data-layout-allow-overflow />
-            <img id="mc-gold-mid" class="mc-ring" src="../assets/generated/opt_mc_gold_mid.png" alt="" data-layout-allow-overflow />
-            <img id="mc-gold-inner" class="mc-ring" src="../assets/generated/opt_mc_gold_inner.png" alt="" data-layout-allow-overflow />
+          <div id="converge-particles" data-layout-allow-overflow></div>
+
+          <div id="shock-blue" class="shockwave" data-layout-allow-overflow></div>
+          <div id="shock-gold" class="shockwave" data-layout-allow-overflow></div>
+          <div id="shock-rainbow" class="shockwave" data-layout-allow-overflow></div>
+
+          <div id="vacuum-dimmer" data-layout-allow-overflow></div>
+
+          <div id="orb-wrap">
+            <div id="orb-blue" class="orb-core"></div>
+            <div id="orb-gold" class="orb-core"></div>
+            <div id="orb-rainbow" class="orb-core"></div>
+            <img id="orb-cracks" src="../assets/generated/opt_orb_cracks.png" alt="" data-layout-allow-overflow />
           </div>
 
-          <div id="mc-rainbow" class="mc-layer" data-layout-allow-overflow>
-            <img id="mc-rb-outer" class="mc-ring" src="../assets/generated/opt_mc_rainbow_outer.png" alt="" data-layout-allow-overflow />
-            <img id="mc-rb-mid" class="mc-ring" src="../assets/generated/opt_mc_rainbow_mid.png" alt="" data-layout-allow-overflow />
-            <img id="mc-rb-inner" class="mc-ring" src="../assets/generated/opt_mc_rainbow_inner.png" alt="" data-layout-allow-overflow />
-          </div>
-        </div>
-
-        <div id="converge-particles" data-layout-allow-overflow></div>
-
-        <div id="shock-blue" class="shockwave" data-layout-allow-overflow></div>
-        <div id="shock-gold" class="shockwave" data-layout-allow-overflow></div>
-        <div id="shock-rainbow" class="shockwave" data-layout-allow-overflow></div>
-
-        <div id="orb-wrap">
-          <div id="orb-blue" class="orb-core"></div>
-          <div id="orb-gold" class="orb-core"></div>
-          <div id="orb-rainbow" class="orb-core"></div>
-          <img id="orb-cracks" src="../assets/generated/opt_orb_cracks.png" alt="" data-layout-allow-overflow />
+          <div id="flash-gold" data-layout-allow-overflow></div>
+          <div id="flash-rainbow-core" data-layout-allow-overflow></div>
+          <div id="flash-rainbow-streak" data-layout-allow-overflow></div>
         </div>
 
         <div id="summon-status" data-layout-allow-safe-zone>
@@ -531,96 +678,95 @@
 
         // ===== PHASE 1: Dark Abyss, Magic Circle & Orb Convergence (0.0s - 2.5s) =====
         tl.set("#scene-summon-stage", { filter: "none" }, 0);
+        tl.set("#summon-camera", { scale: 1, rotation: 0 }, 0);
+        tl.set("#vacuum-dimmer, #flash-gold, #flash-rainbow-core, #flash-rainbow-streak, #light-pillar-rainbow", { opacity: 0 }, 0);
         tl.fromTo("#aura-blue", { opacity: 0.45, scale: 0.72 }, { opacity: 0.9, scale: 1.0, duration: 1.4, ease: "power2.out" }, 0);
         tl.fromTo("#summon-status", { opacity: 0.92, y: 0 }, { opacity: 1, y: -6, duration: 1.2, ease: "power2.out" }, 0);
-        tl.fromTo(
-          "#magic-circle-wrap",
-          { opacity: 0.72, scale: 0.68, rotation: -18 },
-          { opacity: 1, scale: 1.0, rotation: 0, duration: 1.4, ease: "power3.out" },
-          0
-        );
+        tl.fromTo("#magic-circle-wrap", { opacity: 0.72, scale: 0.68, rotation: -18 }, { opacity: 1, scale: 1.0, rotation: 0, duration: 1.4, ease: "power3.out" }, 0);
 
         tl.to("#mc-ring-outer, #mc-gold-outer, #mc-rb-outer", { rotation: 210, duration: 7.0, ease: "power1.in" }, 0.15);
         tl.to("#mc-ring-mid, #mc-gold-mid, #mc-rb-mid", { rotation: -260, duration: 7.0, ease: "power1.in" }, 0.15);
         tl.to("#mc-ring-inner, #mc-gold-inner, #mc-rb-inner", { rotation: 340, duration: 7.0, ease: "power1.in" }, 0.15);
 
         convergeData.forEach(function (p) {
-          tl.fromTo(
-            p.el,
-            { x: p.startX, y: p.startY, opacity: 0, scale: 1.2 },
-            { x: 0, y: 0, opacity: 0.95, scale: 0.25, duration: p.dur, ease: "power2.in" },
-            p.delay
-          );
+          tl.fromTo(p.el, { x: p.startX, y: p.startY, opacity: 0, scale: 1.2 }, { x: 0, y: 0, opacity: 0.95, scale: 0.25, duration: p.dur, ease: "power2.in" }, p.delay);
           tl.to(p.el, { opacity: 0, duration: 0.1 }, p.delay + p.dur);
         });
 
-        tl.fromTo(
-          "#orb-wrap",
-          { opacity: 0, scale: 0.12 },
-          { opacity: 1, scale: 1.0, duration: 0.95, ease: "back.out(1.6)" },
-          1.45
-        );
+        tl.fromTo("#orb-wrap", { opacity: 0, scale: 0.12 }, { opacity: 1, scale: 1.0, duration: 0.95, ease: "back.out(1.6)" }, 1.45);
 
-        // ===== PHASE 2: Heartbeat & Fake Upgrade (Blue -> Gold -> RAINBOW!) (2.5s - 7.4s) =====
-        tl.to("#orb-wrap", { scale: 1.18, duration: 0.16, ease: "power2.out" }, 2.7);
-        tl.to("#orb-wrap", { scale: 0.96, duration: 0.26, ease: "power2.inOut" }, 2.86);
-        tl.fromTo("#shock-blue", { opacity: 0.85, scale: 0.85 }, { opacity: 0, scale: 2.5, duration: 0.65, ease: "power2.out", immediateRender: false }, 2.72);
+        // ===== PHASE 2: Causal Promotion Chain (Blue Omen -> Gold Strike -> Vacuum -> Rainbow Burst) =====
+        // --- BLUE OMEN (2.65s - 3.74s: subtle pulse + circle flicker + pull-in, no shockwave/shake) ---
+        tl.to("#orb-wrap", { scale: 1.14, duration: 0.16, ease: "power2.out" }, 2.68);
+        tl.to("#orb-wrap", { scale: 0.97, duration: 0.24, ease: "power2.inOut" }, 2.84);
+        tl.to("#mc-blue", { opacity: 0.55, duration: 0.10, ease: "power2.out" }, 2.68);
+        tl.to("#mc-blue", { opacity: 1.0, duration: 0.22, ease: "power2.inOut" }, 2.78);
 
-        tl.to("#orb-wrap", { scale: 1.22, duration: 0.15, ease: "power2.out" }, 3.35);
-        tl.to("#orb-wrap", { scale: 0.84, duration: 0.22, ease: "power2.in" }, 3.5);
+        tl.to("#orb-wrap", { scale: 1.16, duration: 0.15, ease: "power2.out" }, 3.35);
+        tl.to("#orb-wrap", { scale: 0.78, duration: 0.24, ease: "power2.in" }, 3.50);
 
-        // --- GOLD PROMOTION at 3.8s ---
-        tl.to("#orb-gold", { opacity: 1, duration: 0.18 }, 3.8);
-        tl.to("#aura-gold", { opacity: 0.95, scale: 1.12, duration: 0.4, ease: "power2.out" }, 3.8);
-        tl.to("#aura-blue", { opacity: 0, duration: 0.3 }, 3.8);
-        tl.to("#mc-gold", { opacity: 1, duration: 0.22 }, 3.8);
-        tl.to("#mc-blue", { opacity: 0, duration: 0.26 }, 3.8);
-        tl.to("#orb-wrap", { scale: 1.32, duration: 0.22, ease: "back.out(2.2)" }, 3.82);
-        tl.to("#orb-wrap", { scale: 1.06, duration: 0.3, ease: "power2.inOut" }, 4.04);
-        tl.fromTo("#shock-gold", { opacity: 0.95, scale: 0.85 }, { opacity: 0, scale: 3.1, duration: 0.72, ease: "power2.out", immediateRender: false }, 3.8);
-        tl.fromTo("#light-pillar", { opacity: 0, scaleX: 0.25 }, { opacity: 0.85, scaleX: 1.15, duration: 0.32, ease: "power2.out" }, 3.82);
-        tl.to("#light-pillar", { opacity: 0.35, scaleX: 0.75, duration: 0.7 }, 4.14);
+        // --- GOLD PROMOTION (3.78s - 4.45s: radial gold flare + damped zoom punch) ---
+        tl.to("#summon-camera", { scale: 1.048, rotation: -0.65, duration: 0.05, ease: "power2.out" }, 3.78);
+        tl.to("#summon-camera", { scale: 1.0, rotation: 0, duration: 0.30, ease: "expo.out" }, 3.83);
 
-        tl.to("#scene-summon-stage", { x: -10, y: 6, duration: 0.05 }, 3.82);
-        tl.to("#scene-summon-stage", { x: 10, y: -6, duration: 0.05 }, 3.87);
-        tl.to("#scene-summon-stage", { x: -6, y: 4, duration: 0.05 }, 3.92);
-        tl.to("#scene-summon-stage", { x: 0, y: 0, duration: 0.06 }, 3.97);
+        tl.fromTo("#flash-gold", { opacity: 0, scale: 0.42 }, { opacity: 1, scale: 1.05, duration: 0.05, ease: "power2.out", immediateRender: false }, 3.78);
+        tl.to("#flash-gold", { opacity: 0, scale: 1.32, duration: 0.24, ease: "expo.out" }, 3.83);
 
-        tl.to("#orb-wrap", { scale: 1.24, duration: 0.14 }, 4.5);
-        tl.to("#orb-wrap", { scale: 0.92, duration: 0.16 }, 4.64);
-        tl.to("#orb-cracks", { opacity: 0.85, scale: 1.0, duration: 0.18, ease: "power3.out" }, 4.88);
-        tl.to("#orb-wrap", { scale: 0.76, duration: 0.24, ease: "power3.in" }, 4.94);
+        tl.to("#orb-gold", { opacity: 1, duration: 0.16 }, 3.78);
+        tl.to("#aura-gold", { opacity: 0.95, scale: 1.12, duration: 0.38, ease: "power2.out" }, 3.78);
+        tl.to("#aura-blue", { opacity: 0, duration: 0.28 }, 3.78);
+        tl.to("#mc-gold", { opacity: 1, duration: 0.20 }, 3.78);
+        tl.to("#mc-blue", { opacity: 0, duration: 0.24 }, 3.78);
+        tl.to("#orb-wrap", { scale: 1.28, duration: 0.20, ease: "back.out(2.2)" }, 3.80);
+        tl.to("#orb-wrap", { scale: 1.05, duration: 0.28, ease: "power2.inOut" }, 4.00);
+        tl.fromTo("#shock-gold", { opacity: 0.72, scale: 0.82 }, { opacity: 0, scale: 3.1, duration: 0.52, ease: "expo.out", immediateRender: false }, 3.78);
+        tl.fromTo("#light-pillar", { opacity: 0, scaleX: 0.25 }, { opacity: 0.78, scaleX: 1.05, duration: 0.26, ease: "power2.out", immediateRender: false }, 3.80);
+        tl.to("#light-pillar", { opacity: 0.32, scaleX: 0.72, duration: 0.65 }, 4.06);
 
-        // --- RAINBOW SSR PROMOTION at 5.2s ---
-        tl.to("#orb-rainbow", { opacity: 1, duration: 0.12 }, 5.2);
-        tl.to("#orb-cracks", { opacity: 1, scale: 1.28, rotation: 18, duration: 0.35, ease: "power2.out" }, 5.2);
-        tl.to("#mc-rainbow", { opacity: 1, duration: 0.18 }, 5.2);
-        tl.to("#mc-gold", { opacity: 0, duration: 0.24 }, 5.2);
-        tl.to("#aura-rainbow", { opacity: 1, scale: 1.22, rotation: 140, duration: 1.65, ease: "power1.in" }, 5.2);
-        tl.to("#summon-godrays", { opacity: 0.92, rotation: 95, duration: 1.75, ease: "power1.in" }, 5.2);
-        tl.to("#light-pillar", { opacity: 0.95, scaleX: 1.8, duration: 0.35, ease: "power2.out" }, 5.2);
+        // --- CRITICAL OMEN (4.50s - 5.08s) & VACUUM PAUSE (5.10s - 5.18s) ---
+        tl.to("#orb-wrap", { scale: 1.22, duration: 0.14, ease: "power2.out" }, 4.50);
+        tl.to("#orb-wrap", { scale: 0.94, duration: 0.16, ease: "power2.inOut" }, 4.64);
+        tl.to("#orb-cracks", { opacity: 0.90, scale: 1.02, duration: 0.18, ease: "power3.out" }, 4.84);
+        tl.to("#orb-wrap", { scale: 0.62, duration: 0.22, ease: "power3.in" }, 4.90);
+        tl.to("#summon-camera", { scale: 0.975, duration: 0.22, ease: "power2.in" }, 4.90);
+
+        tl.to("#aura-gold", { opacity: 0.08, duration: 0.06, ease: "power2.out" }, 5.06);
+        tl.to("#mc-gold", { opacity: 0.14, duration: 0.06, ease: "power2.out" }, 5.06);
+        tl.to("#light-pillar", { opacity: 0.03, duration: 0.06, ease: "power2.out" }, 5.06);
+        tl.to("#summon-status", { opacity: 0, duration: 0.06, ease: "power2.out" }, 5.06);
+        tl.to("#vacuum-dimmer", { opacity: 0.92, duration: 0.06, ease: "power2.out" }, 5.06);
+        tl.to("#orb-gold", { opacity: 0.42, duration: 0.06, ease: "power2.out" }, 5.06);
+        tl.to("#orb-cracks", { opacity: 1, duration: 0.06, ease: "power2.out" }, 5.06);
+
+        // --- RAINBOW SSR PROMOTION BURST at 5.20s ---
+        tl.to("#vacuum-dimmer", { opacity: 0, duration: 0.04, ease: "power2.out" }, 5.20);
+        tl.fromTo("#flash-rainbow-core", { opacity: 0, scale: 0.38 }, { opacity: 1, scale: 1.12, duration: 0.04, ease: "power2.out", immediateRender: false }, 5.20);
+        tl.to("#flash-rainbow-core", { opacity: 0, scale: 1.45, duration: 0.26, ease: "expo.out" }, 5.24);
+        tl.fromTo("#flash-rainbow-streak", { opacity: 0, scaleX: 0.18, scaleY: 0.25 }, { opacity: 1, scaleX: 1.15, scaleY: 1.15, duration: 0.05, ease: "expo.out", immediateRender: false }, 5.20);
+        tl.to("#flash-rainbow-streak", { opacity: 0, scaleX: 1.35, scaleY: 0.15, duration: 0.28, ease: "expo.out" }, 5.25);
+
+        tl.to("#summon-camera", { scale: 1.075, rotation: 0.85, duration: 0.05, ease: "power2.out" }, 5.20);
+        tl.to("#summon-camera", { scale: 1.00, rotation: 0, duration: 0.34, ease: "expo.out" }, 5.25);
+
+        tl.to("#orb-gold", { opacity: 1, duration: 0.08 }, 5.20);
+        tl.to("#orb-rainbow", { opacity: 1, duration: 0.10 }, 5.20);
+        tl.to("#orb-cracks", { opacity: 1, scale: 1.32, rotation: 18, duration: 0.35, ease: "power2.out" }, 5.20);
+        tl.to("#mc-rainbow", { opacity: 1, duration: 0.18 }, 5.20);
+        tl.to("#mc-gold", { opacity: 0, duration: 0.24 }, 5.20);
+        tl.to("#aura-gold", { opacity: 0, duration: 0.18 }, 5.20);
+        tl.to("#aura-rainbow", { opacity: 1, scale: 1.22, rotation: 140, duration: 1.65, ease: "power1.in" }, 5.20);
+        tl.to("#summon-godrays", { opacity: 0.92, rotation: 95, duration: 1.75, ease: "power1.in" }, 5.20);
+        tl.to("#light-pillar", { opacity: 0.28, scaleX: 1.45, duration: 0.25, ease: "power2.out" }, 5.20);
+        tl.fromTo("#light-pillar-rainbow", { opacity: 0, scaleX: 0.6 }, { opacity: 0.92, scaleX: 1.55, duration: 0.28, ease: "power2.out", immediateRender: false }, 5.20);
         tl.to("#orb-wrap", { scale: 1.48, duration: 0.24, ease: "back.out(2.2)" }, 5.22);
-        tl.fromTo("#shock-rainbow", { opacity: 1, scale: 0.7 }, { opacity: 0, scale: 3.9, duration: 0.85, ease: "power2.out", immediateRender: false }, 5.2);
+        tl.fromTo("#shock-rainbow", { opacity: 1, scale: 0.7 }, { opacity: 0, scale: 3.9, duration: 0.65, ease: "expo.out", immediateRender: false }, 5.20);
 
-        tl.to("#summon-status", { opacity: 0, duration: 0.15 }, 5.2);
-
-        tl.to("#scene-summon-stage", { x: -16, y: 10, duration: 0.04 }, 5.22);
-        tl.to("#scene-summon-stage", { x: 16, y: -12, duration: 0.04 }, 5.26);
-        tl.to("#scene-summon-stage", { x: -12, y: 8, duration: 0.04 }, 5.3);
-        tl.to("#scene-summon-stage", { x: 8, y: -6, duration: 0.04 }, 5.34);
-        tl.to("#scene-summon-stage", { x: 0, y: 0, duration: 0.06 }, 5.38);
-
-        tl.fromTo(
-          "#cutin-band",
-          { opacity: 0, x: -320, scaleY: 0.15 },
-          { opacity: 1, x: 0, scaleY: 1, duration: 0.24, ease: "power4.out" },
-          5.38
-        );
+        tl.fromTo("#cutin-band", { opacity: 0, x: -320, scaleY: 0.15 }, { opacity: 1, x: 0, scaleY: 1, duration: 0.24, ease: "power4.out" }, 5.38);
         tl.to("#cutin-band", { x: 24, duration: 0.82, ease: "none" }, 5.62);
         tl.to("#cutin-band", { opacity: 0, x: 340, scaleY: 0.2, duration: 0.22, ease: "power3.in" }, 6.45);
 
-        tl.to("#orb-wrap", { scale: 2.8, duration: 0.42, ease: "power3.in" }, 6.48);
-        tl.to("#scene-summon-stage", { opacity: 0, duration: 0.05 }, 7.05);
+        tl.to("#orb-wrap", { scale: 2.9, duration: 0.48, ease: "power3.in" }, 6.48);
+        tl.to("#scene-summon-stage", { opacity: 0, duration: 0.04 }, 7.02);
 
         function addChromaShock(targetSel, startAt, peakPx) {
           if (!peakPx || peakPx <= 0) return;
@@ -634,8 +780,8 @@
           tl.set(targetSel, { filter: "none" }, startAt + 0.21);
         }
 
-        addChromaShock("#scene-summon-stage", 3.81, chromaShockPx * 0.78);
-        addChromaShock("#scene-summon-stage", 5.21, chromaShockPx * 1.15);
+        addChromaShock("#scene-summon-stage", 3.79, chromaShockPx * 0.72);
+        addChromaShock("#scene-summon-stage", 5.20, chromaShockPx * 1.15);
 
         tl.set("#summon-root", {}, 7.4);
 

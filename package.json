@@ -11,6 +11,7 @@
     "dev": "npx --yes hyperframes@0.9.72 preview",
     "check": "npx --yes hyperframes@0.9.72 check",
     "render": "npx --yes hyperframes@0.9.72 render -q delivery --crf 12 -o renders/ssr_gacha.mp4",
+    "qa": "python scripts/qa_video.py",
     "publish": "npx --yes hyperframes@0.9.72 publish"
   }
 }

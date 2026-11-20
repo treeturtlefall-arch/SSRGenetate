@@ -43,11 +43,12 @@
 
 | Phase | テーマ | 狙い | 主な対象ファイル | 優先度 |
 | :--- | :--- | :--- | :--- | :---: |
-| **Phase 0** | 確定バグ修正 ＆ 光・色基盤の正常化 | 3D破綻・顔被り・濁った光の解消と色・階調の統一 | `index.html`, `compositions/scene-result.*`, `compositions/scene-summon.html`, `scripts/_utils.py`, `package.json` | ★★★ 最優先 |
-| **Phase 1** | リザルト画面の「脱Web UI化」＆ 光の微動呼吸 | バッジ・SVG・粒子・ホロ反射を最新3Dソシャゲ級へ刷新 | `compositions/scene-result.*`, `compositions/scene-result-setup.js`, `scripts/render_typography.py`, `scripts/render_material.py`, `AGENTS.md` | ★★★ 高 |
-| **Phase 2** | 召喚〜昇格の「3D空間光学化」＆ 緩急再設計 | 3D床魔法陣・クリスタルオーブ・引き算の溜め・着地同期 | `scripts/render_optics.py`, `scripts/render_typography.py`, `compositions/scene-summon.html`, `compositions/scene-result.html`, `index.html` | ★★☆ 高 |
-| **Phase 3** | サウンドの「現代ソシャゲ音像化」＆ 空間残響 | 脱シンセブラス・コンボリューション残響・余韻・音圧整合 | `scripts/generate_se.py`, `.gitignore` | ★★☆ 中〜高 |
-| **Phase 4** | 運用性・量産性の強化 | 任意テキスト変更時の箔タイポ同期とレイアウト自動適応 | `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js` | ★☆☆ 仕上げ |
+| **Phase 0** | 確定バグ修正 ＆ 光・色基盤の正常化 | 3D破綻・顔被り・濁った光の解消と色・階調の統一 | `index.html`, `compositions/scene-result.*`, `compositions/scene-summon.html`, `scripts/_utils.py`, `package.json` | ★★★ 完了 |
+| **Phase 1** | リザルト画面の「脱Web UI化」＆ 光の微動呼吸 | バッジ・SVG・粒子・ホロ反射を最新3Dソシャゲ級へ刷新 | `compositions/scene-result.*`, `compositions/scene-result-setup.js`, `scripts/render_typography.py`, `scripts/render_material.py`, `AGENTS.md` | ★★★ 完了 |
+| **Phase 2A** | 取りこぼし修正・タイムライン骨格確定・定量QA | スペキュラはみ出し/曇り膜/光柱修正・昇格語彙差別化・真空の間・着地同期・`qa_video.py` | `index.html`, `compositions/scene-summon.html`, `compositions/scene-result.*`, `scripts/generate_se.py`, `scripts/qa_video.py`, `package.json` | ★★★ 完了 |
+| **Phase 2B** | 召喚〜昇格の「脱CSS ＆ 3D空間光学アセット化」 | カットイン脱ベタ帯・冒頭点火・3D床魔法陣・クリスタルオーブ・不規則ゴッドレイ（前後半） | `scripts/render_optics.py`, `scripts/render_typography.py`, `compositions/scene-summon.html`, `compositions/scene-result.*` | ★★☆ 高 |
+| **Phase 3** | 音響の「現代ソシャゲ音像化」＆ 後半マイクロポリッシュ4点 | 脱ブラス・`fftconvolve`残響・14.8s余韻・-14 LUFS適正化 ＋ 縦版9:16の最後の一手仕上げ | `scripts/generate_se.py`, `.gitignore`, `compositions/scene-result.*`, `compositions/scene-result-setup.js`, `scripts/render_material.py` | ★★☆ 中〜高 |
+| **Phase 4** | 運用性・量産性強化 ＆ 5軸/複数素材検証 | 任意テキスト箔同期・オートレイアウト ＋ 5品質評価軸・不要要素削減・多様な素材検証 | `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js` | ★☆☆ 仕上げ |
 | **Phase 5** | 横動画（16:9）× 横型カード対応 | 風景・周辺情報込みの横写真向け 1920×1080 ワイド演出モード追加 | `card-config.js`, `index.html`, `compositions/*`, `scripts/_utils.py`, `scripts/render_material.py`, `scripts/render_typography.py`, `package.json` | ★☆☆ 拡張 |
 
 ---
@@ -114,48 +115,67 @@
 
 ---
 
-## 6. Phase 2：召喚〜昇格フェーズの「3D空間光学化」＆ 演出の引き算・緩急再設計
+## 6. Phase 2A：取りこぼしバグ修正 ＆ 15秒タイムライン骨格確定 ＆ 定量QA（Step 1）
 
-前半 7 秒（`0.0s〜7.4s`）および遷移タイミングを「Web デモ」から「最新 3D ソシャゲ演出」へ刷新するフェーズです。
+物理アセット増産に入る前に、Phase 0/1 で残った映像破綻の取りこぼしを塞ぎ、15 秒の因果・緩急・着地同期の骨格と自動定量 QA 基盤を確定させる最優先フェーズです。
 
-- [ ] **2-1. 3D床パース魔法陣 ＆ 空間カメラワーク**
-  - **対象**: `scripts/render_optics.py` (`build_magic_circle_masks`), `compositions/scene-summon.html` (`#magic-circle-wrap`)
-  - **対策**: 魔法陣マスクにルーン帯・目盛り・太細二重線・頂点ノードを追加して情報階層を強化する。`#magic-circle-wrap` に `perspective` + `rotateX` による 3D 床パースを導入し、青→金→虹の昇格に合わせてカメラが奥から寄る・煽る立体カメラワークを与える。
-- [ ] **2-2. 多面体クリスタルオーブ ＆ 有機的分岐亀裂の物理アセット化**
-  - **対象**: `scripts/render_optics.py` (`build_orb_cracks_mask`, 新規オーブ生成関数), `compositions/scene-summon.html` (`#orb-blue`, `#orb-gold`, `#orb-rainbow`, `#orb-cracks`)
-  - **課題**: 単層 CSS 球や円グラフ状の `conic-gradient` 虹オーブが周囲の物理魔法陣から浮いている。亀裂も直線的。
-  - **対策**: `render_optics.py` で「中心の白飛びエネルギー核＋逆回転する内部クリスタル多面体ファセット／プラズマ渦＋外縁フレネル光輪」の多層透過 PNG を生成して差し替える。亀裂は分岐・テーパー付きへ改修し、隙間から虹色の光が漏れる表現を強める。
-- [ ] **2-3. ゴッドレイ・光柱・衝撃波の物理アセット化**
-  - **対象**: `scripts/render_optics.py`, `compositions/scene-summon.html`, `compositions/scene-result.html`
-  - **課題**: `repeating-conic-gradient` による均等プロペラ放射線、均一な縦帯の `#light-pillar`、太い単色ボーダーの `.shockwave` / `#landing-shockwave` がデジタル感を生んでいる。
-  - **対策**: ゴッドレイは太細不規則な光束 PNG を 2 枚生成して異速・逆回転で重ねる。`#light-pillar` は上下減衰＋細白芯＋縦ノイズオーラの 2 層光学アセットへ、衝撃波は中心から外へ滲む光学リング＋微細光粒の飛散へ置換する。
-- [ ] **2-4. カットイン帯の脱ベタ帯 ＆ 冒頭フック・業務UI整理**
-  - **対象**: `compositions/scene-summon.html` (`#cutin-band`, `#summon-status`), `scripts/render_typography.py` (`cutinSub`, `cutinMain`)
-  - **課題**: `#cutin-band` の上下 6px 黄色線＋ベタ塗りネオン帯が最も HTML/CSS 感を出し、文字も帯に対して小さい。また 0.0s から魔法陣が既に出ており、光柱に被る「召喚中...」が業務 UI 風。
-  - **対策**: `#cutin-band` の上下ボーダーとベタ塗りを廃止し、画面一瞬引き締め＋鋭い水平アナモルフィック・レンズフレア＋スピードライン＋箔ノイズ上を大判の箔タイポが抜ける構成へ刷新する（過剰な `★` 等の記号を整理）。0.0s には暗闇からの光点点火・魔法陣描画フックを追加し、`#summon-status` は廃止または上下端の極小シネマティック英字装飾へ移す。
-- [ ] **2-5. 演出の引き算（因果チェーン）＆ 昇格語彙の差別化**
-  - **対象**: `compositions/scene-summon.html`, `index.html`
-  - **課題**: 青→金→虹で毎回同じレシピ（衝撃波＋x/y シェイク）が繰り返され、5.2s では 9 要素が同時主張している。
-  - **対策**: 昇格ごとに演出語彙を変え（例：ズームパンチ、放射ブラー、水平光閃）、**「予兆（収縮・亀裂） → 爆発解放 → 余韻」の因果チェーン**でタイミングをずらす。特に虹昇格直前（約 `5.0s〜5.2s`）に「オーブ急収縮＋周囲オーラ・魔法陣の 2〜4 フレーム暗転」という**真空の間**を挟み、爆発のコントラストを最大化する。
-- [ ] **2-6. 3D回転着地のイージング完全同期**
-  - **対象**: `compositions/scene-result.html` (`#ssr-card` 回転・着地タイムライン)
-  - **課題**: `7.18s〜9.33s` の `power3.out` が終盤 0.7 秒間ほぼ正面でダラダラ減速し、着地ショック（`9.32s`）と噛み合っていない。
-  - **対策**: 高速回転から `expo.out` / 鋭い `back.out` でビタ止めする瞬間と、着地ショック・背面衝撃波・色収差・`#ssr-emblem` 打刻のフレームを完全一致させる。
+- [x] **2A-1. 回転スペキュラはみ出し修正 ＆ 露出役割分離・光柱先行修正**
+  - **対象**: `compositions/scene-result.css`, `compositions/scene-result.html`, `index.html`, `compositions/scene-summon.html`
+  - **課題**: `.card-front` にクリップがないため `8.3s〜8.9s` で `#spin-spec-front` がカード外下辺へはみ出している。また `#flash-layer` が `screen`＋全面白で `3.8s` 金フラッシュがグレー曇り膜になり、`7.1s` 白飛びも抜けが遅く霧状に残る。`#light-pillar` も上下減衰のない灰色縦帯に見えている。
+  - **対策**: `preserve-3d` を壊さない内側クリップラッパー `#spin-spec-front-clip` を追加してスペキュラをカード形状へ厳密クリップする。`#flash-layer` は `7.0s` 専用の通常合成純白ホワイトアウト（急峻 `expo.in` → 3F保持 → `expo.out` 抜け）へ専念させ、`3.8s` は放射金閃光 (`#flash-gold`)、`5.2s` は中心バースト＋水平アナモルフィック閃光 (`#flash-rainbow-core` / `#flash-rainbow-streak`) へ分離する。`#light-pillar` は上下フェードマスク＋細白芯＋着色グロー（金→虹遷移）へ先行改修する。
+- [x] **2A-2. 演出の因果チェーン ＆ 昇格語彙の差別化（5.10〜5.18s 真空の間）**
+  - **対象**: `compositions/scene-summon.html`
+  - **課題**: 青・金・虹が毎回同じレシピ（脈動＋ボーダー衝撃波＋減衰なし矩形 x/y シェイク）を反復し、`5.2s` 直前も周囲が明るいまま爆発するためコントラストが弱い。
+  - **対策**: `#summon-camera` を導入し、矩形 x/y シェイクを廃止。青＝予兆脈動＋明滅＋吸い込み収縮（大衝撃波・シェイクなし）、金＝放射閃光＋減衰ズームパンチ、虹直前 `5.10s〜5.18s`＝**真空の間**（`#vacuum-dimmer` と周囲オーラ/魔法陣の減光で闇へ落とし、オーブ収縮と亀裂白芯だけ残す）、`5.20s`＝水平光閃＋強減衰ズームパンチで圧倒的解放へ差別化する。
+- [x] **2A-3. 3Dカード回転→着地の完全同期 ＆ SE仮同期**
+  - **対象**: `compositions/scene-result.html`, `compositions/scene-result-setup.js`, `scripts/generate_se.py`
+  - **課題**: `7.18s〜9.33s` の `power3.out` が終盤 `0.8s` 近くほぼ正面で停滞ダレを起こし、`9.32s` 着地ショックや回転スウッシュ音と噛み合っていない。
+  - **対策**: 飛び出し高速回転→裏面タメ (`-195°`, `7.92s`)→加速反転→`8.68s` 正面ビタ止め（`back.out(2.6)`）の 3 段階カーブへ刷新し、着地フレームと背面衝撃波・減衰ズームパンチ・色収差・`#ssr-emblem` 打刻・パーティクル発生・仮同期 SE を 1 フレーム単位で同期させる（`12.0s` 以降はレイアウト完全固定を維持）。
+- [x] **2A-4. 自動定量QAスクリプト `scripts/qa_video.py` 導入**
+  - **対象**: `scripts/qa_video.py`, `package.json`
+  - **対策**: `ffmpeg` + `numpy` でグレー曇り膜フレーム数・真空の間輝度比・着地直前ダレ秒数・終盤レイアウト固定＆微動・音声 LUFS/末尾 RMS を自動計測し、Exit Code で判定する `npm run qa` を整備する。
 
-### Phase 2 完了基準（DoD）
-- `0.0s〜7.0s` に素 CSS パーツ（単層球・等間隔放射線・ボーダーリング・上下枠線ベタ帯）が残っていないこと。
-- 3D 床パース魔法陣とクリスタルオーブにより空間の奥行きが感じられること。
-- `5.15s` 前後の溜め→ `5.20s` の虹爆発、および `9.3s` 付近の回転停止→着地インパクトが 1 フレームの違和感なく同期していること。
+### Phase 2A 定量完了基準（DoD）
+- グレー曇り膜フレーム（`mean > 150` かつ `p95 - p5 < 70` かつ `mean < 245`）が全編で **2 フレーム以下**。
+- 真空の間（`5.10s〜5.18s`）の最小平均輝度が、`4.75s〜4.85s` 基準平均輝度の **50% 未満**。
+- 着地直前 `0.35s` 窓（`8.33s〜8.68s`）内の低動き（`diff < 2.5`）連続ダレが **0.20s 以下** かつ着地フレーム（`8.68s`）と衝撃波・色収差・SSR打刻が同期していること。
+- `8.58s` 付近で `#spin-spec-front` がカード外へはみ出さず、`7.85s〜8.05s` で裏面エンブレムが鮮明に視認できること。
 
 ---
 
-## 7. Phase 3：サウンドの「現代ソシャゲ音像化」＆ 空間残響
+## 6B. Phase 2B：召喚〜昇格フェーズの「脱CSS ＆ 3D空間光学アセット化」（Step 2）
 
-映像の高級感と釣り合う音圧・空間・余韻へ `scripts/generate_se.py` を再構築します。
+確定した 15 秒骨格に対して、前半 7 秒（`0.0s〜7.0s`）の見た目の「Web デモ感」を最新 3D ソシャゲ水準へ一気に引き上げます（レバレッジの高い順に着手）。
+
+- [ ] **2B-1. カットインの脱ベタ帯 ＆ 0.0s冒頭点火フック・業務UI整理**
+  - **対象**: `compositions/scene-summon.html` (`#cutin-band`, `#summon-status`), `scripts/render_typography.py` (`cutinSub`, `cutinMain`)
+  - **課題**: `#cutin-band` の上下 6px 黄色線＋ベタ塗りネオン帯が最も HTML/CSS 感を出し、文字も帯に対して小さい。また 0.0s から魔法陣が既に出ており、「召喚中...」が業務 UI 風。
+  - **対策**: `#cutin-band` の上下ボーダーとベタ塗りを廃止し、画面一瞬引き締め＋鋭い水平アナモルフィック・レンズフレア＋スピードライン＋箔ノイズ上を大判の箔タイポが抜ける構成へ刷新する（過剰な `★` 等の記号を整理）。0.0s には暗闇からの光点点火・魔法陣描画フックを追加し、`#summon-status` は廃止または上下端の極小シネマティック英字装飾へ移す。
+- [ ] **2B-2. 3D床パース魔法陣 ＆ 空間カメラワーク**
+  - **対象**: `scripts/render_optics.py` (`build_magic_circle_masks`), `compositions/scene-summon.html` (`#magic-circle-wrap`)
+  - **対策**: 魔法陣マスクにルーン帯・目盛り・太細二重線・頂点ノードを追加して情報階層を強化する。`#magic-circle-wrap` に `perspective` + `rotateX` による 3D 床パースを導入し、青→金→虹の昇格に合わせてカメラが奥から寄る・煽る立体カメラワークを与える。
+- [ ] **2B-3. 多面体クリスタルオーブ ＆ 有機的分岐亀裂の物理アセット化**
+  - **対象**: `scripts/render_optics.py` (`build_orb_cracks_mask`, 新規オーブ生成関数), `compositions/scene-summon.html` (`#orb-blue`, `#orb-gold`, `#orb-rainbow`, `#orb-cracks`)
+  - **課題**: 単層 CSS 球や円グラフ状の `conic-gradient` 虹オーブが周囲の物理魔法陣から浮いている。亀裂も直線的。
+  - **対策**: `render_optics.py` で「中心の白飛びエネルギー核＋逆回転する内部クリスタル多面体ファセット／プラズマ渦＋外縁フレネル光輪」の多層透過 PNG を生成して差し替える。亀裂は分岐・テーパー付きへ改修し、隙間から虹色の光が漏れる表現を強める。
+- [ ] **2B-4. ゴッドレイ（前後半両方）・縦ストリーク光柱・光学衝撃波の物理アセット化**
+  - **対象**: `scripts/render_optics.py`, `compositions/scene-summon.html`, `compositions/scene-result.html`, `compositions/scene-result.css`
+  - **課題**: `repeating-conic-gradient` による均等プロペラ放射線（前半 `#summon-godrays` と後半 `#result-rays` の両方）、CSS グラデの光柱 `#light-pillar`、太い単色ボーダーの `.shockwave` / `#landing-shockwave` がデジタル感を生んでいる。
+  - **対策**: `idea.md` の `rave_lasers.hlsl` 式から太細不規則なゴッドレイ PNG を 2 枚生成し、**前半 `#summon-godrays` と後半 `#result-rays` の両方**を異速・逆回転の物理放射光へ差し替える。`#light-pillar` は `aurora_claude.hlsl` 式の縦ストリーク 2 層光学アセットへ、衝撃波は中心から外へ滲む光学リング＋微細光粒の飛散へ置換する。
+
+### Phase 2B 完了基準（DoD）
+- `0.0s〜7.0s` に素 CSS パーツ（単層球・等間隔放射線・ボーダーリング・上下枠線ベタ帯）が残っていないこと、および後半 `#result-rays` からも等間隔プロペラ放射線が消えていること。
+- 3D 床パース魔法陣とクリスタルオーブにより空間の奥行きが感じられること。
+
+---
+
+## 7. Phase 3：サウンドの「現代ソシャゲ音像化」＆ 後半マイクロポリッシュ4点
+
+映像側の秒数が完全に固まった段階で、音響を製品級へ刷新し、あわせて縦版（9:16）後半リザルトの最後の微調整 4 点を仕上げます。
 
 - [ ] **3-1. ファンファーレ音色の刷新（現代ソシャゲ音像・完全プロシージャル）**
   - **対象**: `scripts/generate_se.py` (`synth_brass_note`, `build_se_fanfare`, `build_se_upgrade`)
-  - **課題**: 上位 10 倍音鋸波＋固定カットオフのローパス＋平坦 ADSR による 90 年代シンセブラス感が目立っている。
+  - **課題**: 上位 10 倍音鋸波＋固定カットオフのローパス＋平坦 ADSR による 90 年代シンセブラス感・着メロ感が目立っている。
   - **対策**: Python（`numpy` / `scipy`）のみで、**重厚なサブベース＆ティンパニ打撃 ＋ 金属クラッシュシンバル残響（高域バンドパスノイズ） ＋ 広がりのあるシマーパッド＆高精細クリスタル／ハープアルペジオ**を中心とする現代ソシャゲ音像へ再構築する（ブラス要素を残す場合もアタック時フィルタ開閉エンベロープと微細ピッチ表現に留め、主役を交代させる）。
 - [ ] **3-2. コンボリューションリバーブ化**
   - **対象**: `scripts/generate_se.py` (`simple_stereo_reverb`)
@@ -163,19 +183,27 @@
   - **対策**: `scipy.signal.fftconvolve` を用い、指数減衰するステレオノイズ IR（インパルス応答）を畳み込む簡易コンボリューションリバーブへ置き換え、高密度なホール残響を実現する。
 - [ ] **3-3. 無音ブレーク同期・末尾余韻・ラウドネス適正化**
   - **対象**: `scripts/generate_se.py` (`build_se_upgrade`, `build_se_fanfare`, `save_wav`)
-  - **課題**: `12.5s` で残響が急に途切れて `13.0s` 以降がデジタル無音になっており、統合ラウドネスも `-12.4 LUFS` 付近とやや大きめ。
-  - **対策**: Phase 2 の虹昇格直前の真空の間（暗転）に合わせて SE の無音ブレークを同期させる。終盤は `12.0s〜15.0s` の光微動に寄り添う静かなシマー／ルームトーン余韻を `14.8s` まで滑らかにフェードさせ、統合ラウドネスを SNS 基準（`-14 LUFS` 目安）へ適正化する。
+  - **課題**: 最後の和音が `12.6s` 付近で終了して終盤がデジタル無音になりやすく、統合ラウドネスも `-12.4 LUFS` 付近とやや大きめ。
+  - **対策**: `5.10s〜5.18s` の真空の間（暗転）に合わせて SE の無音ブレークを同期させる。終盤は `12.0s〜15.0s` の光微動に寄り添う静かなシマー／ルームトーン余韻を `14.8s` まで滑らかにフェードさせ、統合ラウドネスを SNS 基準（`-14 LUFS ±1.5 LU`）へ適正化する。
 - [ ] **3-4. （任意拡張）ユーザー所蔵SEライブラリ併用オプションの検討**
   - **対象**: `scripts/generate_se.py`, `.gitignore`
   - **対策**: 個人環境向けに、衝撃音・ガラス破砕・クラッシュシンバル等のユーザー所蔵ワンショット WAV をローカル専用フォルダ（例: `assets/se_custom/`、`.gitignore` 対象）に配置した場合のみ読み込んでミックスし、未配置時は 100% プロシージャル合成へ自動フォールバックする拡張設計を検討する（OSS 配布時の著作権・ライセンス混入防止）。
+- [ ] **3-5. 後半（リザルト）マイクロポリッシュ 4 点（縦版 9:16 完成）**
+  - **対象**: `compositions/scene-result.html`, `compositions/scene-result.css`, `compositions/scene-result-setup.js`, `scripts/render_material.py`
+  - **対策**:
+    1. 左上 `#ssr-emblem`・右上 `#attr-badge` とフレーム四隅の L 字フィリグリーの微干渉を解消する（上 2 隅のフィリグリー位置調整または下 2 隅中心の装飾整理）。
+    2. タイトル等テキスト出現（`9.38s〜10.5s`）の Web 的フェードイン（`opacity + y` 浮上）を、左→右への光の走査ワイプ（`clip-path`＋閃光ライン）または一瞬のスケール打刻へ刷新する。
+    3. カード左右余白（各 90px）に対する特大スパークルの押し込み感を解消するため、コーナー頂点アンカー化またはカード幅の微調整を行う。
+    4. `12.0s〜15.0s` のレイアウト完全固定を保ったまま、`13.2s` 付近でカード外枠リム上を細い高輝度グレアが 1 回ハッキリ滑る演出を追加し、終盤 3 秒の「生きているホログラム」感を明確化する。
 
-### Phase 3 完了基準（DoD）
+### Phase 3 定量完了基準（DoD）
+- `npm run qa -- --check-audio` にて統合ラウドネスが **`-14.0 LUFS (±1.5 LU)`** に収まり、`14.5s` までデジタル無音にならない滑らかな余韻が残ること。
 - `9.3s〜14.8s` に 90 年代シンセ臭・ディレイのパタパタ感・唐突な無音途切れがないこと。
-- 虹昇格直前の暗転と着地インパクトに音のアタック・無音ブレークが完全同期し、外部音源なしでも完結して再生できること。
+- 後半リザルトの四隅装飾干渉・テキスト出現の Web 感・終盤の静止画見えが解消されていること。
 
 ---
 
-## 8. Phase 4：運用性・量産性の強化（仕上げ）
+## 8. Phase 4：運用性・量産性の強化 ＆ 品質評価・複数素材検証（仕上げ）
 
 任意の写真・テキストを流し込んで運用する際の品質一貫性を仕上げます。
 
@@ -183,9 +211,14 @@
   - **対象**: `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js`
   - **課題**: `compositions/scene-result-setup.js` の `bindTypoSlot` は `typo-manifest.js` 内の文字列と完全一致する場合のみ箔 PNG を使い、`--variables` 等でテキストを変更すると素の HTML テキストへフォールバックしてしまう。
   - **対策**: テキスト変更時に `render_typography.py` を自動連動させて物理箔 PNG を再生成するワンコマンド実行導線（またはレンダリング前フック）を整備する。あわせて長文タイトル・フレーバーや多行折り返し時の文字サイズ・配置自動調整を強化する。
+- [ ] **4-2. 5品質評価軸 ＆ 複数入力素材による汎用性検証**
+  - **対象**: 検証チェックリスト、多様な入力画像（顔写真・人物以外の物体写真・風景・イラスト）
+  - **対策**: 以下の 5 品質評価軸で「足し算だけでなく不要要素を削るレビュー」を実施し、どの種類の画像を入れても品質と視認性が破綻しないことを確認する：
+    - `Material`（素材ごとの質感一貫性） / `Lighting`（光源と反射・影の整合） / `Depth`（奥行き・カメラ移動） / `Timing`（予兆・溜め・解放・余韻） / `Hierarchy`（主役と脇役の優先順位）
 
 ### Phase 4 完了基準（DoD）
 - `card-config.js` または CLI 変数でタイトル・属性・フレーバーを差し替えても、素 HTML フォールバックにならず物理箔タイポのままレイアウト崩れなく MP4 生成できること。
+- 人物・物体・風景・イラストの複数素材で 5 評価軸の破綻がないこと。
 
 ---
 
@@ -211,7 +244,7 @@
 
 ## 10. 各フェーズ共通の検証ワークフロー
 
-各 Phase 完了時は必ず以下の手順でビルド・静的チェック・フレーム目視・動画書き出しを行います。
+各 Phase 完了時は必ず以下の手順でビルド・静的チェック・フレーム目視・動画書き出し・定量 QA を行います。
 
 ```bash
 # 1. 物理アセット・SE の再生成
@@ -221,11 +254,14 @@ npm run build:assets
 npm run check
 
 # 3. 重点時刻のフレーム抽出＆目視確認
-#    (0.2s 導入 / 2.0s 青オーブ / 3.82s 金昇格 / 5.12s 暗転溜め / 5.25s 虹爆発 /
-#     5.6s カットイン / 7.1s 白飛び / 7.85s 裏面視認 / 8.6s 回転中反射 /
-#     9.35s 着地 / 11.0s ホロスイープ / 13.5s 終盤微動)
-npx hyperframes snapshot --at 0.2,2.0,3.82,5.12,5.25,5.6,7.1,7.85,8.6,9.35,11.0,13.5
+#    (0.2s 導入 / 2.75s 青脈動 / 3.82s 金昇格 / 4.85s 亀裂予兆 / 5.14s 真空の間 /
+#     5.24s 虹爆発 / 5.6s カットイン / 6.98s 純白保持 / 7.15s 白飛び抜け /
+#     7.98s 裏面タメ / 8.58s 回転中スペキュラ / 8.70s 着地インパクト / 10.5s テキスト / 13.5s 終盤微動)
+npx hyperframes snapshot --at 0.2,2.75,3.82,4.85,5.14,5.24,5.6,6.98,7.15,7.98,8.58,8.70,10.5,13.5
 
 # 4. MP4 本レンダリング（renders/ssr_gacha.mp4）
 npm run render
+
+# 5. 定量QAチェック（全映像基準 PASS を確認。Phase 3以降は --check-audio を付与）
+npm run qa
 ```

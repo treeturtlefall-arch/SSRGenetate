@@ -70,13 +70,7 @@
 
       #flash-layer {
         z-index: 60;
-        mix-blend-mode: screen;
-        background: radial-gradient(
-          circle at 50% 50% var(--in-oklab),
-          #ffffff 0%,
-          #fdfeff 58%,
-          #f2f6ff 100%
-        );
+        background: #ffffff;
         opacity: 0;
       }
     </style>
@@ -145,9 +139,9 @@
       ></div>
 
       <!-- =====================================================
-           Whiteout Flash Transition Layer (3.7s - 8.2s)
+           Whiteout Flash Transition Layer (6.6s - 7.7s)
            ===================================================== -->
-      <div id="flash-layer" class="clip" data-start="3.7" data-duration="4.5" data-track-index="2"></div>
+      <div id="flash-layer" class="clip" data-start="6.6" data-duration="1.1" data-track-index="2"></div>
     </div>
 
     <script>
@@ -169,17 +163,15 @@
 
         const tl = gsap.timeline({ paused: true });
 
-        // Gold promotion flash (3.78s)
-        tl.fromTo("#flash-layer", { opacity: 0 }, { opacity: 0.68, duration: 0.08, ease: "power2.out" }, 3.78);
-        tl.to("#flash-layer", { opacity: 0, duration: 0.34, ease: "power2.in" }, 3.86);
-
-        // Rainbow SSR promotion flash (5.18s)
-        tl.fromTo("#flash-layer", { opacity: 0 }, { opacity: 0.88, duration: 0.08, immediateRender: false }, 5.18);
-        tl.to("#flash-layer", { opacity: 0, duration: 0.35, ease: "power2.out" }, 5.26);
-
-        // Critical whiteout transition (6.72s -> 7.72s, hold pure white 3 frames)
-        tl.fromTo("#flash-layer", { opacity: 0 }, { opacity: 1, duration: 0.28, ease: "power2.in", immediateRender: false }, 6.72);
-        tl.to("#flash-layer", { opacity: 0, duration: 0.62, ease: "power3.out" }, 7.10);
+        tl.set("#flash-layer", { opacity: 0 }, 6.6);
+        // Critical whiteout transition: sharp expo.in -> 3-frame pure white hold (6.98-7.08s) -> sharp expo.out reveal
+        tl.fromTo(
+          "#flash-layer",
+          { opacity: 0 },
+          { opacity: 1, duration: 0.24, ease: "expo.in", immediateRender: false },
+          6.74
+        );
+        tl.to("#flash-layer", { opacity: 0, duration: 0.22, ease: "expo.out" }, 7.08);
 
         // Anchor 15.0s total duration
         tl.set("#root", {}, 15.0);

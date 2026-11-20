@@ -232,9 +232,18 @@
         z-index: 10;
       }
 
+      #spin-spec-front-clip {
+        position: absolute;
+        inset: 0;
+        border-radius: var(--card-outer-r);
+        overflow: hidden;
+        overflow: clip;
+        pointer-events: none;
+        z-index: 44;
+      }
+
       /* 表面の回転スペキュラも被写体（顔）直撃を避けて周辺と枠を強く照らす */
       #spin-spec-front {
-        z-index: 44;
         -webkit-mask-image: radial-gradient(
           ellipse 46% 38% at 50% 42%,
           rgba(0, 0, 0, 0.04) 0%,

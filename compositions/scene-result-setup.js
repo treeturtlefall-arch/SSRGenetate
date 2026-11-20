@@ -209,7 +209,7 @@
       rot: (rng() - 0.5) * 44,
       finalScale: 0.90 + rng() * 0.20,
       baseAlpha: baseAlpha,
-      startAt: at(9.28 + (i % 7) * 0.09),
+      startAt: at(8.68 + (i % 7) * 0.09),
     });
   }
 
@@ -250,7 +250,7 @@
       rotX: (rng() > 0.5 ? 1 : -1) * (320 + rng() * 280),
       rotY: (rng() > 0.5 ? 1 : -1) * (360 + rng() * 320),
       rotZ: (rng() - 0.5) * 220,
-      startAt: at(9.30 + (i % 6) * 0.045),
+      startAt: at(8.70 + (i % 6) * 0.045),
     });
   }
 
@@ -303,7 +303,7 @@
       endY: endY,
       peakAlpha: isNear ? 0.34 : 0.52,
       holdAlpha: isNear ? 0.22 : 0.38,
-      startAt: at(9.26 + (i % 5) * 0.08),
+      startAt: at(8.66 + (i % 5) * 0.08),
     });
   }
 

@@ -248,23 +248,23 @@ def build_se_upgrade(rng: np.random.Generator) -> np.ndarray:
     dur = 4.8
     buf = make_buffer(dur)
 
-    # --- 青フェイク：鼓動2回 (映像 2.7s, 3.4s -> クリップ 0.2s, 0.9s) ---
-    for beat_t in [0.20, 0.90]:
+    # --- 青フェイク：鼓動2回 (映像 2.68s, 3.40s -> クリップ 0.18s, 0.90s) ---
+    for beat_t in [0.18, 0.90]:
         hb = synth_heartbeat(0.55)
         add_mono_panned(buf, hb, beat_t, gain=0.58, pan=0.0)
 
-    # --- 金昇格 (映像 3.8s -> クリップ 1.3s) ---
+    # --- 金昇格 (映像 3.78s -> クリップ 1.28s) ---
     # 鋭い金属チャイム＋和音
     for i, f in enumerate([587.33, 880.0, 1174.66, 1760.0]):  # D major 輝き
         b = synth_fm_bell(f, 1.3, mod_ratio=2.5, mod_index=3.0)
-        add_mono_panned(buf, b, 1.30 + i * 0.035, gain=0.26, pan=-0.35 + i * 0.23)
+        add_mono_panned(buf, b, 1.28 + i * 0.035, gain=0.26, pan=-0.35 + i * 0.23)
     # 金昇格スウッシュ
     gl, gr = synth_noise_sweep(0.8, 400.0, 5200.0, rng, curve=1.6)
     genv = adsr(len(gl), 0.05, 0.2, 0.6, 0.35)
-    add_stereo(buf, gl * genv, gr * genv, 1.25, gain=0.42)
-    # 加速鼓動 (映像 4.5s, 4.95s -> クリップ 2.0s, 2.45s)
-    add_mono_panned(buf, synth_heartbeat(0.45), 2.00, gain=0.62, pan=0.0)
-    add_mono_panned(buf, synth_heartbeat(0.40), 2.45, gain=0.68, pan=0.0)
+    add_stereo(buf, gl * genv, gr * genv, 1.24, gain=0.42)
+    # 加速鼓動 (映像 4.50s, 4.90s -> クリップ 2.00s, 2.40s)
+    add_mono_panned(buf, synth_heartbeat(0.42), 2.00, gain=0.62, pan=0.0)
+    add_mono_panned(buf, synth_heartbeat(0.22), 2.40, gain=0.68, pan=0.0)
 
     # --- 虹色昇格！！ (映像 5.2s -> クリップ 2.7s) ---
     # 1. クリスタル亀裂パリーン！（高域スパークル連打）
@@ -293,7 +293,19 @@ def build_se_upgrade(rng: np.random.Generator) -> np.ndarray:
         bl, br = synth_brass_note(f, 1.55, detune_cents=10.0)
         add_stereo(buf, bl, br, 2.78, gain=0.19)
 
-    return simple_stereo_reverb(buf, mix=0.30)
+    buf = simple_stereo_reverb(buf, mix=0.30)
+    # 真空の間（映像 5.09s〜5.19s = クリップ 2.59s〜2.69s）の無音ブレーク
+    env_vac = np.ones(len(buf), dtype=np.float64)
+    i_start = int(round(2.59 * SR))
+    i_end = int(round(2.69 * SR))
+    n_fo = int(round(0.008 * SR))
+    n_fi = int(round(0.005 * SR))
+    if i_end + n_fi < len(buf):
+        env_vac[i_start : i_start + n_fo] = np.linspace(1.0, 0.02, n_fo)
+        env_vac[i_start + n_fo : i_end] = 0.02
+        env_vac[i_end : i_end + n_fi] = np.linspace(0.02, 1.0, n_fi)
+    buf *= env_vac[:, None]
+    return buf
 
 
 def build_se_fanfare(rng: np.random.Generator) -> np.ndarray:
@@ -301,58 +313,58 @@ def build_se_fanfare(rng: np.random.Generator) -> np.ndarray:
     dur = 8.0
     buf = make_buffer(dur)
 
-    # 1. ホワイトアウト大爆発インパクト (映像 6.8s -> クリップ 0.0s)
+    # 1. ホワイトアウト大爆発インパクト (映像 6.96s -> クリップ 0.16s)
     n_imp = int(1.6 * SR)
     t_i = np.arange(n_imp) / SR
     sub_f = 135.0 * np.exp(-t_i * 6.5) + 34.0
     sub_ph = 2 * np.pi * np.cumsum(sub_f) / SR
     sub_boom = np.sin(sub_ph) * np.exp(-t_i * 3.0) * (1.0 - np.exp(-t_i * 260.0))
-    add_stereo(buf, sub_boom, sub_boom, 0.02, gain=0.72)
+    add_stereo(buf, sub_boom, sub_boom, 0.16, gain=0.72)
 
     burst_l = lowpass(rng.standard_normal(n_imp), 6800.0, order=2) * np.exp(-t_i * 3.8)
     burst_r = lowpass(rng.standard_normal(n_imp), 6800.0, order=2) * np.exp(-t_i * 3.8)
-    add_stereo(buf, burst_l, burst_r, 0.02, gain=0.44)
+    add_stereo(buf, burst_l, burst_r, 0.16, gain=0.44)
 
-    # 2. 3Dカード回転スウッシュ (映像 7.5s, 8.2s, 8.8s -> クリップ 0.7s, 1.4s, 2.0s)
-    for idx, sw_t in enumerate([0.70, 1.40, 2.00]):
-        sw_l, sw_r = synth_noise_sweep(0.55, 300.0 + idx * 150, 3200.0 + idx * 600, rng, curve=1.4)
+    # 2. 3Dカード回転スウッシュ (映像 7.38s 飛び出し, 8.28s 加速反転 -> クリップ 0.58s, 1.48s)
+    for idx, sw_t in enumerate([0.58, 1.48]):
+        sw_l, sw_r = synth_noise_sweep(0.55, 320.0 + idx * 180, 3400.0 + idx * 800, rng, curve=1.4)
         senv = np.sin(np.linspace(0, np.pi, len(sw_l))) ** 1.3
-        add_stereo(buf, sw_l * senv, sw_r * senv, sw_t, gain=0.26 + idx * 0.05)
+        add_stereo(buf, sw_l * senv, sw_r * senv, sw_t, gain=0.28 + idx * 0.06)
 
-    # 3. カード正面着地ドンッ！ (映像 9.3s -> クリップ 2.5s)
+    # 3. カード正面着地ドンッ！ (映像 8.68s -> クリップ 1.88s)
     n_land = int(0.8 * SR)
     t_l = np.arange(n_land) / SR
     lf = 110.0 * np.exp(-t_l * 9.0) + 40.0
     land_boom = np.sin(2 * np.pi * np.cumsum(lf) / SR) * np.exp(-t_l * 5.2)
-    add_stereo(buf, land_boom, land_boom, 2.50, gain=0.62)
+    add_stereo(buf, land_boom, land_boom, 1.88, gain=0.62)
 
-    # 4. 王道ソシャゲ SSR 確定ファンファーレ (クリップ 2.50s 〜 5.8s = 映像 9.3s 〜 12.6s)
+    # 4. 王道ソシャゲ SSR 確定ファンファーレ (クリップ 1.88s 〜 5.79s = 映像 8.68s 〜 12.59s)
     # メロディ: タ・タ・タ・ターーン！！ (C5 -> G5 -> A5 -> C6) + 豪華ブラス和音
     fanfare_chords = [
         # (start, dur, freqs, gain)
-        (2.50, 0.24, [261.63, 329.63, 392.00, 523.25], 0.24),           # C major (短)
-        (2.74, 0.24, [293.66, 392.00, 493.88, 587.33], 0.24),           # G/D (短)
-        (2.98, 0.28, [349.23, 440.00, 523.25, 698.46], 0.26),           # F major (短)
-        (3.26, 2.55, [261.63, 392.00, 523.25, 659.25, 783.99, 1046.50], 0.23),  # C major9 栄光のフィナーレ！
+        (1.88, 0.24, [261.63, 329.63, 392.00, 523.25], 0.24),           # C major (短)
+        (2.12, 0.24, [293.66, 392.00, 493.88, 587.33], 0.24),           # G/D (短)
+        (2.36, 0.28, [349.23, 440.00, 523.25, 698.46], 0.26),           # F major (短)
+        (2.64, 3.15, [261.63, 392.00, 523.25, 659.25, 783.99, 1046.50], 0.23),  # C major9 栄光のフィナーレ！
     ]
     for st, d, freqs, g in fanfare_chords:
         for f in freqs:
             bl, br = synth_brass_note(f, d, detune_cents=9.0)
             add_stereo(buf, bl, br, st, gain=g)
 
-    # 5. 5つ星点灯に合わせたキラキラベル連打 (クリップ 2.85s 〜 3.85s = 映像 9.65s 〜 10.65s)
+    # 5. 5つ星点灯に合わせたキラキラベル連打 (クリップ 2.20s 〜 2.76s = 映像 9.00s 〜 9.56s)
     star_notes = [1046.50, 1318.51, 1567.98, 2093.00, 2637.02]
     for i, f in enumerate(star_notes):
         bell = synth_fm_bell(f, 1.35, mod_ratio=2.0, mod_index=2.2)
         pan = -0.5 + i * 0.25
-        add_mono_panned(buf, bell, 2.85 + i * 0.19, gain=0.22, pan=pan)
+        add_mono_panned(buf, bell, 2.20 + i * 0.14, gain=0.22, pan=pan)
 
-    # 6. ハープ・グリッサンド（栄光の余韻 クリップ 3.55s 〜 4.8s = 映像 10.35s 〜 11.6s）
+    # 6. ハープ・グリッサンド（栄光の余韻 クリップ 2.85s 〜 3.53s = 映像 9.65s 〜 10.33s）
     harp_notes = [523.25, 587.33, 659.25, 783.99, 987.77, 1046.50, 1318.51, 1567.98, 2093.00]
     for i, f in enumerate(harp_notes):
         hp = synth_fm_bell(f, 1.8, mod_ratio=1.0, mod_index=1.1)
         pan = -0.65 + (i / (len(harp_notes) - 1)) * 1.3
-        add_mono_panned(buf, hp, 3.55 + i * 0.085, gain=0.14, pan=pan)
+        add_mono_panned(buf, hp, 2.85 + i * 0.085, gain=0.14, pan=pan)
 
     # リバーブ付与＆ラスト 1.5 秒（映像 13.3s 〜 14.8s）を滑らかに無音フェードアウト
     buf = simple_stereo_reverb(buf, mix=0.36)
