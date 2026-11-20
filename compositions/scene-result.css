@@ -83,27 +83,27 @@
         z-index: 15;
       }
 
-      #result-rays {
+      .result-rays-layer {
         position: absolute;
         left: 50%;
         top: 49%;
-        width: 2200px;
-        height: 2200px;
-        margin-left: -1100px;
-        margin-top: -1100px;
-        opacity: 0.58;
+        width: 2100px;
+        height: 2100px;
+        margin-left: -1050px;
+        margin-top: -1050px;
+        opacity: 0;
         mix-blend-mode: screen;
-        background: repeating-conic-gradient(
-          from 0deg var(--in-oklch),
-          rgba(242, 223, 179, 0.24) 0deg 5deg,
-          transparent 5deg 18deg,
-          rgba(232, 141, 180, 0.17) 18deg 23deg,
-          transparent 23deg 36deg,
-          rgba(118, 212, 238, 0.17) 36deg 41deg,
-          transparent 41deg 54deg
-        );
-        -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 0.95) 14%, rgba(0, 0, 0, 0.52) 52%, transparent 76%);
-        mask-image: radial-gradient(circle, rgba(0, 0, 0, 0.95) 14%, rgba(0, 0, 0, 0.52) 52%, transparent 76%);
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
+
+      #result-rays-a {
+        background-image: url("../assets/generated/opt_godrays_gold_a.png");
+      }
+
+      #result-rays-b {
+        background-image: url("../assets/generated/opt_godrays_gold_b.png");
       }
 
       #result-halo {
@@ -114,14 +114,13 @@
         height: 1240px;
         margin-left: -620px;
         margin-top: -620px;
-        border-radius: 50%;
         mix-blend-mode: screen;
         background: radial-gradient(
-          circle var(--in-oklab),
+          circle closest-side var(--in-oklab),
           rgba(242, 223, 179, 0.44) 0%,
-          rgba(232, 141, 180, 0.20) 40%,
-          rgba(118, 212, 238, 0.11) 60%,
-          transparent 76%
+          rgba(232, 141, 180, 0.20) 46%,
+          rgba(118, 212, 238, 0.11) 68%,
+          transparent 98%
         );
       }
 
@@ -682,16 +681,14 @@
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 420px;
-        height: 420px;
-        margin-left: -210px;
-        margin-top: -210px;
-        border-radius: 50%;
-        border: 14px solid #f2dfb3;
-        box-shadow:
-          0 0 60px #d4a24c,
-          0 0 110px #e88db4,
-          inset 0 0 50px #fffdf7;
+        width: 640px;
+        height: 640px;
+        margin-left: -320px;
+        margin-top: -320px;
+        background-image: url("../assets/generated/opt_shock_gold.png");
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
         mix-blend-mode: screen;
         opacity: 0;
         z-index: 25;

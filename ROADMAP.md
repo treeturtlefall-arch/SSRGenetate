@@ -46,7 +46,7 @@
 | **Phase 0** | 確定バグ修正 ＆ 光・色基盤の正常化 | 3D破綻・顔被り・濁った光の解消と色・階調の統一 | `index.html`, `compositions/scene-result.*`, `compositions/scene-summon.html`, `scripts/_utils.py`, `package.json` | ★★★ 完了 |
 | **Phase 1** | リザルト画面の「脱Web UI化」＆ 光の微動呼吸 | バッジ・SVG・粒子・ホロ反射を最新3Dソシャゲ級へ刷新 | `compositions/scene-result.*`, `compositions/scene-result-setup.js`, `scripts/render_typography.py`, `scripts/render_material.py`, `AGENTS.md` | ★★★ 完了 |
 | **Phase 2A** | 取りこぼし修正・タイムライン骨格確定・定量QA | スペキュラはみ出し/曇り膜/光柱修正・昇格語彙差別化・真空の間・着地同期・`qa_video.py` | `index.html`, `compositions/scene-summon.html`, `compositions/scene-result.*`, `scripts/generate_se.py`, `scripts/qa_video.py`, `package.json` | ★★★ 完了 |
-| **Phase 2B** | 召喚〜昇格の「脱CSS ＆ 3D空間光学アセット化」 | カットイン脱ベタ帯・冒頭点火・3D床魔法陣・クリスタルオーブ・不規則ゴッドレイ（前後半） | `scripts/render_optics.py`, `scripts/render_typography.py`, `compositions/scene-summon.html`, `compositions/scene-result.*` | ★★☆ 高 |
+| **Phase 2B** | 召喚〜昇格の「脱CSS ＆ 3D空間光学アセット化」 | カットイン脱ベタ帯・冒頭点火・3D床魔法陣・クリスタルオーブ・不規則ゴッドレイ（前後半） | `scripts/render_optics.py`, `scripts/render_typography.py`, `compositions/scene-summon.html`, `compositions/scene-summon.css`, `compositions/scene-result.*` | ★★☆ 完了 |
 | **Phase 3** | 音響の「現代ソシャゲ音像化」＆ 後半マイクロポリッシュ4点 | 脱ブラス・`fftconvolve`残響・14.8s余韻・-14 LUFS適正化 ＋ 縦版9:16の最後の一手仕上げ | `scripts/generate_se.py`, `.gitignore`, `compositions/scene-result.*`, `compositions/scene-result-setup.js`, `scripts/render_material.py` | ★★☆ 中〜高 |
 | **Phase 4** | 運用性・量産性強化 ＆ 5軸/複数素材検証 | 任意テキスト箔同期・オートレイアウト ＋ 5品質評価軸・不要要素削減・多様な素材検証 | `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js` | ★☆☆ 仕上げ |
 | **Phase 5** | 横動画（16:9）× 横型カード対応 | 風景・周辺情報込みの横写真向け 1920×1080 ワイド演出モード追加 | `card-config.js`, `index.html`, `compositions/*`, `scripts/_utils.py`, `scripts/render_material.py`, `scripts/render_typography.py`, `package.json` | ★☆☆ 拡張 |
@@ -147,19 +147,19 @@
 
 確定した 15 秒骨格に対して、前半 7 秒（`0.0s〜7.0s`）の見た目の「Web デモ感」を最新 3D ソシャゲ水準へ一気に引き上げます（レバレッジの高い順に着手）。
 
-- [ ] **2B-1. カットインの脱ベタ帯 ＆ 0.0s冒頭点火フック・業務UI整理**
-  - **対象**: `compositions/scene-summon.html` (`#cutin-band`, `#summon-status`), `scripts/render_typography.py` (`cutinSub`, `cutinMain`)
+- [x] **2B-1. カットインの脱ベタ帯 ＆ 0.0s冒頭点火フック・業務UI整理**
+  - **対象**: `compositions/scene-summon.html`, `compositions/scene-summon.css` (`#cutin-band`, `#summon-caption`, `#ignition-spark`), `scripts/render_typography.py` (`cutinSub`, `cutinMain`), `scripts/render_optics.py` (`opt_cutin_flare.png`, `opt_cutin_speedlines.png`)
   - **課題**: `#cutin-band` の上下 6px 黄色線＋ベタ塗りネオン帯が最も HTML/CSS 感を出し、文字も帯に対して小さい。また 0.0s から魔法陣が既に出ており、「召喚中...」が業務 UI 風。
   - **対策**: `#cutin-band` の上下ボーダーとベタ塗りを廃止し、画面一瞬引き締め＋鋭い水平アナモルフィック・レンズフレア＋スピードライン＋箔ノイズ上を大判の箔タイポが抜ける構成へ刷新する（過剰な `★` 等の記号を整理）。0.0s には暗闇からの光点点火・魔法陣描画フックを追加し、`#summon-status` は廃止または上下端の極小シネマティック英字装飾へ移す。
-- [ ] **2B-2. 3D床パース魔法陣 ＆ 空間カメラワーク**
-  - **対象**: `scripts/render_optics.py` (`build_magic_circle_masks`), `compositions/scene-summon.html` (`#magic-circle-wrap`)
+- [x] **2B-2. 3D床パース魔法陣 ＆ 空間カメラワーク**
+  - **対象**: `scripts/render_optics.py` (`build_magic_circle_masks`), `compositions/scene-summon.html`, `compositions/scene-summon.css` (`#magic-circle-perspective`, `#magic-circle-wrap`)
   - **対策**: 魔法陣マスクにルーン帯・目盛り・太細二重線・頂点ノードを追加して情報階層を強化する。`#magic-circle-wrap` に `perspective` + `rotateX` による 3D 床パースを導入し、青→金→虹の昇格に合わせてカメラが奥から寄る・煽る立体カメラワークを与える。
-- [ ] **2B-3. 多面体クリスタルオーブ ＆ 有機的分岐亀裂の物理アセット化**
-  - **対象**: `scripts/render_optics.py` (`build_orb_cracks_mask`, 新規オーブ生成関数), `compositions/scene-summon.html` (`#orb-blue`, `#orb-gold`, `#orb-rainbow`, `#orb-cracks`)
+- [x] **2B-3. 多面体クリスタルオーブ ＆ 有機的分岐亀裂の物理アセット化**
+  - **対象**: `scripts/render_optics.py` (`build_orb_cracks_mask`, 新規オーブ生成関数), `compositions/scene-summon.html`, `compositions/scene-summon.css` (`#orb-blue`, `#orb-gold`, `#orb-rainbow`, `#orb-cracks`)
   - **課題**: 単層 CSS 球や円グラフ状の `conic-gradient` 虹オーブが周囲の物理魔法陣から浮いている。亀裂も直線的。
   - **対策**: `render_optics.py` で「中心の白飛びエネルギー核＋逆回転する内部クリスタル多面体ファセット／プラズマ渦＋外縁フレネル光輪」の多層透過 PNG を生成して差し替える。亀裂は分岐・テーパー付きへ改修し、隙間から虹色の光が漏れる表現を強める。
-- [ ] **2B-4. ゴッドレイ（前後半両方）・縦ストリーク光柱・光学衝撃波の物理アセット化**
-  - **対象**: `scripts/render_optics.py`, `compositions/scene-summon.html`, `compositions/scene-result.html`, `compositions/scene-result.css`
+- [x] **2B-4. ゴッドレイ（前後半両方）・縦ストリーク光柱・光学衝撃波の物理アセット化**
+  - **対象**: `scripts/render_optics.py`, `compositions/scene-summon.html`, `compositions/scene-summon.css`, `compositions/scene-result.html`, `compositions/scene-result.css`
   - **課題**: `repeating-conic-gradient` による均等プロペラ放射線（前半 `#summon-godrays` と後半 `#result-rays` の両方）、CSS グラデの光柱 `#light-pillar`、太い単色ボーダーの `.shockwave` / `#landing-shockwave` がデジタル感を生んでいる。
   - **対策**: `idea.md` の `rave_lasers.hlsl` 式から太細不規則なゴッドレイ PNG を 2 枚生成し、**前半 `#summon-godrays` と後半 `#result-rays` の両方**を異速・逆回転の物理放射光へ差し替える。`#light-pillar` は `aurora_claude.hlsl` 式の縦ストリーク 2 層光学アセットへ、衝撃波は中心から外へ滲む光学リング＋微細光粒の飛散へ置換する。
 

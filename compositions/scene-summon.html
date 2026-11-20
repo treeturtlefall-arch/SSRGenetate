@@ -4,552 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1080, height=1920" />
     <title>SSRGenerate — Scene 1-2: Summon &amp; Promotion</title>
+    <link rel="stylesheet" href="./scene-summon.css" />
+    <style>
+      #summon-root { position: relative; width: 1080px; height: 1920px; overflow: hidden; isolation: isolate; }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
     <script src="../card-config.js"></script>
-    <style>
-      @font-face {
-        font-family: "KleeOne";
-        src: url("../assets/fonts/KleeOne-Regular.ttf") format("truetype");
-        font-display: block;
-      }
-      @font-face {
-        font-family: "CineCaption";
-        src: url("../assets/fonts/cinecaption.ttf") format("truetype");
-        font-display: block;
-      }
-
-      :root {
-        --in-oklab: ;
-        --in-oklch: ;
-        --bg-void: #040611;
-        --ink-ivory: #f8f4ea;
-        --font-jp: "KleeOne", "Noto Sans JP", sans-serif;
-        --font-ui: "CineCaption", "Montserrat", "Noto Sans JP", sans-serif;
-      }
-
-      @supports (background: linear-gradient(in oklab, white, black)) {
-        :root {
-          --in-oklab: in oklab;
-          --in-oklch: in oklch;
-        }
-      }
-
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      html,
-      body {
-        width: 1080px;
-        height: 1920px;
-        overflow: hidden;
-        background: transparent;
-        color: var(--ink-ivory);
-        font-family: var(--font-jp);
-        -webkit-font-smoothing: antialiased;
-      }
-
-      #summon-root {
-        position: relative;
-        width: 1080px;
-        height: 1920px;
-        overflow: hidden;
-        isolation: isolate;
-      }
-
-      .clip {
-        position: absolute;
-        inset: 0;
-        width: 1080px;
-        height: 1920px;
-        overflow: hidden;
-        pointer-events: none;
-      }
-
-      #scene-summon-stage {
-        z-index: 10;
-        background: radial-gradient(circle at 50% 48% var(--in-oklab), #101b3f 0%, #060a1b 58%, #020309 100%);
-      }
-
-      #summon-grain {
-        position: absolute;
-        inset: 0;
-        background-image: url("../assets/generated/mat_film_grain.png");
-        background-size: 100% 100%;
-        mix-blend-mode: overlay;
-        opacity: 0.055;
-        pointer-events: none;
-        z-index: 5;
-      }
-
-      .bg-aura {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 1360px;
-        height: 1360px;
-        margin-left: -680px;
-        margin-top: -680px;
-        border-radius: 50%;
-        opacity: 0;
-        mix-blend-mode: screen;
-      }
-
-      #aura-blue {
-        opacity: 0.45;
-        background: radial-gradient(
-          circle var(--in-oklab),
-          rgba(116, 186, 245, 0.56) 0%,
-          rgba(26, 75, 156, 0.30) 38%,
-          rgba(4, 6, 17, 0) 70%
-        );
-      }
-
-      #aura-gold {
-        background: radial-gradient(
-          circle var(--in-oklab),
-          rgba(242, 223, 179, 0.72) 0%,
-          rgba(212, 162, 76, 0.38) 38%,
-          rgba(46, 25, 5, 0) 72%
-        );
-      }
-
-      #aura-rainbow {
-        background: conic-gradient(
-          from 0deg var(--in-oklch),
-          rgba(232, 141, 180, 0.52),
-          rgba(242, 213, 143, 0.56),
-          rgba(110, 224, 208, 0.50),
-          rgba(118, 212, 238, 0.54),
-          rgba(162, 134, 235, 0.54),
-          rgba(232, 141, 180, 0.52)
-        );
-        -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.65) 45%, rgba(0, 0, 0, 0) 72%);
-        mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.65) 45%, rgba(0, 0, 0, 0) 72%);
-      }
-
-      #summon-godrays {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 2400px;
-        height: 2400px;
-        margin-left: -1200px;
-        margin-top: -1200px;
-        opacity: 0;
-        mix-blend-mode: screen;
-        background: repeating-conic-gradient(
-          from 0deg var(--in-oklch),
-          rgba(255, 252, 245, 0.34) 0deg 6deg,
-          transparent 6deg 15deg,
-          rgba(118, 212, 238, 0.30) 15deg 21deg,
-          transparent 21deg 30deg,
-          rgba(232, 141, 180, 0.32) 30deg 36deg,
-          transparent 36deg 45deg
-        );
-        -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 8%, rgba(0, 0, 0, 0.6) 45%, transparent 72%);
-        mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 8%, rgba(0, 0, 0, 0.6) 45%, transparent 72%);
-      }
-
-      #light-pillar,
-      #light-pillar-rainbow {
-        position: absolute;
-        left: 50%;
-        top: 120px;
-        width: 240px;
-        height: 1680px;
-        margin-left: -120px;
-        opacity: 0;
-        mix-blend-mode: screen;
-        -webkit-mask-image: linear-gradient(
-          to bottom,
-          transparent 0%,
-          rgba(0, 0, 0, 0.72) 22%,
-          rgba(0, 0, 0, 1) 48%,
-          rgba(0, 0, 0, 0.78) 76%,
-          transparent 100%
-        );
-        mask-image: linear-gradient(
-          to bottom,
-          transparent 0%,
-          rgba(0, 0, 0, 0.72) 22%,
-          rgba(0, 0, 0, 1) 48%,
-          rgba(0, 0, 0, 0.78) 76%,
-          transparent 100%
-        );
-      }
-
-      #light-pillar {
-        background: linear-gradient(
-          to right var(--in-oklab),
-          transparent 0%,
-          rgba(212, 162, 76, 0.14) 22%,
-          rgba(242, 223, 179, 0.46) 42%,
-          rgba(255, 253, 245, 0.96) 50%,
-          rgba(242, 223, 179, 0.46) 58%,
-          rgba(212, 162, 76, 0.14) 78%,
-          transparent 100%
-        );
-      }
-
-      #light-pillar-rainbow {
-        background: linear-gradient(
-          to right var(--in-oklab),
-          transparent 0%,
-          rgba(118, 212, 238, 0.22) 20%,
-          rgba(232, 141, 180, 0.48) 38%,
-          rgba(255, 254, 250, 0.98) 50%,
-          rgba(118, 212, 238, 0.48) 62%,
-          rgba(162, 134, 235, 0.22) 80%,
-          transparent 100%
-        );
-      }
-
-      #summon-camera {
-        position: absolute;
-        inset: 0;
-        width: 1080px;
-        height: 1920px;
-        transform-origin: 50% 50%;
-        pointer-events: none;
-        z-index: 10;
-      }
-
-      #vacuum-dimmer {
-        position: absolute;
-        inset: -80px;
-        background: radial-gradient(
-          circle at 50% 50%,
-          rgba(2, 3, 9, 0.35) 0%,
-          rgba(2, 3, 9, 0.88) 46%,
-          rgba(2, 3, 9, 0.96) 100%
-        );
-        opacity: 0;
-        pointer-events: none;
-      }
-
-      #flash-gold,
-      #flash-rainbow-core {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        border-radius: 50%;
-        mix-blend-mode: screen;
-        opacity: 0;
-        pointer-events: none;
-      }
-
-      #flash-gold {
-        width: 1400px;
-        height: 1400px;
-        margin-left: -700px;
-        margin-top: -700px;
-        background: radial-gradient(
-          circle closest-side var(--in-oklab),
-          rgba(255, 254, 248, 1) 0%,
-          rgba(255, 245, 214, 0.90) 20%,
-          rgba(242, 223, 179, 0.48) 44%,
-          rgba(212, 162, 76, 0.14) 72%,
-          transparent 100%
-        );
-      }
-
-      #flash-rainbow-core {
-        width: 1560px;
-        height: 1560px;
-        margin-left: -780px;
-        margin-top: -780px;
-        background: radial-gradient(
-          circle closest-side var(--in-oklab),
-          rgba(255, 255, 255, 1) 0%,
-          rgba(245, 249, 255, 0.84) 22%,
-          rgba(232, 141, 180, 0.38) 48%,
-          rgba(118, 212, 238, 0.16) 74%,
-          transparent 100%
-        );
-      }
-
-      #flash-rainbow-streak {
-        position: absolute;
-        left: 0;
-        top: 50%;
-        width: 1080px;
-        height: 220px;
-        margin-top: -110px;
-        mix-blend-mode: screen;
-        opacity: 0;
-        pointer-events: none;
-        background: linear-gradient(
-          to bottom var(--in-oklab),
-          transparent 0%,
-          rgba(118, 212, 238, 0.42) 32%,
-          rgba(255, 254, 250, 1) 50%,
-          rgba(232, 141, 180, 0.42) 68%,
-          transparent 100%
-        );
-        -webkit-mask-image: linear-gradient(
-          to right,
-          transparent 0%,
-          rgba(0, 0, 0, 0.85) 22%,
-          #000 50%,
-          rgba(0, 0, 0, 0.85) 78%,
-          transparent 100%
-        );
-        mask-image: linear-gradient(
-          to right,
-          transparent 0%,
-          rgba(0, 0, 0, 0.85) 22%,
-          #000 50%,
-          rgba(0, 0, 0, 0.85) 78%,
-          transparent 100%
-        );
-      }
-
-      #magic-circle-wrap {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 900px;
-        height: 900px;
-        margin-left: -450px;
-        margin-top: -450px;
-        opacity: 0.85;
-      }
-
-      .mc-layer {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        mix-blend-mode: screen;
-      }
-
-      .mc-ring {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        display: block;
-        transform-origin: 50% 50%;
-      }
-
-      #mc-gold,
-      #mc-rainbow {
-        opacity: 0;
-      }
-
-      #orb-wrap {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 300px;
-        height: 300px;
-        margin-left: -150px;
-        margin-top: -150px;
-        opacity: 0;
-      }
-
-      .orb-core {
-        position: absolute;
-        inset: 0;
-        border-radius: 50%;
-      }
-
-      #orb-blue {
-        background: radial-gradient(
-          circle at 36% 32% var(--in-oklab),
-          #f4f9ff 0%,
-          #a4d4f7 22%,
-          #3e92e0 48%,
-          #1a4b9c 80%,
-          #081636 100%
-        );
-        box-shadow:
-          0 0 42px rgba(90, 168, 235, 0.90),
-          0 0 100px rgba(26, 75, 156, 0.72),
-          inset 0 0 36px rgba(244, 249, 255, 0.65);
-      }
-
-      #orb-gold {
-        opacity: 0;
-        background: radial-gradient(
-          circle at 36% 32% var(--in-oklab),
-          #fffdf7 0%,
-          #f2dfb3 24%,
-          #d4a24c 52%,
-          #9c641c 82%,
-          #2e1905 100%
-        );
-        box-shadow:
-          0 0 54px rgba(242, 223, 179, 0.95),
-          0 0 120px rgba(212, 162, 76, 0.80),
-          inset 0 0 40px rgba(255, 253, 247, 0.82);
-      }
-
-      #orb-rainbow {
-        opacity: 0;
-        background:
-          radial-gradient(circle at 36% 32% var(--in-oklab), rgba(255, 252, 245, 0.96) 0%, rgba(255, 252, 245, 0.25) 38%, transparent 70%),
-          conic-gradient(
-            from 0deg var(--in-oklch),
-            #e88db4,
-            #f2d58f,
-            #6ee0d0,
-            #76d4ee,
-            #a286eb,
-            #e88db4
-          );
-        box-shadow:
-          0 0 64px rgba(255, 252, 245, 0.96),
-          0 0 135px rgba(232, 141, 180, 0.84),
-          0 0 215px rgba(118, 212, 238, 0.76),
-          inset 0 0 44px rgba(255, 252, 245, 0.9);
-      }
-
-      #orb-cracks {
-        position: absolute;
-        inset: -70px;
-        width: 440px;
-        height: 440px;
-        opacity: 0;
-        mix-blend-mode: screen;
-        display: block;
-      }
-
-      .shockwave {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 320px;
-        height: 320px;
-        margin-left: -160px;
-        margin-top: -160px;
-        border-radius: 50%;
-        opacity: 0;
-        mix-blend-mode: screen;
-      }
-
-      #shock-blue {
-        border: 8px solid #a4d4f7;
-        box-shadow: 0 0 32px #3e92e0, inset 0 0 24px #3e92e0;
-      }
-
-      #shock-gold {
-        border: 10px solid #f2dfb3;
-        box-shadow: 0 0 44px #d4a24c, inset 0 0 32px #e8cc8c;
-      }
-
-      #shock-rainbow {
-        border: 14px solid #fffcf5;
-        box-shadow:
-          0 0 48px #e88db4,
-          0 0 90px #76d4ee,
-          inset 0 0 40px #f2d58f;
-      }
-
-      #summon-status {
-        position: absolute;
-        left: 90px;
-        right: 90px;
-        top: 230px;
-        z-index: 20;
-        text-align: center;
-        opacity: 0.92;
-      }
-
-      #summon-status-en {
-        font-family: var(--font-ui);
-        font-size: 34px;
-        font-weight: 800;
-        letter-spacing: 0.34em;
-        color: #eaf4fc;
-        text-shadow: 0 0 24px rgba(90, 168, 235, 0.9);
-      }
-
-      #summon-status-jp {
-        margin-top: 12px;
-        font-family: var(--font-jp);
-        font-size: 44px;
-        font-weight: 900;
-        letter-spacing: 0.22em;
-        color: var(--ink-ivory);
-        text-shadow: 0 3px 20px rgba(0, 0, 0, 0.9);
-      }
-
-      #converge-particles {
-        position: absolute;
-        inset: 0;
-      }
-
-      .c-particle {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        border-radius: 50%;
-        opacity: 0;
-        mix-blend-mode: screen;
-      }
-
-      #cutin-band {
-        position: absolute;
-        left: -120px;
-        top: 50%;
-        width: 1320px;
-        height: 240px;
-        margin-top: -120px;
-        z-index: 30;
-        transform: rotate(-4deg);
-        opacity: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(
-          90deg var(--in-oklch),
-          rgba(10, 14, 34, 0.94) 0%,
-          rgba(98, 56, 168, 0.90) 24%,
-          rgba(182, 76, 134, 0.92) 50%,
-          rgba(38, 118, 172, 0.90) 76%,
-          rgba(10, 14, 34, 0.94) 100%
-        );
-        border-top: 6px solid #f2dfb3;
-        border-bottom: 6px solid #f2dfb3;
-        box-shadow:
-          0 0 60px rgba(242, 223, 179, 0.72),
-          0 0 110px rgba(232, 141, 180, 0.56);
-      }
-
-      .cutin-sub-img {
-        width: 305px;
-        height: 47px;
-        background-image: url("../assets/generated/typo_cutin_sub.png");
-        background-size: contain;
-        background-repeat: no-repeat;
-        background-position: center;
-      }
-
-      .cutin-main-img {
-        margin-top: 8px;
-        width: 722px;
-        height: 87px;
-        background-image: url("../assets/generated/typo_cutin_main.png");
-        background-size: contain;
-        background-repeat: no-repeat;
-        background-position: center;
-      }
-    </style>
+    <script src="../assets/generated/typo-manifest.js"></script>
   </head>
   <body>
-    <div
-      id="summon-root"
-      data-composition-id="scene-summon"
-      data-start="0"
-      data-duration="7.4"
-      data-width="1080"
-      data-height="1920"
-    >
+    <div id="summon-root" data-composition-id="scene-summon" data-start="0" data-duration="7.4" data-width="1080" data-height="1920">
       <svg id="chroma-shock-svg" width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
         <defs>
           <filter id="chroma-shock" x="-4%" y="-2%" width="108%" height="104%" color-interpolation-filters="sRGB">
@@ -568,45 +32,54 @@
         <div id="summon-grain" data-layout-allow-overflow></div>
 
         <div id="summon-camera" data-layout-allow-overflow>
+          <div id="ignition-spark" data-layout-allow-overflow></div>
           <div id="aura-blue" class="bg-aura" data-layout-allow-overflow></div>
           <div id="aura-gold" class="bg-aura" data-layout-allow-overflow></div>
           <div id="aura-rainbow" class="bg-aura" data-layout-allow-overflow></div>
-          <div id="summon-godrays" data-layout-allow-overflow></div>
+          <div id="summon-godrays-a" class="summon-godrays-layer" data-layout-allow-overflow></div>
+          <div id="summon-godrays-b" class="summon-godrays-layer" data-layout-allow-overflow></div>
           <div id="light-pillar" data-layout-allow-overflow></div>
           <div id="light-pillar-rainbow" data-layout-allow-overflow></div>
 
-          <div id="magic-circle-wrap" data-layout-allow-overflow>
-            <div id="mc-blue" class="mc-layer" data-layout-allow-overflow>
-              <img id="mc-ring-outer" class="mc-ring" src="../assets/generated/opt_mc_blue_outer.png" alt="" data-layout-allow-overflow />
-              <img id="mc-ring-mid" class="mc-ring" src="../assets/generated/opt_mc_blue_mid.png" alt="" data-layout-allow-overflow />
-              <img id="mc-ring-inner" class="mc-ring" src="../assets/generated/opt_mc_blue_inner.png" alt="" data-layout-allow-overflow />
-            </div>
-
-            <div id="mc-gold" class="mc-layer" data-layout-allow-overflow>
-              <img id="mc-gold-outer" class="mc-ring" src="../assets/generated/opt_mc_gold_outer.png" alt="" data-layout-allow-overflow />
-              <img id="mc-gold-mid" class="mc-ring" src="../assets/generated/opt_mc_gold_mid.png" alt="" data-layout-allow-overflow />
-              <img id="mc-gold-inner" class="mc-ring" src="../assets/generated/opt_mc_gold_inner.png" alt="" data-layout-allow-overflow />
-            </div>
-
-            <div id="mc-rainbow" class="mc-layer" data-layout-allow-overflow>
-              <img id="mc-rb-outer" class="mc-ring" src="../assets/generated/opt_mc_rainbow_outer.png" alt="" data-layout-allow-overflow />
-              <img id="mc-rb-mid" class="mc-ring" src="../assets/generated/opt_mc_rainbow_mid.png" alt="" data-layout-allow-overflow />
-              <img id="mc-rb-inner" class="mc-ring" src="../assets/generated/opt_mc_rainbow_inner.png" alt="" data-layout-allow-overflow />
+          <div id="magic-circle-perspective" data-layout-allow-overflow>
+            <div id="magic-circle-wrap" data-layout-allow-overflow>
+              <div id="mc-blue" class="mc-layer" data-layout-allow-overflow>
+                <img id="mc-ring-outer" class="mc-ring" src="../assets/generated/opt_mc_blue_outer.png" alt="" data-layout-allow-overflow />
+                <img id="mc-ring-mid" class="mc-ring" src="../assets/generated/opt_mc_blue_mid.png" alt="" data-layout-allow-overflow />
+                <img id="mc-ring-inner" class="mc-ring" src="../assets/generated/opt_mc_blue_inner.png" alt="" data-layout-allow-overflow />
+              </div>
+              <div id="mc-gold" class="mc-layer" data-layout-allow-overflow>
+                <img id="mc-gold-outer" class="mc-ring" src="../assets/generated/opt_mc_gold_outer.png" alt="" data-layout-allow-overflow />
+                <img id="mc-gold-mid" class="mc-ring" src="../assets/generated/opt_mc_gold_mid.png" alt="" data-layout-allow-overflow />
+                <img id="mc-gold-inner" class="mc-ring" src="../assets/generated/opt_mc_gold_inner.png" alt="" data-layout-allow-overflow />
+              </div>
+              <div id="mc-rainbow" class="mc-layer" data-layout-allow-overflow>
+                <img id="mc-rb-outer" class="mc-ring" src="../assets/generated/opt_mc_rainbow_outer.png" alt="" data-layout-allow-overflow />
+                <img id="mc-rb-mid" class="mc-ring" src="../assets/generated/opt_mc_rainbow_mid.png" alt="" data-layout-allow-overflow />
+                <img id="mc-rb-inner" class="mc-ring" src="../assets/generated/opt_mc_rainbow_inner.png" alt="" data-layout-allow-overflow />
+              </div>
             </div>
           </div>
 
           <div id="converge-particles" data-layout-allow-overflow></div>
-
-          <div id="shock-blue" class="shockwave" data-layout-allow-overflow></div>
           <div id="shock-gold" class="shockwave" data-layout-allow-overflow></div>
           <div id="shock-rainbow" class="shockwave" data-layout-allow-overflow></div>
-
           <div id="vacuum-dimmer" data-layout-allow-overflow></div>
 
-          <div id="orb-wrap">
-            <div id="orb-blue" class="orb-core"></div>
-            <div id="orb-gold" class="orb-core"></div>
-            <div id="orb-rainbow" class="orb-core"></div>
+          <div id="orb-wrap" data-layout-allow-overflow>
+            <div id="orb-blue" class="orb-tier" data-layout-allow-overflow>
+              <img class="orb-shell" src="../assets/generated/opt_orb_blue_shell.png" alt="" data-layout-allow-overflow />
+              <img class="orb-facet" src="../assets/generated/opt_orb_blue_facet.png" alt="" data-layout-allow-overflow />
+            </div>
+            <div id="orb-gold" class="orb-tier" data-layout-allow-overflow>
+              <img class="orb-shell" src="../assets/generated/opt_orb_gold_shell.png" alt="" data-layout-allow-overflow />
+              <img class="orb-facet" src="../assets/generated/opt_orb_gold_facet.png" alt="" data-layout-allow-overflow />
+            </div>
+            <div id="orb-rainbow" class="orb-tier" data-layout-allow-overflow>
+              <img class="orb-shell" src="../assets/generated/opt_orb_rainbow_shell.png" alt="" data-layout-allow-overflow />
+              <img class="orb-facet" src="../assets/generated/opt_orb_rainbow_facet.png" alt="" data-layout-allow-overflow />
+            </div>
+            <img id="orb-core" src="../assets/generated/opt_orb_core_bleach.png" alt="" data-layout-allow-overflow />
             <img id="orb-cracks" src="../assets/generated/opt_orb_cracks.png" alt="" data-layout-allow-overflow />
           </div>
 
@@ -615,14 +88,20 @@
           <div id="flash-rainbow-streak" data-layout-allow-overflow></div>
         </div>
 
-        <div id="summon-status" data-layout-allow-safe-zone>
-          <div id="summon-status-en" data-layout-allow-safe-zone>SUMMONING</div>
-          <div id="summon-status-jp" data-layout-allow-safe-zone>召喚中...</div>
+        <div id="summon-caption" data-layout-allow-safe-zone data-layout-ignore>
+          <span class="caption-line"></span>
+          <span id="summon-caption-text" data-layout-allow-safe-zone data-layout-ignore>ASCENSION RITUAL  //  01</span>
+          <span class="caption-line"></span>
         </div>
 
         <div id="cutin-band" data-layout-allow-overflow data-layout-allow-safe-zone>
-          <div class="cutin-sub-img" data-layout-allow-safe-zone></div>
-          <div class="cutin-main-img" data-layout-allow-safe-zone></div>
+          <div id="cutin-backdrop" data-layout-allow-overflow></div>
+          <div id="cutin-speedlines" data-layout-allow-overflow></div>
+          <div id="cutin-flare" data-layout-allow-overflow></div>
+          <div id="cutin-typo-wrap" data-layout-allow-safe-zone>
+            <div id="cutin-sub-img" class="cutin-sub-img" data-layout-allow-safe-zone></div>
+            <div id="cutin-main-img" class="cutin-main-img" data-layout-allow-safe-zone></div>
+          </div>
         </div>
       </div>
     </div>
@@ -632,72 +111,55 @@
         function createRng(seed) {
           let s = seed >>> 0;
           return function () {
-            s |= 0;
             s = (s + 0x6d2b79f5) | 0;
             let t = Math.imul(s ^ (s >>> 15), 1 | s);
             t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
             return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
           };
         }
-
         const baseCfg = window.SSR_CARD_CONFIG || {};
         const seed = typeof baseCfg.seed === "number" ? baseCfg.seed : 20261120;
-        const matCfg = baseCfg.material || {};
-        const chromaShockPx = typeof matCfg.chromaShockPx === "number" ? matCfg.chromaShockPx : 9;
+        const chromaShockPx = typeof (baseCfg.material || {}).chromaShockPx === "number" ? baseCfg.material.chromaShockPx : 9;
         const sumCfg = baseCfg.summon || {};
         const mcSpeed = typeof sumCfg.magicCircleSpeed === "number" && Number.isFinite(sumCfg.magicCircleSpeed) ? sumCfg.magicCircleSpeed : 1.0;
         const mcCurve = typeof sumCfg.magicCircleCurve === "string" ? sumCfg.magicCircleCurve : "dramatic";
         const mcRatios = Array.isArray(sumCfg.magicCircleRingRatios) && sumCfg.magicCircleRingRatios.length === 3 ? sumCfg.magicCircleRingRatios : [1.0, -1.3, 1.7];
         const rng = createRng(seed);
-
+        const typoItems = (window.SSR_TYPO_MANIFEST && window.SSR_TYPO_MANIFEST.items) || {};
+        [["cutinSub", "cutin-sub-img"], ["cutinMain", "cutin-main-img"]].forEach(function (pair) {
+          const entry = typoItems[pair[0]], el = document.getElementById(pair[1]);
+          if (entry && el && entry.src) {
+            el.style.backgroundImage = 'url("../' + entry.src.replace(/^\.\//, "") + '")';
+            el.style.width = entry.width + "px";
+            el.style.height = entry.height + "px";
+          }
+        });
         const convergeContainer = document.getElementById("converge-particles");
-        const convergeData = [];
-        const convergeColors = ["#a4d4f7", "#5aa8eb", "#f4f9ff", "#f2dfb3", "#e88db4"];
+        const convergeData = [], convergeColors = ["#a4d4f7", "#5aa8eb", "#f4f9ff", "#f2dfb3", "#e88db4"];
         for (let i = 0; i < 28; i++) {
           const el = document.createElement("div");
           el.className = "c-particle";
           el.setAttribute("data-layout-allow-overflow", "");
-          const size = 8 + Math.floor(rng() * 14);
-          const color = convergeColors[i % convergeColors.length];
-          el.style.width = size + "px";
-          el.style.height = size + "px";
-          el.style.marginLeft = -size / 2 + "px";
-          el.style.marginTop = -size / 2 + "px";
-          el.style.background = color;
-          el.style.boxShadow = "0 0 " + size * 2 + "px " + color;
+          const size = 8 + Math.floor(rng() * 14), color = convergeColors[i % convergeColors.length];
+          el.style.cssText = "width:" + size + "px;height:" + size + "px;margin-left:" + (-size / 2) + "px;margin-top:" + (-size / 2) + "px;background:" + color + ";box-shadow:0 0 " + (size * 2) + "px " + color;
           convergeContainer.appendChild(el);
-
-          const angle = (i / 28) * Math.PI * 2 + (rng() - 0.5) * 0.28;
-          const dist = 390 + rng() * 240;
-          convergeData.push({
-            el: el,
-            startX: Math.cos(angle) * dist,
-            startY: Math.sin(angle) * dist,
-            delay: 0.65 + rng() * 0.9,
-            dur: 0.95 + rng() * 0.45,
-          });
+          const angle = (i / 28) * Math.PI * 2 + (rng() - 0.5) * 0.28, dist = 390 + rng() * 240;
+          convergeData.push({ el: el, startX: Math.cos(angle) * dist, startY: Math.sin(angle) * dist, delay: 0.45 + rng() * 0.85, dur: 0.90 + rng() * 0.40 });
         }
-
         const tl = gsap.timeline({ paused: true });
-
-        // ===== PHASE 1: Dark Abyss, Magic Circle & Orb Convergence (0.0s - 2.5s) =====
         tl.set("#scene-summon-stage", { filter: "none" }, 0);
         tl.set("#summon-camera", { scale: 1, rotation: 0 }, 0);
         tl.set("#vacuum-dimmer, #flash-gold, #flash-rainbow-core, #flash-rainbow-streak, #light-pillar-rainbow", { opacity: 0 }, 0);
-        tl.fromTo("#aura-blue", { opacity: 0.45, scale: 0.72 }, { opacity: 0.9, scale: 1.0, duration: 1.4, ease: "power2.out" }, 0);
-        tl.fromTo("#summon-status", { opacity: 0.92, y: 0 }, { opacity: 1, y: -6, duration: 1.2, ease: "power2.out" }, 0);
-        tl.fromTo("#magic-circle-wrap", { opacity: 0.72, scale: 0.68, rotation: -18 }, { opacity: 1, scale: 1.0, rotation: 0, duration: 1.4, ease: "power3.out" }, 0);
-
-        const dramaticSegs = [
-          [0.00, 1.45, 32, "power2.out"], [1.45, 2.68, 26, "none"], [2.68, 3.10, 28, "power2.out"],
-          [3.10, 3.78, 14, "power2.inOut"], [3.78, 4.30, 72, "power2.out"], [4.30, 4.56, 12, "power3.out"],
-          [4.56, 4.86, 0, "none"], [4.86, 7.06, 580, "power2.in"],
-        ];
-        const mcSegs = mcCurve === "steady"
-          ? [[0.15, 7.15, 210, "power1.in"]]
-          : mcCurve === "overdrive"
-            ? dramaticSegs.map(function (s) { return [s[0], s[1], s[2] * 1.45, s[3]]; })
-            : dramaticSegs;
+        tl.fromTo("#ignition-spark", { opacity: 0.85, scale: 0.28, rotation: -20 }, { opacity: 1, scale: 1.55, rotation: 15, duration: 0.14, ease: "power2.out" }, 0);
+        tl.to("#ignition-spark", { opacity: 0, scale: 0.28, rotation: 45, duration: 0.36, ease: "power2.in" }, 0.14);
+        tl.fromTo("#aura-blue", { opacity: 0.24, scale: 0.52 }, { opacity: 0.88, scale: 1.0, duration: 1.40, ease: "power2.out" }, 0);
+        tl.fromTo("#summon-caption", { opacity: 0, y: 8 }, { opacity: 0.85, y: 0, duration: 0.80, ease: "power2.out" }, 0.25);
+        tl.fromTo("#magic-circle-wrap", { opacity: 0.48, scale: 0.32, rotationX: 68, y: 36 }, { opacity: 1, scale: 1.16, rotationX: 62, y: 0, duration: 1.38, ease: "power3.out" }, 0);
+        tl.fromTo("#mc-ring-inner", { opacity: 0.55 }, { opacity: 1, duration: 0.40, ease: "power2.out" }, 0);
+        tl.fromTo("#mc-ring-mid", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.out" }, 0.10);
+        tl.fromTo("#mc-ring-outer", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.out" }, 0.18);
+        const dramaticSegs = [[0, 1.45, 32, "power2.out"], [1.45, 2.68, 26, "none"], [2.68, 3.10, 28, "power2.out"], [3.10, 3.78, 14, "power2.inOut"], [3.78, 4.30, 72, "power2.out"], [4.30, 4.56, 12, "power3.out"], [4.56, 4.86, 0, "none"], [4.86, 7.06, 580, "power2.in"]];
+        const mcSegs = mcCurve === "steady" ? [[0.15, 7.15, 210, "power1.in"]] : mcCurve === "overdrive" ? dramaticSegs.map(function (s) { return [s[0], s[1], s[2] * 1.45, s[3]]; }) : dramaticSegs;
         ["#mc-ring-outer, #mc-gold-outer, #mc-rb-outer", "#mc-ring-mid, #mc-gold-mid, #mc-rb-mid", "#mc-ring-inner, #mc-gold-inner, #mc-rb-inner"].forEach(function (sel, idx) {
           const mult = mcSpeed * (typeof mcRatios[idx] === "number" ? mcRatios[idx] : 1);
           let acc = 0;
@@ -707,55 +169,51 @@
             tl.to(sel, { rotation: acc, duration: +(seg[1] - seg[0]).toFixed(4), ease: seg[3] }, seg[0]);
           });
         });
-
         convergeData.forEach(function (p) {
           tl.fromTo(p.el, { x: p.startX, y: p.startY, opacity: 0, scale: 1.2 }, { x: 0, y: 0, opacity: 0.95, scale: 0.25, duration: p.dur, ease: "power2.in" }, p.delay);
           tl.to(p.el, { opacity: 0, duration: 0.1 }, p.delay + p.dur);
         });
-
         tl.fromTo("#orb-wrap", { opacity: 0, scale: 0.12 }, { opacity: 1, scale: 1.0, duration: 0.95, ease: "back.out(1.6)" }, 1.45);
-
-        // ===== PHASE 2: Causal Promotion Chain (Blue Omen -> Gold Strike -> Vacuum -> Rainbow Burst) =====
-        // --- BLUE OMEN (2.65s - 3.74s: subtle pulse + circle flicker + pull-in, no shockwave/shake) ---
+        tl.to(".orb-shell", { rotation: 75, duration: 5.60, ease: "power1.in" }, 1.45);
+        tl.to(".orb-facet", { rotation: -290, duration: 5.60, ease: "power1.in" }, 1.45);
         tl.to("#orb-wrap", { scale: 1.14, duration: 0.16, ease: "power2.out" }, 2.68);
         tl.to("#orb-wrap", { scale: 0.97, duration: 0.24, ease: "power2.inOut" }, 2.84);
         tl.to("#mc-blue", { opacity: 0.55, duration: 0.10, ease: "power2.out" }, 2.68);
         tl.to("#mc-blue", { opacity: 1.0, duration: 0.22, ease: "power2.inOut" }, 2.78);
-
         tl.to("#orb-wrap", { scale: 1.16, duration: 0.15, ease: "power2.out" }, 3.35);
         tl.to("#orb-wrap", { scale: 0.78, duration: 0.24, ease: "power2.in" }, 3.50);
 
-        // --- GOLD PROMOTION (3.78s - 4.45s: radial gold flare + damped zoom punch) ---
+        // --- GOLD PROMOTION (3.78s - 4.45s) ---
         tl.to("#summon-camera", { scale: 1.048, rotation: -0.65, duration: 0.05, ease: "power2.out" }, 3.78);
         tl.to("#summon-camera", { scale: 1.0, rotation: 0, duration: 0.30, ease: "expo.out" }, 3.83);
-
+        tl.to("#magic-circle-wrap", { rotationX: 54, scale: 1.26, duration: 0.45, ease: "power2.out" }, 3.78);
         tl.fromTo("#flash-gold", { opacity: 0, scale: 0.42 }, { opacity: 1, scale: 1.05, duration: 0.05, ease: "power2.out", immediateRender: false }, 3.78);
         tl.to("#flash-gold", { opacity: 0, scale: 1.32, duration: 0.24, ease: "expo.out" }, 3.83);
-
         tl.to("#orb-gold", { opacity: 1, duration: 0.16 }, 3.78);
+        tl.to("#orb-blue", { opacity: 0, duration: 0.18 }, 3.78);
         tl.to("#aura-gold", { opacity: 0.95, scale: 1.12, duration: 0.38, ease: "power2.out" }, 3.78);
         tl.to("#aura-blue", { opacity: 0, duration: 0.28 }, 3.78);
         tl.to("#mc-gold", { opacity: 1, duration: 0.20 }, 3.78);
         tl.to("#mc-blue", { opacity: 0, duration: 0.24 }, 3.78);
         tl.to("#orb-wrap", { scale: 1.28, duration: 0.20, ease: "back.out(2.2)" }, 3.80);
         tl.to("#orb-wrap", { scale: 1.05, duration: 0.28, ease: "power2.inOut" }, 4.00);
-        tl.fromTo("#shock-gold", { opacity: 0.72, scale: 0.82 }, { opacity: 0, scale: 3.1, duration: 0.52, ease: "expo.out", immediateRender: false }, 3.78);
-        tl.fromTo("#light-pillar", { opacity: 0, scaleX: 0.25 }, { opacity: 0.78, scaleX: 1.05, duration: 0.26, ease: "power2.out", immediateRender: false }, 3.80);
-        tl.to("#light-pillar", { opacity: 0.32, scaleX: 0.72, duration: 0.65 }, 4.06);
+        tl.fromTo("#shock-gold", { opacity: 0.85, scale: 0.65 }, { opacity: 0, scale: 2.9, duration: 0.54, ease: "expo.out", immediateRender: false }, 3.78);
+        tl.fromTo("#light-pillar", { opacity: 0, scaleX: 0.45 }, { opacity: 0.86, scaleX: 1.05, duration: 0.26, ease: "power2.out", immediateRender: false }, 3.80);
+        tl.to("#light-pillar", { opacity: 0.34, scaleX: 0.82, duration: 0.65 }, 4.06);
 
-        // --- CRITICAL OMEN (4.50s - 5.08s) & VACUUM PAUSE (5.10s - 5.18s) ---
+        // --- CRITICAL OMEN (4.50s - 5.08s) & VACUUM PAUSE (5.06s - 5.18s) ---
         tl.to("#orb-wrap", { scale: 1.22, duration: 0.14, ease: "power2.out" }, 4.50);
         tl.to("#orb-wrap", { scale: 0.94, duration: 0.16, ease: "power2.inOut" }, 4.64);
-        tl.to("#orb-cracks", { opacity: 0.90, scale: 1.02, duration: 0.18, ease: "power3.out" }, 4.84);
+        tl.to("#orb-cracks", { opacity: 0.92, scale: 1.0, duration: 0.18, ease: "power3.out" }, 4.84);
         tl.to("#orb-wrap", { scale: 0.62, duration: 0.22, ease: "power3.in" }, 4.90);
         tl.to("#summon-camera", { scale: 0.975, duration: 0.22, ease: "power2.in" }, 4.90);
-
         tl.to("#aura-gold", { opacity: 0.08, duration: 0.06, ease: "power2.out" }, 5.06);
         tl.to("#mc-gold", { opacity: 0.14, duration: 0.06, ease: "power2.out" }, 5.06);
         tl.to("#light-pillar", { opacity: 0.03, duration: 0.06, ease: "power2.out" }, 5.06);
-        tl.to("#summon-status", { opacity: 0, duration: 0.06, ease: "power2.out" }, 5.06);
+        tl.to("#summon-caption", { opacity: 0, duration: 0.06, ease: "power2.out" }, 5.06);
         tl.to("#vacuum-dimmer", { opacity: 0.92, duration: 0.06, ease: "power2.out" }, 5.06);
-        tl.to("#orb-gold", { opacity: 0.42, duration: 0.06, ease: "power2.out" }, 5.06);
+        tl.to("#orb-gold", { opacity: 0.36, duration: 0.06, ease: "power2.out" }, 5.06);
+        tl.to("#orb-core", { opacity: 0.38, duration: 0.06, ease: "power2.out" }, 5.06);
         tl.to("#orb-cracks", { opacity: 1, duration: 0.06, ease: "power2.out" }, 5.06);
 
         // --- RAINBOW SSR PROMOTION BURST at 5.20s ---
@@ -764,28 +222,38 @@
         tl.to("#flash-rainbow-core", { opacity: 0, scale: 1.45, duration: 0.26, ease: "expo.out" }, 5.24);
         tl.fromTo("#flash-rainbow-streak", { opacity: 0, scaleX: 0.18, scaleY: 0.25 }, { opacity: 1, scaleX: 1.15, scaleY: 1.15, duration: 0.05, ease: "expo.out", immediateRender: false }, 5.20);
         tl.to("#flash-rainbow-streak", { opacity: 0, scaleX: 1.35, scaleY: 0.15, duration: 0.28, ease: "expo.out" }, 5.25);
-
         tl.to("#summon-camera", { scale: 1.075, rotation: 0.85, duration: 0.05, ease: "power2.out" }, 5.20);
         tl.to("#summon-camera", { scale: 1.00, rotation: 0, duration: 0.34, ease: "expo.out" }, 5.25);
-
-        tl.to("#orb-gold", { opacity: 1, duration: 0.08 }, 5.20);
+        tl.to("#magic-circle-wrap", { rotationX: 42, scale: 1.40, y: -36, duration: 0.55, ease: "power3.out" }, 5.20);
+        tl.to("#orb-gold", { opacity: 0, duration: 0.14 }, 5.20);
         tl.to("#orb-rainbow", { opacity: 1, duration: 0.10 }, 5.20);
+        tl.to("#orb-core", { opacity: 0.92, duration: 0.08 }, 5.20);
         tl.to("#orb-cracks", { opacity: 1, scale: 1.32, rotation: 18, duration: 0.35, ease: "power2.out" }, 5.20);
         tl.to("#mc-rainbow", { opacity: 1, duration: 0.18 }, 5.20);
         tl.to("#mc-gold", { opacity: 0, duration: 0.24 }, 5.20);
         tl.to("#aura-gold", { opacity: 0, duration: 0.18 }, 5.20);
-        tl.to("#aura-rainbow", { opacity: 1, scale: 1.22, rotation: 140, duration: 1.65, ease: "power1.in" }, 5.20);
-        tl.to("#summon-godrays", { opacity: 0.92, rotation: 95, duration: 1.75, ease: "power1.in" }, 5.20);
-        tl.to("#light-pillar", { opacity: 0.28, scaleX: 1.45, duration: 0.25, ease: "power2.out" }, 5.20);
-        tl.fromTo("#light-pillar-rainbow", { opacity: 0, scaleX: 0.6 }, { opacity: 0.92, scaleX: 1.55, duration: 0.28, ease: "power2.out", immediateRender: false }, 5.20);
-        tl.to("#orb-wrap", { scale: 1.48, duration: 0.24, ease: "back.out(2.2)" }, 5.22);
-        tl.fromTo("#shock-rainbow", { opacity: 1, scale: 0.7 }, { opacity: 0, scale: 3.9, duration: 0.65, ease: "expo.out", immediateRender: false }, 5.20);
+        tl.to("#aura-rainbow", { opacity: 1, scale: 1.22, duration: 1.65, ease: "power1.in" }, 5.20);
+        tl.fromTo("#summon-godrays-a", { opacity: 0, rotation: 0, scale: 0.82 }, { opacity: 0.92, rotation: 78, scale: 1.12, duration: 1.78, ease: "power1.in", immediateRender: false }, 5.20);
+        tl.fromTo("#summon-godrays-b", { opacity: 0, rotation: 15, scale: 0.86 }, { opacity: 0.72, rotation: -56, scale: 1.08, duration: 1.78, ease: "power1.in", immediateRender: false }, 5.20);
+        tl.to("#light-pillar", { opacity: 0.24, scaleX: 1.15, duration: 0.25, ease: "power2.out" }, 5.20);
+        tl.fromTo("#light-pillar-rainbow", { opacity: 0, scaleX: 0.65 }, { opacity: 0.95, scaleX: 1.18, duration: 0.28, ease: "power2.out", immediateRender: false }, 5.20);
+        tl.to("#orb-wrap", { scale: 1.45, duration: 0.24, ease: "back.out(2.2)" }, 5.22);
+        tl.fromTo("#shock-rainbow", { opacity: 1, scale: 0.55 }, { opacity: 0, scale: 3.4, duration: 0.65, ease: "expo.out", immediateRender: false }, 5.20);
 
-        tl.fromTo("#cutin-band", { opacity: 0, x: -320, scaleY: 0.15 }, { opacity: 1, x: 0, scaleY: 1, duration: 0.22, ease: "power4.out" }, 5.62);
-        tl.to("#cutin-band", { x: 24, duration: 0.56, ease: "none" }, 5.84);
-        tl.to("#cutin-band", { opacity: 0, x: 340, scaleY: 0.2, duration: 0.20, ease: "power3.in" }, 6.40);
+        // --- CINEMATIC BORDERLESS CUT-IN (5.62s - 6.60s) ---
+        tl.fromTo("#cutin-band", { opacity: 0 }, { opacity: 1, duration: 0.10, ease: "power2.out" }, 5.62);
+        tl.to("#cutin-band", { opacity: 0, duration: 0.16, ease: "power2.in" }, 6.44);
+        tl.fromTo("#cutin-flare", { scaleX: 0.12, scaleY: 0.35, opacity: 0 }, { scaleX: 1.14, scaleY: 1.05, opacity: 1, duration: 0.18, ease: "expo.out", immediateRender: false }, 5.62);
+        tl.to("#cutin-flare", { scaleX: 1.0, scaleY: 0.9, duration: 0.64, ease: "power1.out" }, 5.80);
+        tl.fromTo("#cutin-speedlines", { x: -180, opacity: 0 }, { x: 0, opacity: 0.95, duration: 0.20, ease: "power3.out", immediateRender: false }, 5.62);
+        tl.to("#cutin-speedlines", { x: 160, duration: 0.78, ease: "none" }, 5.82);
+        tl.fromTo("#cutin-typo-wrap", { x: -180, scale: 1.14, opacity: 0 }, { x: 0, scale: 1.0, opacity: 1, duration: 0.22, ease: "power4.out", immediateRender: false }, 5.64);
+        tl.to("#cutin-typo-wrap", { x: 24, duration: 0.54, ease: "none" }, 5.86);
+        tl.to("#cutin-typo-wrap", { x: 280, opacity: 0, duration: 0.20, ease: "power3.in" }, 6.40);
 
-        tl.to("#orb-wrap", { scale: 2.9, duration: 0.48, ease: "power3.in" }, 6.48);
+        // --- CRITICAL BURST TO WHITEOUT (6.48s - 7.02s) ---
+        tl.to("#orb-wrap", { scale: 3.1, duration: 0.48, ease: "power3.in" }, 6.48);
+        tl.to("#magic-circle-wrap", { scale: 1.85, duration: 0.48, ease: "power3.in" }, 6.48);
         tl.to("#scene-summon-stage", { opacity: 0, duration: 0.04 }, 7.02);
 
         function addChromaShock(targetSel, startAt, peakPx) {
@@ -802,7 +270,6 @@
 
         addChromaShock("#scene-summon-stage", 3.79, chromaShockPx * 0.72);
         addChromaShock("#scene-summon-stage", 5.20, chromaShockPx * 1.15);
-
         tl.set("#summon-root", {}, 7.4);
 
         window.__timelines = window.__timelines || {};

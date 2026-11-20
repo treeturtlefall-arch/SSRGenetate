@@ -42,15 +42,15 @@ window.SSR_TYPO_MANIFEST = {
     },
     "cutinSub": {
       "src": "assets/generated/typo_cutin_sub.png",
-      "width": 305,
-      "height": 47,
-      "text": "RAINBOW PROMOTION"
+      "width": 322,
+      "height": 50,
+      "text": "RAINBOW ASCENSION"
     },
     "cutinMain": {
       "src": "assets/generated/typo_cutin_main.png",
-      "width": 723,
-      "height": 87,
-      "text": "★ 昇格 — SSR 確定 ★"
+      "width": 667,
+      "height": 112,
+      "text": "昇格  SSR 確定"
     }
   }
 };
