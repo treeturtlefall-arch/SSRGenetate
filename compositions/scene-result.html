@@ -13,7 +13,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1080, height=1920" />
-    <title>SSRGenerate — Scene 3-5: 3D SSR Card &amp; Static Result</title>
+    <title>SSRGenerate — Scene 3-5: 3D SSR Card &amp; Luminous Breathing Result</title>
     <link rel="stylesheet" href="./scene-result.css" />
     <style>
       #result-root {
@@ -37,7 +37,7 @@
       data-width="1080"
       data-height="1920"
     >
-      <!-- Shared SVG Definitions (Chromatic Aberration Filter & Corner Ornament Template) -->
+      <!-- Shared SVG Definitions (Chromatic Aberration Filter) -->
       <svg id="shared-svg-defs" width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
         <defs>
           <filter id="chroma-shock" x="-4%" y="-2%" width="108%" height="104%" color-interpolation-filters="sRGB">
@@ -49,71 +49,49 @@
             <feBlend in="r-shift" in2="g-only" mode="screen" result="rg" />
             <feBlend in="rg" in2="b-shift" mode="screen" />
           </filter>
-          <g id="corner-ornament-shape">
-            <path d="M4 54 L4 12 Q4 4 12 4 L54 4" stroke="#f2dfb3" stroke-width="3.5" />
-            <path d="M12 40 L12 12 L40 12" stroke="#d4a24c" stroke-width="2" />
-            <circle cx="12" cy="12" r="4" fill="#fffdf7" />
-          </g>
         </defs>
       </svg>
 
       <div id="scene-result-stage" class="clip" data-start="0" data-duration="8.1" data-track-index="0">
         <div id="result-rays" data-layout-allow-overflow></div>
         <div id="result-halo" data-layout-allow-overflow></div>
-
-        <svg id="result-bg-ring" viewBox="0 0 800 800" fill="none" data-layout-allow-overflow>
-          <circle cx="400" cy="400" r="380" stroke="#f2dfb3" stroke-width="3" stroke-dasharray="14 14" />
-          <circle cx="400" cy="400" r="340" stroke="#d4a24c" stroke-width="2" />
-          <polygon points="400,45 707,222 707,578 400,755 93,578 93,222" stroke="#f2dfb3" stroke-width="2" opacity="0.65" />
-        </svg>
-
+        <div id="result-bg-ring" data-layout-allow-overflow></div>
         <div id="result-grain" data-layout-allow-overflow></div>
+        <div id="bokeh-back-layer" data-layout-allow-overflow></div>
         <div id="landing-shockwave" data-layout-allow-overflow></div>
 
         <div id="card-stage">
           <div id="ssr-card">
-            <!-- Card Back (Pure Geometric Emblem) -->
             <div id="card-back-face" class="card-face card-back">
-              <div class="card-back-inner">
-                <svg width="560" height="560" viewBox="0 0 560 560" fill="none" style="position:absolute;opacity:0.85">
-                  <circle cx="280" cy="280" r="250" stroke="#f2dfb3" stroke-width="4" opacity="0.5" />
-                  <circle cx="280" cy="280" r="215" stroke="#d4a24c" stroke-width="2" stroke-dasharray="10 10" opacity="0.5" />
-                  <polygon points="280,55 475,392 85,392" stroke="#f2dfb3" stroke-width="3" opacity="0.45" />
-                  <polygon points="280,505 85,168 475,168" stroke="#f2dfb3" stroke-width="3" opacity="0.45" />
-                  <circle cx="280" cy="280" r="105" fill="#070b1a" stroke="#f2dfb3" stroke-width="3.5" />
-                  <polygon points="280,192 304,254 368,280 304,306 280,368 256,306 192,280 256,254" fill="#f2dfb3" stroke="#d4a24c" stroke-width="3" />
-                  <circle cx="280" cy="280" r="22" fill="#fffdf7" />
-                </svg>
-              </div>
+              <img class="card-back-art" src="../assets/generated/mat_card_back.png" alt="" />
+              <div id="spin-spec-back" data-layout-allow-overflow></div>
+              <div class="card-back-frame"></div>
             </div>
 
-            <!-- Card Front (Full-Bleed Photo + Physical Metallic Rainbow Frame + Frontmost Overlay) -->
             <div class="card-face card-front">
               <img id="mat-rainbow-frame" src="../assets/generated/mat_rainbow_frame.png" alt="" />
+              <div id="frame-holo-glint"></div>
+              <div id="spin-spec-front" data-layout-allow-overflow></div>
+
               <div class="card-front-inner">
                 <div class="card-photo-area">
                   <img id="card-photo" src="../assets/photo.jpg" alt="SSR Character Photo" data-layout-allow-overflow />
                   <div class="photo-vignette"></div>
                 </div>
-
                 <img id="mat-window-depth" src="../assets/generated/mat_window_depth.png" alt="" />
-
-                <div id="holo-sweep-1" data-layout-allow-overflow></div>
-                <div id="holo-sweep-2" data-layout-allow-overflow></div>
-                <div id="holo-static-sheen"></div>
-
-                <svg class="corner-ornament co-tl" viewBox="0 0 60 60" fill="none"><use href="#corner-ornament-shape" /></svg>
-                <svg class="corner-ornament co-tr" viewBox="0 0 60 60" fill="none"><use href="#corner-ornament-shape" /></svg>
-                <svg class="corner-ornament co-bl" viewBox="0 0 60 60" fill="none"><use href="#corner-ornament-shape" /></svg>
-                <svg class="corner-ornament co-br" viewBox="0 0 60 60" fill="none"><use href="#corner-ornament-shape" /></svg>
-
+                <div id="holo-mask-zone">
+                  <div id="holo-sweep-1" data-layout-allow-overflow></div>
+                  <div id="holo-sweep-2" data-layout-allow-overflow></div>
+                  <div id="holo-static-sheen"></div>
+                </div>
                 <div id="ssr-emblem">
                   <div id="ssr-emblem-img" role="img" aria-label="SSR"></div>
                   <div id="ssr-emblem-text" data-layout-allow-safe-zone>SSR</div>
                 </div>
-
-                <div id="attr-badge" data-layout-allow-safe-zone></div>
-
+                <div id="attr-badge">
+                  <div id="attr-badge-img" role="img" aria-label="Attribute"></div>
+                  <div id="attr-badge-text" data-layout-allow-safe-zone></div>
+                </div>
                 <div id="card-overlay-layer">
                   <div id="stars-row"></div>
                   <div id="card-subtitle-wrap" class="typo-slot">
@@ -130,7 +108,6 @@
                   </div>
                   <div id="card-stats"></div>
                 </div>
-
                 <div id="card-no-corner">
                   <div id="card-no-img"></div>
                   <div id="card-no-text" data-layout-allow-safe-zone>NO.055-SSR</div>
@@ -139,7 +116,6 @@
             </div>
           </div>
         </div>
-
         <div id="celebration-layer" data-layout-allow-overflow></div>
       </div>
     </div>
@@ -153,49 +129,40 @@
         const chromaShockPx = st.chromaShockPx;
         const starEls = st.starEls;
         const sparkleData = st.sparkleData;
-        const confettiData = st.confettiData;
+        const flakeData = st.flakeData;
+        const bokehData = st.bokehData;
 
         const tl = gsap.timeline({ paused: true });
 
         tl.set("#scene-result-stage", { filter: "none", opacity: 0 }, 0);
         tl.to("#scene-result-stage", { opacity: 1, duration: 0.05 }, at(7.05));
-
-        tl.fromTo("#result-rays", { rotation: 0, opacity: 0.25 }, { rotation: 48, opacity: 0.62, duration: 4.85, ease: "power2.out" }, at(7.15));
-        tl.fromTo("#result-bg-ring", { rotation: -40, scale: 0.82, opacity: 0 }, { rotation: 0, scale: 1.0, opacity: 0.34, duration: 4.85, ease: "power2.out" }, at(7.15));
-
+        tl.fromTo("#result-rays", { rotation: 0, opacity: 0.24 }, { rotation: 46, opacity: 0.60, duration: 4.85, ease: "power2.out" }, at(7.15));
+        tl.fromTo("#result-bg-ring", { rotation: -38, scale: 0.86, opacity: 0 }, { rotation: 0, scale: 1.0, opacity: 0.56, duration: 4.85, ease: "power2.out" }, at(7.15));
         tl.fromTo("#card-stage", { opacity: 0 }, { opacity: 1, duration: 0.28, ease: "power2.out" }, at(7.18));
 
+        // 3D Card Spin & Landing (7.18s -> 9.67s)
         tl.fromTo(
           "#ssr-card",
-          {
-            scale: 0.18,
-            y: 120,
-            z: -600,
-            rotationY: -720,
-            rotationX: 16,
-            rotationZ: -8,
-          },
-          {
-            scale: 1.05,
-            y: -14,
-            z: 0,
-            rotationY: 0,
-            rotationX: 0,
-            rotationZ: 0,
-            duration: 2.15,
-            ease: "power3.out",
-          },
+          { scale: 0.18, y: 120, z: -600, rotationY: -720, rotationX: 16, rotationZ: -8 },
+          { scale: 1.05, y: -14, z: 0, rotationY: 0, rotationX: 0, rotationZ: 0, duration: 2.15, ease: "power3.out" },
           at(7.18)
         );
-
         tl.to("#ssr-card", { scale: 1.0, y: 0, duration: 0.34, ease: "back.out(2.0)" }, at(9.33));
 
+        // Spin Specular Highlights (Back: 7.64s..8.08s, Front: 8.20s..9.12s)
+        tl.fromTo("#spin-spec-back", { x: -120, opacity: 0 }, { x: 1420, opacity: 0.90, duration: 0.42, ease: "sine.inOut" }, at(7.64));
+        tl.to("#spin-spec-back", { opacity: 0, duration: 0.12 }, at(7.96));
+        tl.fromTo("#spin-spec-front", { x: -160, opacity: 0 }, { x: 1460, opacity: 0.88, duration: 0.86, ease: "power2.out" }, at(8.20));
+        tl.to("#spin-spec-front", { opacity: 0, duration: 0.24, ease: "power1.in" }, at(8.88));
+
+        // Landing Shockwave & Camera Shake (9.30s..)
         tl.fromTo("#landing-shockwave", { opacity: 0.95, scale: 0.55 }, { opacity: 0, scale: 3.6, duration: 0.85, ease: "power2.out", immediateRender: false }, at(9.3));
         tl.to("#scene-result-stage", { y: 12, duration: 0.05 }, at(9.32));
         tl.to("#scene-result-stage", { y: -8, duration: 0.06 }, at(9.37));
         tl.to("#scene-result-stage", { y: 4, duration: 0.06 }, at(9.43));
         tl.to("#scene-result-stage", { y: 0, duration: 0.08 }, at(9.49));
 
+        // Center-Attenuated Prism Holo Sweeps & Frame Rim Shimmer
         tl.fromTo("#holo-sweep-1", { x: 0 }, { x: 1850, duration: 1.05, ease: "power2.inOut" }, at(9.45));
         tl.fromTo("#holo-sweep-1", { opacity: 0 }, { opacity: 0.92, duration: 0.25, ease: "power1.out" }, at(9.45));
         tl.to("#holo-sweep-1", { opacity: 0, duration: 0.25, ease: "power1.in" }, at(10.25));
@@ -204,27 +171,17 @@
         tl.fromTo("#holo-sweep-2", { opacity: 0 }, { opacity: 0.78, duration: 0.25, ease: "power1.out" }, at(10.75));
         tl.to("#holo-sweep-2", { opacity: 0, duration: 0.25, ease: "power1.in" }, at(11.55));
 
-        tl.fromTo("#holo-static-sheen", { opacity: 0 }, { opacity: 1, duration: 0.75, ease: "power2.out" }, at(11.2));
+        tl.fromTo("#holo-static-sheen", { opacity: 0 }, { opacity: 0.72, duration: 0.75, ease: "power2.out" }, at(11.2));
+        tl.fromTo("#frame-holo-glint", { opacity: 0, backgroundPosition: "0% 0%, 0 0" }, { opacity: 0.78, backgroundPosition: "60% 60%, 0 0", duration: 1.8, ease: "power2.out" }, at(10.2));
 
-        tl.fromTo(
-          "#ssr-emblem",
-          { opacity: 0, scale: 2.1, rotation: -12 },
-          { opacity: 1, scale: 1.0, rotation: 0, duration: 0.48, ease: "back.out(2.1)" },
-          at(9.42)
-        );
+        // Crest, Attribute Plate, Stars & Foil Typography Stamping
+        tl.fromTo("#ssr-emblem", { opacity: 0, scale: 2.05, rotation: -10 }, { opacity: 1, scale: 1.0, rotation: 0, duration: 0.46, ease: "back.out(2.1)" }, at(9.42));
         if (cfg.attribute) {
-          tl.fromTo("#attr-badge", { opacity: 0, x: 36 }, { opacity: 1, x: 0, duration: 0.42, ease: "power3.out" }, at(9.65));
+          tl.fromTo("#attr-badge", { opacity: 0, x: 34, scale: 0.92 }, { opacity: 1, x: 0, scale: 1.0, duration: 0.42, ease: "back.out(1.6)" }, at(9.64));
         }
-
         starEls.forEach(function (star, idx) {
-          tl.fromTo(
-            star,
-            { opacity: 0, scale: 0.1, rotation: -45 },
-            { opacity: 1, scale: 1.0, rotation: 0, duration: 0.36, ease: "back.out(2.4)" },
-            at(9.65 + idx * 0.18)
-          );
+          tl.fromTo(star, { opacity: 0, scale: 0.1, rotation: -45 }, { opacity: 1, scale: 1.0, rotation: 0, duration: 0.36, ease: "back.out(2.4)" }, at(9.65 + idx * 0.16));
         });
-
         tl.fromTo("#card-subtitle-wrap", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.42, ease: "power2.out" }, at(10.0));
         tl.fromTo("#card-title-wrap", { opacity: 0, y: 24, scale: 0.92 }, { opacity: 1, y: 0, scale: 1.0, duration: 0.52, ease: "back.out(1.5)" }, at(10.22));
         tl.fromTo("#card-flavor-wrap", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.42, ease: "power2.out" }, at(10.55));
@@ -233,28 +190,44 @@
         }
         tl.fromTo("#card-no-corner", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, at(10.95));
 
+        // Clustered Sparkles, 3D Foil Flakes & Bokeh Orbs
         sparkleData.forEach(function (sp) {
           tl.fromTo(
             sp.el,
-            { x: 0, y: 0, opacity: 0, scale: 0.1, rotation: sp.rot - 90 },
-            { x: sp.endX, y: sp.endY, opacity: 0.92, scale: sp.finalScale, rotation: sp.rot, duration: 1.35, ease: "power3.out" },
+            { x: sp.endX * 0.35, y: sp.endY * 0.35, opacity: 0, scale: 0.1, rotation: sp.rot - 75 },
+            { x: sp.endX, y: sp.endY, opacity: sp.baseAlpha, scale: sp.finalScale, rotation: sp.rot, duration: 1.25, ease: "power3.out" },
             sp.startAt
           );
         });
-
-        confettiData.forEach(function (cf, idx) {
-          const tStart = at(9.28 + (idx % 5) * 0.05);
+        flakeData.forEach(function (fl) {
           tl.fromTo(
-            cf.el,
-            { x: 0, y: 0, opacity: 0, scale: 0.3, rotation: 0 },
-            { x: cf.midX, y: cf.midY, opacity: 1, scale: 1.0, rotation: cf.rot * 0.55, duration: 0.95, ease: "power3.out" },
-            tStart
+            fl.el,
+            { x: fl.startX, y: fl.startY, opacity: 0, scale: 0.3, rotationX: 0, rotationY: 0, rotationZ: 0 },
+            { x: fl.midX, y: fl.midY, opacity: 0.96, scale: 1.0, rotationX: fl.rotX * 0.52, rotationY: fl.rotY * 0.52, rotationZ: fl.rotZ * 0.52, duration: 0.88, ease: "power3.out" },
+            fl.startAt
           );
           tl.to(
-            cf.el,
-            { x: cf.endX, y: cf.endY, opacity: 0, rotation: cf.rot, duration: 1.35, ease: "power1.in" },
-            tStart + 0.95
+            fl.el,
+            { x: fl.endX, y: fl.endY, opacity: 0, scale: 0.65, rotationX: fl.rotX, rotationY: fl.rotY, rotationZ: fl.rotZ, duration: 1.25, ease: "power1.in" },
+            fl.startAt + 0.88
           );
+        });
+        bokehData.forEach(function (bk) {
+          tl.fromTo(bk.el, { x: bk.startX, y: bk.startY, opacity: 0, scale: 0.65 }, { x: bk.endX, y: bk.endY, opacity: bk.peakAlpha, scale: 1.0, duration: 1.45, ease: "power2.out" }, bk.startAt);
+          tl.to(bk.el, { opacity: bk.holdAlpha, duration: 0.65, ease: "sine.inOut" }, bk.startAt + 1.45);
+        });
+
+        // 12.0s - 15.0s: Layout Fixed, Luminous Breathing Only
+        tl.to("#frame-holo-glint", { backgroundPosition: "160% 160%, 0 0", opacity: 0.92, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));
+        tl.to("#holo-static-sheen", { opacity: 0.96, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));
+        tl.to("#result-halo", { opacity: 0.76, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));
+        tl.to("#result-rays", { opacity: 0.48, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));
+        tl.to("#result-bg-ring", { opacity: 0.72, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));
+        [0, 1, 2, 3].forEach(function (g) {
+          tl.to(".sp-group-" + g, { opacity: 0.42, duration: 0.65, ease: "sine.inOut", yoyo: true, repeat: 3 }, at(12.0 + g * 0.22));
+        });
+        [0, 1, 2].forEach(function (g) {
+          tl.to(".bk-group-" + g, { opacity: 0.14, duration: 1.25, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0 + g * 0.25));
         });
 
         function addChromaShock(targetSel, startAt, peakPx) {

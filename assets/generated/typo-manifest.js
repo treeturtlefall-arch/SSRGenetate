@@ -6,14 +6,20 @@ window.SSR_TYPO_MANIFEST = {
   "items": {
     "ssr": {
       "src": "assets/generated/typo_ssr.png",
-      "width": 155,
-      "height": 76,
+      "width": 320,
+      "height": 113,
       "text": "SSR"
+    },
+    "attribute": {
+      "src": "assets/generated/typo_attr.png",
+      "width": 285,
+      "height": 85,
+      "text": "光属性 / BABY"
     },
     "subtitle": {
       "src": "assets/generated/typo_subtitle.png",
-      "width": 220,
-      "height": 52,
+      "width": 222,
+      "height": 50,
       "text": "【覚醒の眼光】"
     },
     "title": {
@@ -42,7 +48,7 @@ window.SSR_TYPO_MANIFEST = {
     },
     "cutinMain": {
       "src": "assets/generated/typo_cutin_main.png",
-      "width": 722,
+      "width": 723,
       "height": 87,
       "text": "★ 昇格 — SSR 確定 ★"
     }

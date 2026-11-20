@@ -433,6 +433,109 @@ def build_sparkle_mask(size: int = 128) -> Image.Image:
     return m.resize((size, size), Image.Resampling.LANCZOS)
 
 
+def build_result_ring_mask(size: int = 1400, seed: int = 0) -> Image.Image:
+    """
+    リザルト背景の光学魔法リング（設計単位 1700px 直径）。
+    二重外周線・目盛り・擬似ルーン帯・六芒星・破線内周で情報階層を持たせ、
+    カードの上下左右の余白から円弧が覗く額縁として機能させる。
+    """
+    ss = 2
+    S = size * ss
+    c = S / 2.0
+    sc = S / 1700.0
+    rng = np.random.default_rng((seed * 362437 + 5) & 0xFFFFFFFF)
+    m = Image.new("L", (S, S), 0)
+    d = ImageDraw.Draw(m)
+
+    def ring(r: float, w: float, val: int = 255) -> None:
+        rr = r * sc
+        d.ellipse([c - rr, c - rr, c + rr, c + rr], outline=val, width=max(1, int(round(w * sc))))
+
+    def radial(a_deg: float, r0: float, r1: float, w: float, val: int = 255) -> None:
+        a = math.radians(a_deg)
+        d.line(
+            [(c + math.cos(a) * r0 * sc, c + math.sin(a) * r0 * sc), (c + math.cos(a) * r1 * sc, c + math.sin(a) * r1 * sc)],
+            fill=val,
+            width=max(1, int(round(w * sc))),
+        )
+
+    ring(842, 3.5)
+    ring(818, 1.6, 200)
+    for i in range(180):
+        long_tick = i % 15 == 0
+        radial(i * 2.0, 806 if long_tick else 822, 840, 2.6 if long_tick else 1.4, 255 if long_tick else 180)
+
+    # 擬似ルーン帯（決定論乱数で棒・点・短弧を並べる）
+    a = 0.0
+    while a < 360.0:
+        kind = int(rng.integers(0, 3))
+        span = float(rng.uniform(2.2, 4.6))
+        if kind == 0:
+            radial(a, 774, 798, 2.4, 230)
+            radial(a + span * 0.5, 782, 798, 1.6, 200)
+        elif kind == 1:
+            rr = 786 * sc
+            ang = math.radians(a)
+            px, py = c + math.cos(ang) * rr, c + math.sin(ang) * rr
+            dr = 3.2 * sc
+            d.ellipse([px - dr, py - dr, px + dr, py + dr], fill=230)
+        else:
+            rr = (778 + float(rng.uniform(0, 14))) * sc
+            d.arc([c - rr, c - rr, c + rr, c + rr], start=a, end=a + span, fill=210, width=max(1, int(round(2.0 * sc))))
+        a += span + float(rng.uniform(0.8, 2.2))
+
+    ring(760, 4.2)
+    for rot in (-90.0, 90.0):
+        pts = []
+        for k in range(3):
+            ang = math.radians(rot + k * 120.0)
+            pts.append((c + math.cos(ang) * 740 * sc, c + math.sin(ang) * 740 * sc))
+        d.polygon(pts, outline=200, width=max(1, int(round(2.2 * sc))))
+    draw_dashed_circle(d, c, c, 690 * sc, width=max(1, int(round(2.0 * sc))), n_dashes=90)
+    return m.resize((size, size), Image.Resampling.LANCZOS)
+
+
+def render_bokeh_sprite(
+    tint: Tuple[float, float, float],
+    size_px: int = 160,
+    radius: float = 46.0,
+    blur: float = 4.0,
+    seed: int = 0,
+) -> Image.Image:
+    """
+    bokeh_flow.hlsl の玉ボケ3層プロファイル（外周リング・ソフトハロー・中心芯）を移植。
+    7枚絞り由来のわずかな多角形歪みと、外周リングの軸上色収差（R外側・B内側）を加える。
+    """
+    rng = np.random.default_rng((seed * 1664525 + 1013904223) & 0xFFFFFFFF)
+
+    def smoothstep(e0: float, e1: float, x: np.ndarray) -> np.ndarray:
+        t = np.clip((x - e0) / (e1 - e0), 0.0, 1.0)
+        return t * t * (3.0 - 2.0 * t)
+
+    yy, xx = np.mgrid[0:size_px, 0:size_px].astype(np.float32)
+    c = (size_px - 1) * 0.5
+    th = np.arctan2(yy - c, xx - c)
+    rot = float(rng.uniform(0.0, math.pi))
+    dist = np.sqrt((xx - c) ** 2 + (yy - c) ** 2) * (1.0 + 0.035 * np.cos(7.0 * th + rot))
+
+    chans = []
+    for k, (ch_tint, r_off) in enumerate(zip(tint, (1.04, 1.0, 0.96))):
+        s = radius * r_off
+        edge = smoothstep(s + blur * 2.8, s * 0.94, dist) * 0.50
+        glow = smoothstep(s + blur * 7.0, s * 0.40, dist) * 0.50
+        core = smoothstep(s * 0.50, 0.0, dist) * 0.20
+        ring_hi = np.exp(-((dist - s * 0.97) / max(0.8, blur * 0.9)) ** 2) * 0.35
+        chans.append((edge + glow + core + ring_hi) * ch_tint)
+    light = np.clip(np.stack(chans, axis=-1), 0.0, 1.4)
+    light = 1.0 - np.exp(-light * 1.35)
+    alpha = np.clip(np.max(light, axis=-1), 0.0, 1.0)
+    rgb = np.clip(light / np.maximum(alpha, 1e-4)[..., None], 0.0, 1.0)
+    out = np.zeros((size_px, size_px, 4), dtype=np.uint8)
+    out[..., :3] = (rgb * 255.0 + 0.5).astype(np.uint8)
+    out[..., 3] = (alpha * 255.0 + 0.5).astype(np.uint8)
+    return Image.fromarray(out, mode="RGBA")
+
+
 def main() -> None:
     cfg = load_card_config()
     opt_cfg = cfg.get("optics", {})
@@ -522,6 +625,36 @@ def main() -> None:
         fname = f"opt_sparkle_{cname}.png"
         sp_img.save(OUT_DIR / fname, format="PNG", optimize=True)
         print(f"[OK] {fname} ({sp_img.width}x{sp_img.height})")
+
+    # 5. リザルト背景の光学魔法リング
+    ring_mask = build_result_ring_mask(1400, seed=seed + 1201)
+    ring_img = render_optical_glow(
+        mask_l=ring_mask,
+        spectrum_name="summon_gold",
+        ref_scale=14.0,
+        exposure=0.95,
+        core_glow=cg,
+        halation=hal * 1.15,
+        irregularity=irr,
+        prism_mode=False,
+        seed=seed + 1201,
+    )
+    ring_img.save(OUT_DIR / "opt_result_ring.png", format="PNG", optimize=True)
+    print(f"[OK] opt_result_ring.png ({ring_img.width}x{ring_img.height})")
+
+    # 6. 玉ボケ光粒（遠景=シャープ / 近景=大ボケ）× 4色
+    bokeh_tints = {
+        "gold": (1.00, 0.84, 0.52),
+        "rose": (1.00, 0.62, 0.78),
+        "aqua": (0.55, 0.88, 1.00),
+        "white": (1.00, 0.97, 0.92),
+    }
+    for i, (cname, tint) in enumerate(bokeh_tints.items()):
+        for depth, blur in (("far", 1.6), ("near", 9.0)):
+            bk = render_bokeh_sprite(tint, size_px=160, radius=44.0 if depth == "far" else 40.0, blur=blur, seed=seed + 1301 + i)
+            fname = f"opt_bokeh_{cname}_{depth}.png"
+            bk.save(OUT_DIR / fname, format="PNG", optimize=True)
+    print("[OK] opt_bokeh_{gold,rose,aqua,white}_{far,near}.png (160x160)")
 
 
 if __name__ == "__main__":

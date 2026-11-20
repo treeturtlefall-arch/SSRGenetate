@@ -7,20 +7,20 @@
 - **総尺**: **15.0秒（最大15秒以内）**
 - **タイムライン構成**:
   - **0.0s 〜 12.0s（抽選〜SSR確定演出）**: 召喚陣・オーブ収束・フェイク昇格（青→金→虹）・ホワイトアウト・3Dカード回転・SSR確定エフェクトを **12.0秒で完結** させる。
-  - **12.0s 〜 15.0s（リザルト画面固定）**: 12.0秒時点で完成したリザルト画面（写真入りSSRカード＋レアリティ・タイトル・ステータス枠等）を **残り3.0秒間静止固定** して見せる。
+  - **12.0s 〜 15.0s（レイアウト固定・光のみ微動）**: 12.0秒時点で完成したリザルト画面（写真入りSSRカード＋レアリティ・タイトル・星・スパークル等の配置・サイズ）を **残り3.0秒間完全固定** しつつ、ホロ光沢の微細なシマー・スパークルの位相差瞬き・背景ハローの静かな呼吸のみを維持して見せる。
 - **決定論的レンダリング**: `Math.random()` や `Date.now()` は使わず、シード付き疑似乱数と GSAP タイムライン（`window.__timelines["main"]` / 各サブコンポジション）のみで描画すること（フレーム精度の保証のため）。
 - **ディレクトリ・ファイル構成**:
   - `card-config.js` — 写真パス・タイトル・レアリティ・物理質感（タイポグラフィ・光学・マテリアル・乱数シード）の一元設定ファイル
   - `index.html` — ルートコンポジション（音声3トラック・ホワイトアウト閃光・サブコンポジション統合）
   - `compositions/` — シーン別サブコンポジション
     - `compositions/scene-summon.html` — Phase 1-2: 召喚陣・オーブ収束・青→金→虹フェイク昇格（0.0s 〜 7.4s）
-    - `compositions/scene-result.html` — Phase 3-5: 3Dカード回転着地・SSR確定エフェクト・3秒静止リザルト（6.9s 〜 15.0s）
+    - `compositions/scene-result.html` — Phase 3-5: 3Dカード回転着地・SSR確定エフェクト・3秒リザルト（レイアウト固定・光微動）（6.9s 〜 15.0s）
   - `assets/` — 入力写真（例: `photo.jpg`）、プロシージャル効果音（`.wav`）、フォント（`assets/fonts/`）、および物理レンダリング生成画像（`assets/generated/`）
   - `scripts/` — 物理アセット＆効果音の決定論的生成スクリプト群（Python `numpy` / `scipy` / `Pillow`）
-    - `scripts/_utils.py` — 設定読み込み・シード解決・グラデーション・微細シボ生成の共通モジュール
-    - `scripts/render_typography.py` — 書字キネマティクス＆金属箔タイポグラフィ透過PNG＋マニフェスト生成（`npm run build:typo`）
-    - `scripts/render_optics.py` — H&D分光モデルによる魔法陣・オーブ亀裂・星・スパークル発光PNG生成（`npm run build:optics`）
-    - `scripts/render_material.py` — 虹金属箔フレーム＆内窓立体深度PNG生成（`npm run build:material`）
+    - `scripts/_utils.py` — 設定読み込み・シード解決・グラデーション・微細シボ・金属レリーフ陰影の共通モジュール
+    - `scripts/render_typography.py` — 書字キネマティクス＆金属箔タイポ・SSRクレスト・属性刻印プレート透過PNG＋マニフェスト生成（`npm run build:typo`）
+    - `scripts/render_optics.py` — H&D分光モデルによる魔法陣・オーブ亀裂・星・スパークル・背景光学リング・玉ボケ発光PNG生成（`npm run build:optics`）
+    - `scripts/render_material.py` — 虹金属箔フレーム（四隅フィリグリー一体）・カード裏面・ホロプリズム・金箔結晶片・内窓立体深度PNG生成（`npm run build:material`）
     - `scripts/generate_se.py` — 15秒タイムライン完全同期のステレオWAV効果音生成（`npm run build:se`）
   - `renders/` — 出力された `.mp4` ファイル（`renders/ssr_gacha.mp4`）
 

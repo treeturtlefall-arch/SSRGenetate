@@ -82,26 +82,26 @@
 
 15 秒視聴後の印象を決定づけるリザルト画面（`6.9s〜15.0s`）を、Web ページ部品から最新 3D ソシャゲのプレミアムカード演出へ引き上げます。
 
-- [ ] **1-1. `#ssr-emblem` と `#attr-badge` の脱Web UIパーツ化**
+- [x] **1-1. `#ssr-emblem` と `#attr-badge` の脱Web UIパーツ化**
   - **対象**: `compositions/scene-result.css`, `compositions/scene-result.html`, `compositions/scene-result-setup.js`, `scripts/render_typography.py`, `scripts/render_material.py`
   - **課題**: `#ssr-emblem` が半透明紺の角丸ボックス＋単色黄色枠に閉じ込められており、`#attr-badge` は `border-radius: 999px` のピル型＋素 HTML テキストのため、下部の物理箔タイポから浮いている。
   - **対策**: `#ssr-emblem` の角丸ボックスを廃止し、厚み（ベベル／押し出し）を持たせた箔タイポ直置き＋背後の斜めカット暗色座布団／クリスタル・金属クレストへ刷新する。`#attr-badge` も `render_typography.py` の生成対象に統合し、鋭角な金属・クリスタル刻印タグへ置き換える。
-- [ ] **1-2. 四隅装飾・背景リング・カード裏面の素SVG脱却**
+- [x] **1-2. 四隅装飾・背景リング・カード裏面の素SVG脱却**
   - **対象**: `compositions/scene-result.html`, `compositions/scene-result.css`, `scripts/render_optics.py`, `scripts/render_material.py`
   - **対策**: `.corner-ornament`, `#result-bg-ring`, `#card-back-face` の均一なベクター SVG を廃止し、物理光学発光アセットおよび金属ヘアライン／クリスタル紋章アセットへ差し替える。
-- [ ] **1-3. カード構図の余白設計（空間感の確保）**
+- [x] **1-3. カード構図の余白設計（空間感の確保）**
   - **対象**: `compositions/scene-result.css` (`#card-stage`), `scripts/render_material.py`
   - **課題**: カード（`940×1660`）が画面の約 87% を占めており、背後の放射光・ハロー・光学リングが隠れて空間の奥行きが見えにくい。
   - **対策**: カード占有率を画面の 80〜84% 程度へ調整し、背景の 3D 空間演出が額縁として映える余白を確保する。
-- [ ] **1-4. スパークル疎密クラスター化 ＆ 3D箔片・ボケ光粒への置換**
+- [x] **1-4. スパークル疎密クラスター化 ＆ 3D箔片・ボケ光粒への置換**
   - **対象**: `compositions/scene-result-setup.js` (`rimAnchors`, `confettiData`), `compositions/scene-result.css`, `compositions/scene-result.html`
   - **課題**: 周囲スパークル 16 個がほぼ等間隔・似たサイズで並び機械的。`.confetti-bit` は単色ベタ塗り長方形の 2D 回転で安っぽい。
   - **対策**: スパークルは**極端なサイズ差（特大 2〜3 個・中 4〜5 個・極小群）と対角線上の疎密クラスター配置**に変更する。紙吹雪は単色四角 `div` を廃止し、`rotateX` / `rotateY` で明滅しながら舞う金箔・プリズム結晶片および遠近感のあるボケ光粒（Bokeh）へ置換し、中央の顔エリアを通過しない軌道へ制御する。
-- [ ] **1-5. ホログラム反射の立体化（回転中スペキュラ＋写真保護マスク）**
+- [x] **1-5. ホログラム反射の立体化（回転中スペキュラ＋写真保護マスク）**
   - **対象**: `compositions/scene-result.css` (`#holo-sweep-1`, `#holo-sweep-2`, `#holo-static-sheen`), `compositions/scene-result.html`
   - **課題**: 回転中（`7.8s〜9.1s`）に表面のスペキュラ反射がなく、着地後の `#holo-sweep` は白い帯がそのまま写真中央を横切って被写体の顔を白く霞ませている。
   - **対策**: 3D 回転中の角度変化に同期した鋭いスペキュラ反射を追加する。着地後スイープはプリズム／ダイヤ柄テクスチャを仕込み、写真中央部は弱く減衰させつつ金属フレームと箔文字エッジで強くキラッと反射するマスク処理へ改修する。
-- [ ] **1-6. 12.0s〜15.0s の「レイアウト固定・光のみ微動」実装 ＆ `AGENTS.md` 更新**
+- [x] **1-6. 12.0s〜15.0s の「レイアウト固定・光のみ微動」実装 ＆ `AGENTS.md` 更新**
   - **対象**: `compositions/scene-result.html`, `AGENTS.md`
   - **対策**: 12.0s 以降はカード・文字・星の位置とサイズを完全固定したまま、ごく控えめなホロ光沢シマー・スパークルの位相差瞬き・背景ハローの静かな呼吸を 15.0s まで維持する。あわせて `AGENTS.md` の「12.0s〜15.0s（リザルト画面固定）」仕様記述を本方針へ更新する。
 

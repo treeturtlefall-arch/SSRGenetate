@@ -25,12 +25,18 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from _utils import (
     FONTS_DIR,
+    GOLD_RAMP,
     OUT_DIR,
     PROJECT_ROOT,
+    SILVER_RAMP,
+    gaussian_blur_f,
     generate_micro_emboss_height,
     load_card_config,
     make_linear_gradient,
+    polygon_mask,
     resolve_seed,
+    rgba_from_float,
+    shade_metal_relief,
 )
 
 FALLBACK_FONT_FILE = "TekitouPoem.ttf"
@@ -79,6 +85,7 @@ STAMP_KINEMATICS: Dict[str, float] = {
 TYPO_PRESETS: Dict[str, Dict[str, Any]] = {
     "foil-brush": {
         "ssr":       {"font": "YujiSyuku-Regular.ttf", "material": "foil-gold",      "stamp": True,  "wobble_mul": 0.35},
+        "attribute": {"font": "KleeOne-Regular.ttf",   "material": "foil-champagne", "stamp": True,  "wobble_mul": 0.30},
         "subtitle":  {"font": "KleeOne-Regular.ttf",   "material": "foil-champagne", "stamp": False, "wobble_mul": 0.85},
         "title":     {"font": "YujiSyuku-Regular.ttf", "material": "foil-gold",      "stamp": False, "wobble_mul": 1.00},
         "flavor":    {"font": "KleeOne-Regular.ttf",   "material": "ink-ivory",      "stamp": False, "wobble_mul": 0.75},
@@ -88,6 +95,7 @@ TYPO_PRESETS: Dict[str, Dict[str, Any]] = {
     },
     "handwritten-sign": {
         "ssr":       {"font": "TekitouPoem_Bold.ttf",     "material": "foil-gold",      "stamp": True,  "wobble_mul": 0.45},
+        "attribute": {"font": "SetoFont.ttf",             "material": "foil-champagne", "stamp": True,  "wobble_mul": 0.40},
         "subtitle":  {"font": "SetoFont.ttf",             "material": "foil-champagne", "stamp": False, "wobble_mul": 1.00},
         "title":     {"font": "TekitouPoem_Bold.ttf",     "material": "ink-posca",      "stamp": False, "wobble_mul": 1.05},
         "flavor":    {"font": "TekitouPoem.ttf",          "material": "ink-ivory",      "stamp": False, "wobble_mul": 0.90},
@@ -97,6 +105,7 @@ TYPO_PRESETS: Dict[str, Dict[str, Any]] = {
     },
     "crisp-emboss": {
         "ssr":       {"font": "cinecaption.ttf",       "material": "foil-gold",      "stamp": True,  "wobble_mul": 0.25},
+        "attribute": {"font": "cinecaption.ttf",       "material": "foil-champagne", "stamp": True,  "wobble_mul": 0.25},
         "subtitle":  {"font": "cinecaption.ttf",       "material": "foil-champagne", "stamp": False, "wobble_mul": 0.50},
         "title":     {"font": "KleeOne-Regular.ttf",   "material": "foil-gold",      "stamp": False, "wobble_mul": 0.60},
         "flavor":    {"font": "KleeOne-Regular.ttf",   "material": "ink-ivory",      "stamp": False, "wobble_mul": 0.50},
@@ -657,6 +666,214 @@ def render_multiline_block(
     )
 
 
+def _over(fg_rgb: np.ndarray, fg_a: np.ndarray, bg_rgb: np.ndarray, bg_a: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Porter-Duff Over 合成"""
+    a = fg_a + bg_a * (1.0 - fg_a)
+    rgb = (fg_rgb * fg_a[..., None] + bg_rgb * (bg_a * (1.0 - fg_a))[..., None]) / np.maximum(a, 1e-5)[..., None]
+    return np.clip(rgb, 0.0, 1.0), np.clip(a, 0.0, 1.0)
+
+
+def _tight_crop(rgb: np.ndarray, a: np.ndarray) -> Image.Image:
+    ys, xs = np.where(a > 0.012)
+    if len(ys) > 0:
+        y0, y1 = max(0, int(ys.min()) - 1), min(a.shape[0], int(ys.max()) + 2)
+        x0, x1 = max(0, int(xs.min()) - 1), min(a.shape[1], int(xs.max()) + 2)
+        rgb, a = rgb[y0:y1, x0:x1], a[y0:y1, x0:x1]
+    return rgba_from_float(rgb, a)
+
+
+def render_rarity_crest(
+    text: str,
+    font_file: str,
+    foil_glitter: float,
+    paper_grain: float,
+    seed: int,
+) -> Optional[Image.Image]:
+    """
+    レアリティ（SSR等）用の脱Web UIクレスト:
+    角丸ボックスを廃し、背後の鋭角ダーククリスタル座布団＋上下の金属ピンライン＋
+    菱形スター＋3D押し出しベベル付きの金属箔文字を1枚の透過PNGに統合する。
+    """
+    mask_l = render_humanized_line(text, font_file, 108, max_w=340.0, wobble_strength=0.06, is_stamp=True, seed=seed)
+    if mask_l is None:
+        return None
+    # stroke_width 相当で文字をわずかに太らせ、3Dベベルのハイライト面積を確保する
+    mask_arr = gaussian_blur_f(np.asarray(mask_l, dtype=np.float32) / 255.0, 0.9)
+    mask_l = Image.fromarray((np.clip((mask_arr - 0.16) / 0.62, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8), mode="L")
+    tw, th = mask_l.size
+    pad_l, pad_r, pad_y = 64, 52, 26
+    W, H = tw + pad_l + pad_r, th + pad_y * 2
+    cy = H * 0.5
+
+    # 1. 背後の斜めカット暗色座布団（文字より一段低く、右端へ開くシャープな帯）
+    sh_y0, sh_y1 = pad_y + 12, H - pad_y - 10
+    pts_outer = [(20, sh_y0), (W - 6, sh_y0), (W - 24, sh_y1), (8, sh_y1)]
+    pts_inner = [(23, sh_y0 + 2.6), (W - 10, sh_y0 + 2.6), (W - 27, sh_y1 - 2.6), (11, sh_y1 - 2.6)]
+    m_out = polygon_mask(W, H, pts_outer, ss=3)
+    m_in = polygon_mask(W, H, pts_inner, ss=3)
+    m_rim = np.clip(m_out - m_in, 0.0, 1.0)
+
+    yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+    x_fade = np.clip(1.25 - (xx / W) * 0.60, 0.30, 1.0)
+    sh_grad = np.clip((yy - sh_y0) / max(1.0, float(sh_y1 - sh_y0)), 0.0, 1.0)
+    body_rgb = (
+        np.array([0.075, 0.095, 0.22])[None, None, :] * (1.0 - sh_grad[..., None])
+        + np.array([0.020, 0.028, 0.078])[None, None, :] * sh_grad[..., None]
+    )
+    diag = np.exp(-(((xx - W * 0.38) * 0.7 + (yy - cy)) / 18.0) ** 2) * 0.14
+    body_rgb = np.clip(body_rgb + diag[..., None] * np.array([0.95, 0.80, 0.48]), 0.0, 1.0)
+    body_a = m_in * 0.80 * x_fade
+
+    # 2. 金属リム＋左端の4芒星クレスト＋右端のアクセント菱形
+    star_cx, star_cy = 24.0, cy
+    star_pts = []
+    for i in range(8):
+        a = math.radians(-90 + i * 45)
+        r = (21.0 if i % 2 == 0 else 6.4) if i % 4 == 0 else (12.5 if i % 2 == 0 else 6.4)
+        star_pts.append((star_cx + math.cos(a) * r, star_cy + math.sin(a) * r))
+    m_star = polygon_mask(W, H, star_pts, ss=3)
+    r_cx = W - 18.0
+    m_r_gem = polygon_mask(W, H, [(r_cx, cy - 5.5), (r_cx + 5.5, cy), (r_cx, cy + 5.5), (r_cx - 5.5, cy)], ss=3)
+    m_metal_deco = np.clip(m_rim * x_fade + m_star + m_r_gem, 0.0, 1.0)
+    deco_rgb = shade_metal_relief(m_metal_deco, GOLD_RAMP, bevel_px=1.2, depth=5.0, tone=0.68, shininess=34.0)
+
+    # 座布団＋装飾の落ち影
+    bg_shadow = np.roll(np.roll(gaussian_blur_f(np.maximum(m_out * x_fade, m_star), 6.0), 4, axis=0), 3, axis=1) * 0.72
+    rgb, a = np.zeros((H, W, 3), dtype=np.float32), bg_shadow
+    rgb, a = _over(body_rgb, body_a, rgb, a)
+    rgb, a = _over(deco_rgb, m_metal_deco, rgb, a)
+
+    # 3. 箔文字本体（3D押し出し側面＋立体ベベル金属面＋ラメ）
+    t_canvas = Image.new("L", (W, H), 0)
+    t_canvas.paste(mask_l, (pad_l, pad_y))
+    t_mask = np.asarray(t_canvas, dtype=np.float32) / 255.0
+
+    # 右下への3D押し出し（深みのあるブロンズ金側面）
+    ext = np.zeros_like(t_mask)
+    for step in range(1, 6):
+        ext = np.maximum(ext, np.roll(np.roll(t_mask, step, axis=0), step, axis=1))
+    ext = np.clip(ext * (1.0 - t_mask), 0.0, 1.0)
+    ext_rgb = shade_metal_relief(ext + t_mask * 0.5, GOLD_RAMP, bevel_px=1.0, depth=3.0, tone=0.28, shininess=18.0)
+
+    # 文字背面の暖色バックグロー＋落ち影
+    t_glow = gaussian_blur_f(t_mask, 9.0) * 0.42
+    t_shadow = np.roll(np.roll(gaussian_blur_f(np.maximum(t_mask, ext), 4.5), 4, axis=0), 3, axis=1) * 0.85
+    rgb, a = _over(np.zeros_like(rgb), t_shadow, rgb, a)
+    rgb, a = _over(np.broadcast_to(np.array([0.95, 0.75, 0.35], dtype=np.float32), (H, W, 3)), t_glow, rgb, a)
+    rgb, a = _over(ext_rgb, ext, rgb, a)
+
+    # 文字表面：高輝度シャンパン〜白金寄りの金属レリーフ＋シボ＋ラメ
+    rng = np.random.default_rng((seed * 2654435761 + 19) & 0xFFFFFFFF)
+    v_tone = np.clip(0.92 - ((yy - pad_y) / max(1.0, float(th))) * 0.24, 0.62, 0.95)
+    face_rgb = shade_metal_relief(t_mask, GOLD_RAMP, bevel_px=1.8, depth=5.5, tone_map=v_tone, shininess=24.0)
+    if paper_grain > 0.01:
+        emb = generate_micro_emboss_height(H, W, rng)
+        face_rgb = np.clip(face_rgb * (1.0 + emb[..., None] * (0.04 * paper_grain)), 0.0, 1.0)
+    if foil_glitter > 0.01:
+        sp = (rng.uniform(0.0, 1.0, (H, W)) > 0.945).astype(np.float32) * foil_glitter * t_mask
+        face_rgb = np.clip(face_rgb + sp[..., None], 0.0, 1.0)
+
+    rgb, a = _over(face_rgb, t_mask, rgb, a)
+    return _tight_crop(rgb, a)
+
+
+def render_attribute_plate(
+    text: str,
+    font_file: str,
+    foil_glitter: float,
+    paper_grain: float,
+    seed: int,
+) -> Optional[Image.Image]:
+    """
+    属性タグ用の鋭角クリスタル・金属刻印プレート（角丸ピルを廃止）:
+    六角カットのダーククリスタル座布団＋シャンパン金の面取りリム＋左端のプリズム結晶ジェム＋箔テキスト。
+    """
+    foil_txt = render_multiline_block(
+        text=text,
+        font_file=font_file,
+        font_size=26,
+        max_w=300.0,
+        max_lines=1,
+        material_name="foil-champagne",
+        wobble_strength=0.05,
+        foil_glitter=foil_glitter,
+        paper_grain=paper_grain,
+        is_stamp=True,
+        seed=seed,
+    )
+    if foil_txt is None:
+        return None
+    tw, th = foil_txt.size
+    pad_l, pad_r, pad_y = 50, 28, 12
+    bh = max(48, th + pad_y * 2)
+    bw = tw + pad_l + pad_r
+    margin = 14
+    W, H = bw + margin * 2, bh + margin * 2
+    x0, y0 = float(margin), float(margin)
+    x1, y1 = x0 + bw, y0 + bh
+    cy = (y0 + y1) * 0.5
+    c = (y1 - y0) * 0.36  # 斜めカット量
+
+    def hex_pts(inset: float) -> List[Tuple[float, float]]:
+        k = inset * 0.7
+        return [
+            (x0 + c + k, y0 + inset),
+            (x1 - c - k, y0 + inset),
+            (x1 - inset, cy),
+            (x1 - c - k, y1 - inset),
+            (x0 + c + k, y1 - inset),
+            (x0 + inset, cy),
+        ]
+
+    m_out = polygon_mask(W, H, hex_pts(0.0), ss=3)
+    m_in = polygon_mask(W, H, hex_pts(2.8), ss=3)
+    m_rim = np.clip(m_out - m_in, 0.0, 1.0)
+
+    yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+    t_y = np.clip((yy - y0) / max(1.0, float(bh)), 0.0, 1.0)
+    body_rgb = (
+        np.array([0.085, 0.110, 0.25])[None, None, :] * (1.0 - t_y[..., None])
+        + np.array([0.024, 0.032, 0.086])[None, None, :] * t_y[..., None]
+    )
+    sheen = np.exp(-(((xx - W * 0.45) * 0.5 + (yy - cy)) / 14.0) ** 2) * 0.16
+    body_rgb = np.clip(body_rgb + sheen[..., None] * np.array([0.85, 0.78, 0.55]), 0.0, 1.0)
+    body_a = m_in * 0.84
+
+    rim_rgb = shade_metal_relief(m_rim, GOLD_RAMP, bevel_px=1.0, depth=4.5, tone=0.66, shininess=32.0)
+
+    # 左端の菱形クリスタルジェム
+    gx = x0 + c + 15.0
+    r_g = 8.0
+    m_gem = polygon_mask(W, H, [(gx, cy - r_g), (gx + r_g, cy), (gx, cy + r_g), (gx - r_g, cy)], ss=3)
+    m_gem_in = polygon_mask(W, H, [(gx, cy - 4.5), (gx + 4.5, cy), (gx, cy + 4.5), (gx - 4.5, cy)], ss=3)
+    gem_rim = np.clip(m_gem - m_gem_in, 0.0, 1.0)
+    gem_rim_rgb = shade_metal_relief(gem_rim, GOLD_RAMP, bevel_px=0.8, depth=4.0, tone=0.70)
+    # ジェム中心はプリズムシアン〜シャンパンの発光核
+    d_gem = np.sqrt((xx - gx) ** 2 + (yy - cy) ** 2)
+    gem_core_rgb = (
+        np.array([1.0, 0.98, 0.90])[None, None, :] * np.exp(-(d_gem / 3.5) ** 2)[..., None]
+        + np.array([0.46, 0.83, 0.93])[None, None, :] * (1.0 - np.exp(-(d_gem / 3.5) ** 2))[..., None]
+    )
+
+    shadow = np.roll(np.roll(gaussian_blur_f(m_out, 5.0), 3, axis=0), 2, axis=1) * 0.72
+    rgb, a = np.zeros((H, W, 3), dtype=np.float32), shadow
+    rgb, a = _over(body_rgb, body_a, rgb, a)
+    rgb, a = _over(rim_rgb, m_rim, rgb, a)
+    rgb, a = _over(gem_core_rgb, m_gem_in, rgb, a)
+    rgb, a = _over(gem_rim_rgb, gem_rim, rgb, a)
+
+    # 箔文字を貼り込み
+    t_arr = np.asarray(foil_txt, dtype=np.float32) / 255.0
+    tx = int(round(x0 + pad_l))
+    ty = int(round(cy - th * 0.5))
+    t_rgb = np.zeros((H, W, 3), dtype=np.float32)
+    t_a = np.zeros((H, W), dtype=np.float32)
+    t_rgb[ty:ty + th, tx:tx + tw] = t_arr[..., :3]
+    t_a[ty:ty + th, tx:tx + tw] = t_arr[..., 3]
+    rgb, a = _over(t_rgb, t_a, rgb, a)
+    return _tight_crop(rgb, a)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="SSRGenerate 文字ヒューマナイズ＆箔物理タイポグラフィ生成")
     parser.add_argument("--preset", type=str, default=None, choices=list(TYPO_PRESETS.keys()))
@@ -681,7 +898,8 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     specs = [
-        ("ssr",       str(cfg.get("rarity", "SSR")),     72, 260, 1, "typo_ssr.png"),
+        ("ssr",       str(cfg.get("rarity", "SSR")),     94, 320, 1, "typo_ssr.png"),
+        ("attribute", str(cfg.get("attribute", "")),     26, 300, 1, "typo_attr.png"),
         ("subtitle",  str(cfg.get("subtitle", "")),      34, 780, 1, "typo_subtitle.png"),
         ("title",     str(cfg.get("title", "")),         74, 800, 1, "typo_title.png"),
         ("flavor",    str(cfg.get("flavor", "")),        29, 780, 2, "typo_flavor.png"),
@@ -702,19 +920,37 @@ def main() -> None:
         if not clean_text:
             continue
         style = preset[key]
-        img = render_multiline_block(
-            text=clean_text,
-            font_file=style["font"],
-            font_size=fsize,
-            max_w=float(max_w),
-            max_lines=max_lines,
-            material_name=style["material"],
-            wobble_strength=wobble_norm * float(style["wobble_mul"]),
-            foil_glitter=foil_glitter,
-            paper_grain=paper_grain,
-            is_stamp=bool(style["stamp"]),
-            seed=seed + idx * 1009,
-        )
+        item_seed = seed + idx * 1009
+        if key == "ssr":
+            img = render_rarity_crest(
+                text=clean_text,
+                font_file=style["font"],
+                foil_glitter=foil_glitter,
+                paper_grain=paper_grain,
+                seed=item_seed,
+            )
+        elif key == "attribute":
+            img = render_attribute_plate(
+                text=clean_text,
+                font_file=style["font"],
+                foil_glitter=foil_glitter,
+                paper_grain=paper_grain,
+                seed=item_seed,
+            )
+        else:
+            img = render_multiline_block(
+                text=clean_text,
+                font_file=style["font"],
+                font_size=fsize,
+                max_w=float(max_w),
+                max_lines=max_lines,
+                material_name=style["material"],
+                wobble_strength=wobble_norm * float(style["wobble_mul"]),
+                foil_glitter=foil_glitter,
+                paper_grain=paper_grain,
+                is_stamp=bool(style["stamp"]),
+                seed=item_seed,
+            )
         if img is None:
             continue
         out_path = OUT_DIR / filename
