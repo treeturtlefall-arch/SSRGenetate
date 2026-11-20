@@ -179,6 +179,113 @@ body {
   background-image: url("../assets/generated/opt_pillar_rainbow.png");
 }
 
+/* [A] 3D 天蓋・逆さ天球ゲート（Celestial Astrolabe Gate） */
+#celestial-gate-perspective {
+  position: absolute;
+  inset: 0;
+  perspective: 1100px;
+  perspective-origin: 50% 24%;
+  pointer-events: none;
+}
+
+#celestial-gate-wrap {
+  position: absolute;
+  left: 50%;
+  top: 10%;
+  width: 1024px;
+  height: 1024px;
+  margin-left: -512px;
+  margin-top: -512px;
+  opacity: 0;
+  mix-blend-mode: screen;
+  transform-origin: 50% 50%;
+}
+
+.gate-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.gate-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform-origin: 50% 50%;
+}
+
+#gate-gold,
+#gate-rainbow {
+  opacity: 0;
+}
+
+/* [D] 上空2層パララックス浮遊クリスタル破片 & 遠景星屑 */
+#sky-shards-far,
+#sky-shards-near {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sky-shard,
+.sky-star {
+  position: absolute;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* [C] 冒頭降臨流体ウィスプ・ストリーム & 昇格時の天啓光撃（黄金光槍・プリズム落雷） */
+#wisp-streams {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.wisp-node {
+  position: absolute;
+  left: 50%;
+  top: 47%;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background-image: url("../assets/generated/opt_meteor_blue.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  transform-origin: 50% 50%;
+  pointer-events: none;
+}
+
+.sky-bolt {
+  position: absolute;
+  left: 50%;
+  top: 72px;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  transform-origin: 50% 5%;
+  pointer-events: none;
+}
+
+#bolt-gold {
+  width: 384px;
+  height: 980px;
+  margin-left: -192px;
+  background-image: url("../assets/generated/opt_bolt_gold.png");
+}
+
+#bolt-prism {
+  width: 512px;
+  height: 980px;
+  margin-left: -256px;
+  background-image: url("../assets/generated/opt_bolt_prism.png");
+}
+
 /* 3D 床パース魔法陣 */
 #magic-circle-perspective {
   position: absolute;
@@ -408,38 +515,99 @@ body {
   );
 }
 
-/* 極小シネマティック英字装飾（旧 召喚中... 業務UIを整理） */
-#summon-caption {
+/* [E] 上端フェーズ昇格トラッカー（天蓋の穴の中心・1.3倍サイズ: RESONANCE / ELEVATION / OVERDRIVE） */
+#summon-top-hud {
   position: absolute;
-  left: 110px;
-  right: 110px;
-  bottom: 46px;
-  z-index: 20;
+  left: 50%;
+  top: 138px;
+  width: 480px;
+  height: 50px;
+  margin-left: -240px;
+  z-index: 22;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hud-top-row {
+  width: 290px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  opacity: 0;
+  gap: 22px;
 }
 
-.caption-line {
+.hud-wing {
   flex: 1;
-  height: 1px;
+  height: 1.3px;
   background: linear-gradient(
     to right,
     transparent 0%,
-    rgba(226, 232, 242, 0.45) 50%,
+    rgba(216, 228, 246, 0.46) 50%,
     transparent 100%
   );
 }
 
-#summon-caption-text {
+.hud-diamonds {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.hud-node {
+  width: 11px;
+  height: 11px;
+  transform: rotate(45deg);
+  border: 1.3px solid rgba(216, 228, 246, 0.46);
+  background: rgba(216, 228, 246, 0.12);
+}
+
+#hud-node-1 {
+  border-color: rgba(140, 206, 255, 0.95);
+  background: #bfe6ff;
+  box-shadow: 0 0 13px rgba(116, 186, 245, 0.90);
+}
+
+.hud-label-stack {
+  position: relative;
+  width: 480px;
+  height: 26px;
+}
+
+.hud-phase-label {
+  position: absolute;
+  inset: 0;
+  text-align: center;
   font-family: var(--font-ui);
-  font-size: 16px;
+  font-size: 18.5px;
   font-weight: 700;
-  letter-spacing: 0.38em;
-  color: #e2e8f2;
+  letter-spacing: 0.44em;
+  text-indent: 0.44em;
+  line-height: 26px;
   white-space: nowrap;
+  opacity: 0;
+}
+
+#hud-label-1 {
+  color: #cfe7fb;
+  text-shadow: 0 0 12px rgba(116, 186, 245, 0.45);
+  opacity: 1;
+}
+
+#hud-label-2 {
+  color: #f4e2bc;
+  text-shadow: 0 0 14px rgba(212, 162, 76, 0.55);
+}
+
+#hud-label-3 {
+  color: #ffffff;
+  text-shadow:
+    0 0 14px rgba(232, 141, 180, 0.65),
+    0 0 24px rgba(118, 212, 238, 0.45);
 }
 
 /* 脱ベタ帯シネマティック・カットイン */

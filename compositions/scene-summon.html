@@ -38,6 +38,25 @@
           <div id="aura-rainbow" class="bg-aura" data-layout-allow-overflow></div>
           <div id="summon-godrays-a" class="summon-godrays-layer" data-layout-allow-overflow></div>
           <div id="summon-godrays-b" class="summon-godrays-layer" data-layout-allow-overflow></div>
+
+          <div id="celestial-gate-perspective" data-layout-allow-overflow>
+            <div id="celestial-gate-wrap" data-layout-allow-overflow>
+              <div id="gate-blue" class="gate-layer" data-layout-allow-overflow>
+                <img id="gate-blue-outer" class="gate-ring" src="../assets/generated/opt_gate_blue_outer.png" alt="" data-layout-allow-overflow />
+                <img id="gate-blue-inner" class="gate-ring" src="../assets/generated/opt_gate_blue_inner.png" alt="" data-layout-allow-overflow />
+              </div>
+              <div id="gate-gold" class="gate-layer" data-layout-allow-overflow>
+                <img id="gate-gold-outer" class="gate-ring" src="../assets/generated/opt_gate_gold_outer.png" alt="" data-layout-allow-overflow />
+                <img id="gate-gold-inner" class="gate-ring" src="../assets/generated/opt_gate_gold_inner.png" alt="" data-layout-allow-overflow />
+              </div>
+              <div id="gate-rainbow" class="gate-layer" data-layout-allow-overflow>
+                <img id="gate-rb-outer" class="gate-ring" src="../assets/generated/opt_gate_rainbow_outer.png" alt="" data-layout-allow-overflow />
+                <img id="gate-rb-inner" class="gate-ring" src="../assets/generated/opt_gate_rainbow_inner.png" alt="" data-layout-allow-overflow />
+              </div>
+            </div>
+          </div>
+
+          <div id="sky-shards-far" data-layout-allow-overflow></div>
           <div id="light-pillar" data-layout-allow-overflow></div>
           <div id="light-pillar-rainbow" data-layout-allow-overflow></div>
 
@@ -61,10 +80,14 @@
             </div>
           </div>
 
+          <div id="wisp-streams" data-layout-allow-overflow></div>
+
           <div id="converge-particles" data-layout-allow-overflow></div>
           <div id="shock-gold" class="shockwave" data-layout-allow-overflow></div>
           <div id="shock-rainbow" class="shockwave" data-layout-allow-overflow></div>
           <div id="vacuum-dimmer" data-layout-allow-overflow></div>
+          <div id="bolt-gold" class="sky-bolt" data-layout-allow-overflow></div>
+          <div id="bolt-prism" class="sky-bolt" data-layout-allow-overflow></div>
 
           <div id="orb-wrap" data-layout-allow-overflow>
             <div id="orb-blue" class="orb-tier" data-layout-allow-overflow>
@@ -83,15 +106,27 @@
             <img id="orb-cracks" src="../assets/generated/opt_orb_cracks.png" alt="" data-layout-allow-overflow />
           </div>
 
+          <div id="sky-shards-near" data-layout-allow-overflow></div>
           <div id="flash-gold" data-layout-allow-overflow></div>
           <div id="flash-rainbow-core" data-layout-allow-overflow></div>
           <div id="flash-rainbow-streak" data-layout-allow-overflow></div>
         </div>
 
-        <div id="summon-caption" data-layout-allow-safe-zone data-layout-ignore>
-          <span class="caption-line"></span>
-          <span id="summon-caption-text" data-layout-allow-safe-zone data-layout-ignore>ASCENSION RITUAL  //  01</span>
-          <span class="caption-line"></span>
+        <div id="summon-top-hud" data-layout-allow-safe-zone data-layout-ignore>
+          <div class="hud-top-row" data-layout-allow-safe-zone data-layout-ignore>
+            <span class="hud-wing"></span>
+            <div class="hud-diamonds" data-layout-allow-safe-zone data-layout-ignore>
+              <span id="hud-node-1" class="hud-node"></span>
+              <span id="hud-node-2" class="hud-node"></span>
+              <span id="hud-node-3" class="hud-node"></span>
+            </div>
+            <span class="hud-wing"></span>
+          </div>
+          <div class="hud-label-stack" data-layout-allow-safe-zone data-layout-ignore>
+            <span id="hud-label-1" class="hud-phase-label" data-layout-allow-safe-zone data-layout-ignore>RESONANCE</span>
+            <span id="hud-label-2" class="hud-phase-label" data-layout-allow-safe-zone data-layout-ignore>ELEVATION</span>
+            <span id="hud-label-3" class="hud-phase-label" data-layout-allow-safe-zone data-layout-ignore>OVERDRIVE</span>
+          </div>
         </div>
 
         <div id="cutin-band" data-layout-allow-overflow data-layout-allow-safe-zone>
@@ -106,73 +141,30 @@
       </div>
     </div>
 
+    <script src="./scene-summon-setup.js"></script>
     <script>
       (function () {
-        function createRng(seed) {
-          let s = seed >>> 0;
-          return function () {
-            s = (s + 0x6d2b79f5) | 0;
-            let t = Math.imul(s ^ (s >>> 15), 1 | s);
-            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-          };
-        }
-        const baseCfg = window.SSR_CARD_CONFIG || {};
-        const seed = typeof baseCfg.seed === "number" ? baseCfg.seed : 20261120;
-        const chromaShockPx = typeof (baseCfg.material || {}).chromaShockPx === "number" ? baseCfg.material.chromaShockPx : 9;
-        const sumCfg = baseCfg.summon || {};
-        const mcSpeed = typeof sumCfg.magicCircleSpeed === "number" && Number.isFinite(sumCfg.magicCircleSpeed) ? sumCfg.magicCircleSpeed : 1.0;
-        const mcCurve = typeof sumCfg.magicCircleCurve === "string" ? sumCfg.magicCircleCurve : "dramatic";
-        const mcRatios = Array.isArray(sumCfg.magicCircleRingRatios) && sumCfg.magicCircleRingRatios.length === 3 ? sumCfg.magicCircleRingRatios : [1.0, -1.3, 1.7];
-        const rng = createRng(seed);
-        const typoItems = (window.SSR_TYPO_MANIFEST && window.SSR_TYPO_MANIFEST.items) || {};
-        [["cutinSub", "cutin-sub-img"], ["cutinMain", "cutin-main-img"]].forEach(function (pair) {
-          const entry = typoItems[pair[0]], el = document.getElementById(pair[1]);
-          if (entry && el && entry.src) {
-            el.style.backgroundImage = 'url("../' + entry.src.replace(/^\.\//, "") + '")';
-            el.style.width = entry.width + "px";
-            el.style.height = entry.height + "px";
-          }
-        });
-        const convergeContainer = document.getElementById("converge-particles");
-        const convergeData = [], convergeColors = ["#a4d4f7", "#5aa8eb", "#f4f9ff", "#f2dfb3", "#e88db4"];
-        for (let i = 0; i < 28; i++) {
-          const el = document.createElement("div");
-          el.className = "c-particle";
-          el.setAttribute("data-layout-allow-overflow", "");
-          const size = 8 + Math.floor(rng() * 14), color = convergeColors[i % convergeColors.length];
-          el.style.cssText = "width:" + size + "px;height:" + size + "px;margin-left:" + (-size / 2) + "px;margin-top:" + (-size / 2) + "px;background:" + color + ";box-shadow:0 0 " + (size * 2) + "px " + color;
-          convergeContainer.appendChild(el);
-          const angle = (i / 28) * Math.PI * 2 + (rng() - 0.5) * 0.28, dist = 390 + rng() * 240;
-          convergeData.push({ el: el, startX: Math.cos(angle) * dist, startY: Math.sin(angle) * dist, delay: 0.45 + rng() * 0.85, dur: 0.90 + rng() * 0.40 });
-        }
+        const st = window.SSR_SUMMON_STATE;
+        const chromaShockPx = st.chromaShockPx;
         const tl = gsap.timeline({ paused: true });
         tl.set("#scene-summon-stage", { filter: "none" }, 0);
         tl.set("#summon-camera", { scale: 1, rotation: 0 }, 0);
-        tl.set("#vacuum-dimmer, #flash-gold, #flash-rainbow-core, #flash-rainbow-streak, #light-pillar-rainbow", { opacity: 0 }, 0);
+        tl.set("#vacuum-dimmer, #flash-gold, #flash-rainbow-core, #flash-rainbow-streak, #light-pillar-rainbow, #bolt-gold, #bolt-prism", { opacity: 0 }, 0);
+        tl.set("#sky-shards-far, #sky-shards-near", { opacity: 1 }, 0);
+
+        // --- PHASE 1: IGNITION, CELESTIAL GATE & METEOR DESCENT (0.0s - 1.55s) ---
         tl.fromTo("#ignition-spark", { opacity: 0.85, scale: 0.28, rotation: -20 }, { opacity: 1, scale: 1.55, rotation: 15, duration: 0.14, ease: "power2.out" }, 0);
         tl.to("#ignition-spark", { opacity: 0, scale: 0.28, rotation: 45, duration: 0.36, ease: "power2.in" }, 0.14);
         tl.fromTo("#aura-blue", { opacity: 0.24, scale: 0.52 }, { opacity: 0.88, scale: 1.0, duration: 1.40, ease: "power2.out" }, 0);
-        tl.fromTo("#summon-caption", { opacity: 0, y: 8 }, { opacity: 0.85, y: 0, duration: 0.80, ease: "power2.out" }, 0.25);
+        tl.fromTo("#summon-top-hud", { opacity: 0, y: -12 }, { opacity: 0.90, y: 0, duration: 0.70, ease: "power2.out" }, 0.20);
+        tl.fromTo("#celestial-gate-wrap", { opacity: 0.32, scale: 0.45, rotationX: -68, y: -24 }, { opacity: 0.62, scale: 1.08, rotationX: -62, y: 0, duration: 1.38, ease: "power3.out" }, 0);
         tl.fromTo("#magic-circle-wrap", { opacity: 0.48, scale: 0.32, rotationX: 68, y: 36 }, { opacity: 1, scale: 1.16, rotationX: 62, y: 0, duration: 1.38, ease: "power3.out" }, 0);
-        tl.fromTo("#mc-ring-inner", { opacity: 0.55 }, { opacity: 1, duration: 0.40, ease: "power2.out" }, 0);
+        tl.fromTo("#mc-ring-inner, #gate-blue-inner", { opacity: 0.55 }, { opacity: 1, duration: 0.40, ease: "power2.out" }, 0);
         tl.fromTo("#mc-ring-mid", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.out" }, 0.10);
-        tl.fromTo("#mc-ring-outer", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.out" }, 0.18);
-        const dramaticSegs = [[0, 1.45, 32, "power2.out"], [1.45, 2.68, 26, "none"], [2.68, 3.10, 28, "power2.out"], [3.10, 3.78, 14, "power2.inOut"], [3.78, 4.30, 72, "power2.out"], [4.30, 4.56, 12, "power3.out"], [4.56, 4.86, 0, "none"], [4.86, 7.06, 580, "power2.in"]];
-        const mcSegs = mcCurve === "steady" ? [[0.15, 7.15, 210, "power1.in"]] : mcCurve === "overdrive" ? dramaticSegs.map(function (s) { return [s[0], s[1], s[2] * 1.45, s[3]]; }) : dramaticSegs;
-        ["#mc-ring-outer, #mc-gold-outer, #mc-rb-outer", "#mc-ring-mid, #mc-gold-mid, #mc-rb-mid", "#mc-ring-inner, #mc-gold-inner, #mc-rb-inner"].forEach(function (sel, idx) {
-          const mult = mcSpeed * (typeof mcRatios[idx] === "number" ? mcRatios[idx] : 1);
-          let acc = 0;
-          tl.set(sel, { rotation: 0 }, 0);
-          mcSegs.forEach(function (seg) {
-            acc += seg[2] * mult;
-            tl.to(sel, { rotation: acc, duration: +(seg[1] - seg[0]).toFixed(4), ease: seg[3] }, seg[0]);
-          });
-        });
-        convergeData.forEach(function (p) {
-          tl.fromTo(p.el, { x: p.startX, y: p.startY, opacity: 0, scale: 1.2 }, { x: 0, y: 0, opacity: 0.95, scale: 0.25, duration: p.dur, ease: "power2.in" }, p.delay);
-          tl.to(p.el, { opacity: 0, duration: 0.1 }, p.delay + p.dur);
-        });
+        tl.fromTo("#mc-ring-outer, #gate-blue-outer", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.out" }, 0.18);
+
+        st.bindLoopsAndHelpers(tl);
+
         tl.fromTo("#orb-wrap", { opacity: 0, scale: 0.12 }, { opacity: 1, scale: 1.0, duration: 0.95, ease: "back.out(1.6)" }, 1.45);
         tl.to(".orb-shell", { rotation: 75, duration: 5.60, ease: "power1.in" }, 1.45);
         tl.to(".orb-facet", { rotation: -290, duration: 5.60, ease: "power1.in" }, 1.45);
@@ -183,25 +175,31 @@
         tl.to("#orb-wrap", { scale: 1.16, duration: 0.15, ease: "power2.out" }, 3.35);
         tl.to("#orb-wrap", { scale: 0.78, duration: 0.24, ease: "power2.in" }, 3.50);
 
-        // --- GOLD PROMOTION (3.78s - 4.45s) ---
+        // --- GOLD PROMOTION & GOLDEN LANCE STRIKE (3.66s - 4.45s) ---
+        tl.fromTo("#bolt-gold", { opacity: 0.95, scaleY: 0.22, scaleX: 0.72 }, { opacity: 1, scaleY: 1.02, scaleX: 1.08, duration: 0.08, ease: "power2.in", immediateRender: false }, 3.66);
+        tl.to("#bolt-gold", { opacity: 0, scaleX: 1.48, duration: 0.22, ease: "expo.out" }, 3.80);
         tl.to("#summon-camera", { scale: 1.048, rotation: -0.65, duration: 0.05, ease: "power2.out" }, 3.78);
         tl.to("#summon-camera", { scale: 1.0, rotation: 0, duration: 0.30, ease: "expo.out" }, 3.83);
         tl.to("#magic-circle-wrap", { rotationX: 54, scale: 1.26, duration: 0.45, ease: "power2.out" }, 3.78);
+        tl.to("#celestial-gate-wrap", { rotationX: -54, scale: 1.16, opacity: 0.72, duration: 0.45, ease: "power2.out" }, 3.78);
         tl.fromTo("#flash-gold", { opacity: 0, scale: 0.42 }, { opacity: 1, scale: 1.05, duration: 0.05, ease: "power2.out", immediateRender: false }, 3.78);
         tl.to("#flash-gold", { opacity: 0, scale: 1.32, duration: 0.24, ease: "expo.out" }, 3.83);
-        tl.to("#orb-gold", { opacity: 1, duration: 0.16 }, 3.78);
-        tl.to("#orb-blue", { opacity: 0, duration: 0.18 }, 3.78);
+        tl.to("#orb-gold, #mc-gold, #gate-gold", { opacity: 1, duration: 0.18 }, 3.78);
+        tl.to("#orb-blue, #mc-blue, #gate-blue", { opacity: 0, duration: 0.22 }, 3.78);
         tl.to("#aura-gold", { opacity: 0.95, scale: 1.12, duration: 0.38, ease: "power2.out" }, 3.78);
         tl.to("#aura-blue", { opacity: 0, duration: 0.28 }, 3.78);
-        tl.to("#mc-gold", { opacity: 1, duration: 0.20 }, 3.78);
-        tl.to("#mc-blue", { opacity: 0, duration: 0.24 }, 3.78);
         tl.to("#orb-wrap", { scale: 1.28, duration: 0.20, ease: "back.out(2.2)" }, 3.80);
         tl.to("#orb-wrap", { scale: 1.05, duration: 0.28, ease: "power2.inOut" }, 4.00);
         tl.fromTo("#shock-gold", { opacity: 0.85, scale: 0.65 }, { opacity: 0, scale: 2.9, duration: 0.54, ease: "expo.out", immediateRender: false }, 3.78);
         tl.fromTo("#light-pillar", { opacity: 0, scaleX: 0.45 }, { opacity: 0.86, scaleX: 1.05, duration: 0.26, ease: "power2.out", immediateRender: false }, 3.80);
         tl.to("#light-pillar", { opacity: 0.34, scaleX: 0.82, duration: 0.65 }, 4.06);
+        // [E] HUD: RESONANCE -> ELEVATION (天蓋の穴の中心移動に追従)
+        tl.to("#summon-top-hud", { y: 15, duration: 0.45, ease: "power2.out" }, 3.78);
+        tl.to("#hud-label-1", { opacity: 0, y: -6, duration: 0.14, ease: "power2.in" }, 3.76);
+        tl.fromTo("#hud-label-2", { opacity: 0, y: 6, scale: 1.08 }, { opacity: 1, y: 0, scale: 1.0, duration: 0.20, ease: "power3.out", immediateRender: false }, 3.78);
+        tl.to("#hud-node-2", { backgroundColor: "#ffe49e", borderColor: "#fff0c4", boxShadow: "0 0 12px rgba(242,196,88,0.95)", duration: 0.18 }, 3.78);
 
-        // --- CRITICAL OMEN (4.50s - 5.08s) & VACUUM PAUSE (5.06s - 5.18s) ---
+        // --- CRITICAL OMEN (4.50s - 5.05s) & VACUUM PAUSE (5.06s - 5.18s) ---
         tl.to("#orb-wrap", { scale: 1.22, duration: 0.14, ease: "power2.out" }, 4.50);
         tl.to("#orb-wrap", { scale: 0.94, duration: 0.16, ease: "power2.inOut" }, 4.64);
         tl.to("#orb-cracks", { opacity: 0.92, scale: 1.0, duration: 0.18, ease: "power3.out" }, 4.84);
@@ -209,14 +207,17 @@
         tl.to("#summon-camera", { scale: 0.975, duration: 0.22, ease: "power2.in" }, 4.90);
         tl.to("#aura-gold", { opacity: 0.08, duration: 0.06, ease: "power2.out" }, 5.06);
         tl.to("#mc-gold", { opacity: 0.14, duration: 0.06, ease: "power2.out" }, 5.06);
+        tl.to("#celestial-gate-wrap, #sky-shards-far, #sky-shards-near", { opacity: 0.05, duration: 0.06, ease: "power2.out" }, 5.06);
+        tl.to("#summon-top-hud", { opacity: 0, duration: 0.06, ease: "power2.out" }, 5.06);
         tl.to("#light-pillar", { opacity: 0.03, duration: 0.06, ease: "power2.out" }, 5.06);
-        tl.to("#summon-caption", { opacity: 0, duration: 0.06, ease: "power2.out" }, 5.06);
         tl.to("#vacuum-dimmer", { opacity: 0.92, duration: 0.06, ease: "power2.out" }, 5.06);
         tl.to("#orb-gold", { opacity: 0.36, duration: 0.06, ease: "power2.out" }, 5.06);
         tl.to("#orb-core", { opacity: 0.38, duration: 0.06, ease: "power2.out" }, 5.06);
         tl.to("#orb-cracks", { opacity: 1, duration: 0.06, ease: "power2.out" }, 5.06);
 
-        // --- RAINBOW SSR PROMOTION BURST at 5.20s ---
+        // --- PRISM LIGHTNING STRIKE (5.185s) & RAINBOW SSR PROMOTION BURST (5.20s) ---
+        tl.fromTo("#bolt-prism", { opacity: 0.96, scaleY: 0.42, scaleX: 0.88 }, { opacity: 1, scaleY: 1.03, scaleX: 1.14, duration: 0.015, ease: "none", immediateRender: false }, 5.185);
+        tl.to("#bolt-prism", { opacity: 0, scaleX: 1.38, duration: 0.22, ease: "expo.out" }, 5.24);
         tl.to("#vacuum-dimmer", { opacity: 0, duration: 0.04, ease: "power2.out" }, 5.20);
         tl.fromTo("#flash-rainbow-core", { opacity: 0, scale: 0.38 }, { opacity: 1, scale: 1.12, duration: 0.04, ease: "power2.out", immediateRender: false }, 5.20);
         tl.to("#flash-rainbow-core", { opacity: 0, scale: 1.45, duration: 0.26, ease: "expo.out" }, 5.24);
@@ -225,13 +226,12 @@
         tl.to("#summon-camera", { scale: 1.075, rotation: 0.85, duration: 0.05, ease: "power2.out" }, 5.20);
         tl.to("#summon-camera", { scale: 1.00, rotation: 0, duration: 0.34, ease: "expo.out" }, 5.25);
         tl.to("#magic-circle-wrap", { rotationX: 42, scale: 1.40, y: -36, duration: 0.55, ease: "power3.out" }, 5.20);
-        tl.to("#orb-gold", { opacity: 0, duration: 0.14 }, 5.20);
-        tl.to("#orb-rainbow", { opacity: 1, duration: 0.10 }, 5.20);
+        tl.to("#celestial-gate-wrap", { rotationX: -44, scale: 1.26, opacity: 0.84, y: 14, duration: 0.55, ease: "power3.out" }, 5.20);
+        tl.to("#sky-shards-far, #sky-shards-near", { opacity: 1, duration: 0.08 }, 5.20);
+        tl.to("#orb-gold, #mc-gold, #gate-gold, #aura-gold", { opacity: 0, duration: 0.18 }, 5.20);
+        tl.to("#orb-rainbow, #mc-rainbow, #gate-rainbow", { opacity: 1, duration: 0.14 }, 5.20);
         tl.to("#orb-core", { opacity: 0.92, duration: 0.08 }, 5.20);
         tl.to("#orb-cracks", { opacity: 1, scale: 1.32, rotation: 18, duration: 0.35, ease: "power2.out" }, 5.20);
-        tl.to("#mc-rainbow", { opacity: 1, duration: 0.18 }, 5.20);
-        tl.to("#mc-gold", { opacity: 0, duration: 0.24 }, 5.20);
-        tl.to("#aura-gold", { opacity: 0, duration: 0.18 }, 5.20);
         tl.to("#aura-rainbow", { opacity: 1, scale: 1.22, duration: 1.65, ease: "power1.in" }, 5.20);
         tl.fromTo("#summon-godrays-a", { opacity: 0, rotation: 0, scale: 0.82 }, { opacity: 0.92, rotation: 78, scale: 1.12, duration: 1.78, ease: "power1.in", immediateRender: false }, 5.20);
         tl.fromTo("#summon-godrays-b", { opacity: 0, rotation: 15, scale: 0.86 }, { opacity: 0.72, rotation: -56, scale: 1.08, duration: 1.78, ease: "power1.in", immediateRender: false }, 5.20);
@@ -239,8 +239,13 @@
         tl.fromTo("#light-pillar-rainbow", { opacity: 0, scaleX: 0.65 }, { opacity: 0.95, scaleX: 1.18, duration: 0.28, ease: "power2.out", immediateRender: false }, 5.20);
         tl.to("#orb-wrap", { scale: 1.45, duration: 0.24, ease: "back.out(2.2)" }, 5.22);
         tl.fromTo("#shock-rainbow", { opacity: 1, scale: 0.55 }, { opacity: 0, scale: 3.4, duration: 0.65, ease: "expo.out", immediateRender: false }, 5.20);
+        // [E] HUD: ELEVATION -> OVERDRIVE (天蓋の穴の中心移動に追従)
+        tl.set("#hud-label-2", { opacity: 0 }, 5.19);
+        tl.to("#summon-top-hud", { opacity: 0.96, y: 36, duration: 0.35, ease: "power2.out" }, 5.21);
+        tl.fromTo("#hud-label-3", { opacity: 0, scale: 1.22 }, { opacity: 1, scale: 1.0, duration: 0.22, ease: "back.out(2.0)", immediateRender: false }, 5.21);
+        tl.to("#hud-node-3", { backgroundColor: "#ffd6f0", borderColor: "#ffffff", boxShadow: "0 0 14px rgba(232,141,180,1)", duration: 0.16 }, 5.21);
 
-        // --- CINEMATIC BORDERLESS CUT-IN (5.62s - 6.60s) ---
+        // --- CINEMATIC BORDERLESS CUT-IN (5.62s - 6.60s) & CRITICAL BURST (6.48s - 7.02s) ---
         tl.fromTo("#cutin-band", { opacity: 0 }, { opacity: 1, duration: 0.10, ease: "power2.out" }, 5.62);
         tl.to("#cutin-band", { opacity: 0, duration: 0.16, ease: "power2.in" }, 6.44);
         tl.fromTo("#cutin-flare", { scaleX: 0.12, scaleY: 0.35, opacity: 0 }, { scaleX: 1.14, scaleY: 1.05, opacity: 1, duration: 0.18, ease: "expo.out", immediateRender: false }, 5.62);
@@ -250,28 +255,14 @@
         tl.fromTo("#cutin-typo-wrap", { x: -180, scale: 1.14, opacity: 0 }, { x: 0, scale: 1.0, opacity: 1, duration: 0.22, ease: "power4.out", immediateRender: false }, 5.64);
         tl.to("#cutin-typo-wrap", { x: 24, duration: 0.54, ease: "none" }, 5.86);
         tl.to("#cutin-typo-wrap", { x: 280, opacity: 0, duration: 0.20, ease: "power3.in" }, 6.40);
-
-        // --- CRITICAL BURST TO WHITEOUT (6.48s - 7.02s) ---
         tl.to("#orb-wrap", { scale: 3.1, duration: 0.48, ease: "power3.in" }, 6.48);
         tl.to("#magic-circle-wrap", { scale: 1.85, duration: 0.48, ease: "power3.in" }, 6.48);
+        tl.to("#celestial-gate-wrap", { scale: 1.68, duration: 0.48, ease: "power3.in" }, 6.48);
         tl.to("#scene-summon-stage", { opacity: 0, duration: 0.04 }, 7.02);
 
-        function addChromaShock(targetSel, startAt, peakPx) {
-          if (!peakPx || peakPx <= 0) return;
-          tl.set(targetSel, { filter: "url(#chroma-shock)" }, startAt);
-          tl.fromTo("#chroma-r-off", { attr: { dx: 0 } }, { attr: { dx: -peakPx }, duration: 0.04, ease: "power2.out", immediateRender: false }, startAt);
-          tl.fromTo("#chroma-b-off", { attr: { dx: 0 } }, { attr: { dx: peakPx }, duration: 0.04, ease: "power2.out", immediateRender: false }, startAt);
-          tl.to("#chroma-r-off", { attr: { dx: peakPx * 0.45 }, duration: 0.06, ease: "power1.inOut" }, startAt + 0.04);
-          tl.to("#chroma-b-off", { attr: { dx: -peakPx * 0.45 }, duration: 0.06, ease: "power1.inOut" }, startAt + 0.04);
-          tl.to("#chroma-r-off", { attr: { dx: 0 }, duration: 0.10, ease: "power2.out" }, startAt + 0.10);
-          tl.to("#chroma-b-off", { attr: { dx: 0 }, duration: 0.10, ease: "power2.out" }, startAt + 0.10);
-          tl.set(targetSel, { filter: "none" }, startAt + 0.21);
-        }
-
-        addChromaShock("#scene-summon-stage", 3.79, chromaShockPx * 0.72);
-        addChromaShock("#scene-summon-stage", 5.20, chromaShockPx * 1.15);
+        st.addChromaShock(tl, "#scene-summon-stage", 3.79, chromaShockPx * 0.72);
+        st.addChromaShock(tl, "#scene-summon-stage", 5.20, chromaShockPx * 1.15);
         tl.set("#summon-root", {}, 7.4);
-
         window.__timelines = window.__timelines || {};
         window.__timelines["scene-summon"] = tl;
         tl.seek(0);

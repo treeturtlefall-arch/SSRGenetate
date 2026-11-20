@@ -1027,6 +1027,295 @@ def render_cutin_assets(seed: int = 0) -> Tuple[Image.Image, Image.Image]:
     return flare_img, speed_img
 
 
+def build_celestial_gate_masks(size: int = 1024, seed: int = 0) -> Tuple[Image.Image, Image.Image]:
+    """
+    上空の天蓋・逆さ天球ゲート（Celestial Astrolabe Gate）用の2層マスク (outer, inner)。
+    床魔法陣（六芒星＋ルーン）と意匠を差別化し、天球儀・星座弧・子午線目盛り・偏心黄道軌道で構成する。
+    """
+    ss = 2
+    S = size * ss
+    c = S / 2.0
+    sc = S / 920.0
+    rng = np.random.default_rng((seed * 1103515245 + 777) & 0xFFFFFFFF)
+
+    def circle(d: ImageDraw.ImageDraw, r: float, w: float, val: int = 255, ox: float = 0.0, oy: float = 0.0) -> None:
+        rr = r * sc
+        cx, cy = c + ox * sc, c + oy * sc
+        d.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], outline=val, width=max(1, int(round(w * sc))))
+
+    def radial(d: ImageDraw.ImageDraw, a_deg: float, r0: float, r1: float, w: float, val: int = 255) -> None:
+        a = math.radians(a_deg)
+        d.line(
+            [(c + math.cos(a) * r0 * sc, c + math.sin(a) * r0 * sc), (c + math.cos(a) * r1 * sc, c + math.sin(a) * r1 * sc)],
+            fill=val,
+            width=max(1, int(round(w * sc))),
+        )
+
+    # 1. Outer Astrolabe Ring: 二重天球外輪 + 72方位目盛り + 星座連結アーク + 三日月ノード
+    m_out = Image.new("L", (S, S), 0)
+    d = ImageDraw.Draw(m_out)
+    circle(d, 436, 3.8, 250)
+    circle(d, 422, 1.8, 195)
+    for i in range(72):
+        deg = i * 5.0
+        is_major = i % 6 == 0
+        is_mid = i % 2 == 0
+        r_in = 392 if is_major else (404 if is_mid else 412)
+        w_t = 2.8 if is_major else (1.8 if is_mid else 1.2)
+        v_t = 255 if is_major else (200 if is_mid else 155)
+        radial(d, deg, r_in, 434, w_t, v_t)
+
+    # 星座弧（8セクションの星図ノードと折れ線＋天球アーク）
+    circle(d, 390, 2.2, 220)
+    for sec in range(8):
+        base_deg = sec * 45.0 + 8.0
+        rr_arc = (362 + (sec % 2) * 14) * sc
+        d.arc([c - rr_arc, c - rr_arc, c + rr_arc, c + rr_arc], start=base_deg, end=base_deg + 28.0, fill=195, width=max(1, int(round(1.8 * sc))))
+        star_pts = []
+        for st in range(4):
+            ad = math.radians(base_deg + st * 9.5 + float(rng.uniform(-2.0, 2.0)))
+            rd = (352 + float(rng.uniform(-16.0, 22.0))) * sc
+            px, py = c + math.cos(ad) * rd, c + math.sin(ad) * rd
+            star_pts.append((px, py))
+            nr = (3.4 if st in (0, 3) else 2.4) * sc
+            d.ellipse([px - nr, py - nr, px + nr, py + nr], fill=255)
+        d.line(star_pts, fill=215, width=max(1, int(round(1.6 * sc))))
+
+    draw_dashed_circle(d, c, c, 336 * sc, width=max(1, int(round(2.0 * sc))), n_dashes=48)
+
+    # 2. Inner Astrolabe Mechanism: 偏心黄道リング2対 + 8方位アストラル指針 + 中央ゲート開口
+    m_in = Image.new("L", (S, S), 0)
+    d = ImageDraw.Draw(m_in)
+    circle(d, 304, 3.0, 245)
+    circle(d, 262, 2.2, 220, ox=28.0, oy=-18.0)
+    circle(d, 262, 2.0, 200, ox=-28.0, oy=18.0)
+    circle(d, 214, 2.4, 235)
+    draw_dashed_circle(d, c, c, 196 * sc, width=max(1, int(round(2.0 * sc))), n_dashes=36)
+    circle(d, 152, 3.4, 255)
+    circle(d, 138, 1.6, 190)
+
+    for k in range(8):
+        ang = math.radians(k * 45.0 + 22.5)
+        ca, sa = math.cos(ang), math.sin(ang)
+        r0, r1 = 140 * sc, 302 * sc
+        rm, wn = 220 * sc, (5.2 if k % 2 == 0 else 3.4) * sc
+        pts = [
+            (c + ca * r0, c + sa * r0),
+            (c + ca * rm - sa * wn, c + sa * rm + ca * wn),
+            (c + ca * r1, c + sa * r1),
+            (c + ca * rm + sa * wn, c + sa * rm - ca * wn),
+        ]
+        d.polygon(pts, outline=245, fill=175 if k % 2 == 0 else 130)
+
+    return (
+        m_out.resize((size, size), Image.Resampling.LANCZOS),
+        m_in.resize((size, size), Image.Resampling.LANCZOS),
+    )
+
+
+def render_descent_meteor(w: int = 256, h: int = 256, seed: int = 0) -> Image.Image:
+    """
+    冒頭 0.08s〜1.45s に天蓋から曲線軌道で柔らかく降臨する流体シルクリボン用ウィスプ (256x256)。
+    多ノード加算時にも白飛び塊や矩形境界モアレが一切出ないよう、繊細な発光核＋透き通る青シアン霞＋
+    ブラー後の厳密な円形コサイン減衰（外縁 alpha=0 保証）で生成する。
+    """
+    rng = np.random.default_rng((seed * 65537 + 41) & 0xFFFFFFFF)
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    nx = (xx - (w - 1) * 0.5) / ((w - 1) * 0.5)
+    ny = (yy - (h - 1) * 0.5) / ((h - 1) * 0.5)
+
+    r = np.sqrt(nx * nx + ny * ny + 1e-6)
+    noise = _aniso_fbm(rng, h, w, cell_y=32.0, cell_x=32.0)
+    r_wobble = np.maximum(0.0, r + 0.035 * noise * _smoothstep(0.08, 0.55, r))
+
+    # 中心は力強くも柔らかな光核にし、周囲を豊かなアクア〜アズールのソフトハローで包む
+    core = np.exp(-((r / 0.145) ** 1.85)) * 1.42
+    inner_mist = np.exp(-((r_wobble / 0.34) ** 1.70)) * 0.82
+    outer_veil = np.exp(-((r_wobble / 0.56) ** 1.60)) * (0.85 + 0.15 * noise) * 0.42
+
+    col_white = np.array([0.97, 0.99, 1.00], dtype=np.float32)
+    col_aqua = np.array([0.42, 0.88, 1.00], dtype=np.float32)
+    col_azure = np.array([0.16, 0.50, 0.98], dtype=np.float32)
+
+    lin = (
+        core[..., None] * col_white
+        + inner_mist[..., None] * col_aqua
+        + outer_veil[..., None] * col_azure
+    )
+
+    lin = np.stack([fft_gaussian_blur(lin[..., k], 2.6) * 0.42 + lin[..., k] * 0.78 for k in range(3)], axis=-1)
+    # ブラー適用後に厳密な円形フェードを掛け、正方形バウンディング境界を完全にゼロにする
+    post_fade = (1.0 - _smoothstep(0.56, 0.90, r)) ** 2
+    lin *= post_fade[..., None]
+
+    srgb = linear_to_srgb(1.0 - np.exp(-np.maximum(lin, 0.0) * 1.18))
+    return _srgb_to_unpremul_rgba(srgb)
+
+
+def render_sky_bolts(seed: int = 0) -> Tuple[Image.Image, Image.Image]:
+    """
+    昇格直前に天蓋から中央オーブへ突き刺さる天啓光撃2種:
+      1. opt_bolt_gold.png (384x1024): 金昇格(3.68-3.78s)用の黄金の螺旋天啓光槍
+      2. opt_bolt_prism.png (512x1024): 虹昇格(5.19-5.20s)用の有機分岐プリズム落雷
+    """
+    # 1. 黄金の天啓光槍 (384x1024)
+    gw, gh = 384, 1024
+    yy, xx = np.mgrid[0:gh, 0:gw].astype(np.float32)
+    nx = (xx - (gw - 1) * 0.5) / ((gw - 1) * 0.5)
+    ny = yy / float(gh - 1)
+
+    v_env = _smoothstep(0.02, 0.10, ny) * (1.0 - _smoothstep(0.88, 0.98, ny))
+    h_env = 1.0 - _smoothstep(0.74, 0.96, np.abs(nx))
+    env = v_env * h_env
+
+    lance_taper = 0.016 + 0.022 * np.sin(np.clip(ny / 0.88, 0.0, 1.0) * math.pi)
+    core_shaft = np.exp(-((nx / lance_taper) ** 2)) * 1.65
+    outer_shaft = np.exp(-((nx / (lance_taper * 4.2)) ** 2)) * 0.75
+
+    # 二重螺旋リボン
+    h1_x = 0.085 * np.sin(ny * 19.0) * (1.0 - 0.55 * ny)
+    h2_x = -0.085 * np.sin(ny * 19.0 + 0.8) * (1.0 - 0.55 * ny)
+    helix = (np.exp(-(((nx - h1_x) / 0.024) ** 2)) + np.exp(-(((nx - h2_x) / 0.024) ** 2))) * 0.85
+
+    # 先端（ny=0.84）の着弾クロスフレア
+    tip_y = 0.84
+    tip_flare = np.exp(-(((ny - tip_y) / 0.045) ** 2) - ((nx / 0.16) ** 2)) * 1.75
+    tip_cross = np.exp(-(((ny - tip_y) / 0.011) ** 2)) * np.exp(-((nx / 0.65) ** 2)) * 1.35
+
+    col_w = np.array([1.00, 0.99, 0.94], dtype=np.float32)
+    col_g = np.array([1.00, 0.78, 0.28], dtype=np.float32)
+    lin_gold = (
+        (core_shaft + tip_flare + tip_cross)[..., None] * col_w
+        + (outer_shaft + helix + tip_flare * 0.6)[..., None] * col_g
+    ) * env[..., None]
+    bolt_gold_img = _srgb_to_unpremul_rgba(linear_to_srgb(1.0 - np.exp(-np.maximum(lin_gold, 0.0) * 1.30)))
+
+    # 2. 有機分岐プリズム落雷 (512x1024)
+    pw, ph = 512, 1024
+    ss = 2
+    W, H = pw * ss, ph * ss
+    m = Image.new("L", (W, H), 0)
+    d = ImageDraw.Draw(m)
+    rng = np.random.default_rng((seed * 2654435761 + 919) & 0xFFFFFFFF)
+
+    def trace_lightning(x0: float, y0: float, x1: float, y1: float, steps: int, w_start: float, w_end: float, val: int, depth: int) -> None:
+        pts = [(x0, y0)]
+        cx, cy = x0, y0
+        for st in range(1, steps):
+            t = st / float(steps)
+            tx = x0 + (x1 - x0) * t
+            ty = y0 + (y1 - y0) * t
+            jitter = (1.0 - abs(2.0 * t - 1.0)) * (38.0 if depth > 0 else 22.0) * ss
+            cx = tx + float(rng.normal(0.0, jitter * 0.45))
+            cy = ty + float(rng.normal(0.0, 6.0 * ss))
+            pts.append((cx, cy))
+        pts.append((x1, y1))
+
+        for i in range(len(pts) - 1):
+            t = i / max(1, len(pts) - 2)
+            w_cur = max(1, int(round((w_start * (1.0 - t) + w_end * t) * ss)))
+            d.line([pts[i], pts[i + 1]], fill=val, width=w_cur, joint="curve")
+            if depth > 0 and 2 <= i <= len(pts) - 4 and (i % 3 == 1):
+                side = -1.0 if (i % 2 == 0) else 1.0
+                bx = pts[i][0] + side * float(rng.uniform(75.0, 165.0)) * ss
+                by = min(H * 0.90, pts[i][1] + float(rng.uniform(110.0, 230.0)) * ss)
+                trace_lightning(pts[i][0], pts[i][1], bx, by, max(5, steps // 2), w_start * 0.55, 1.0, int(val * 0.86), depth - 1)
+
+    trace_lightning(W * 0.5, H * 0.05, W * 0.5, H * 0.85, steps=16, w_start=7.0, w_end=4.8, val=255, depth=2)
+    # 下端着弾コアの閃光星
+    imp_x, imp_y = W * 0.5, H * 0.85
+    d.ellipse([imp_x - 18 * ss, imp_y - 18 * ss, imp_x + 18 * ss, imp_y + 18 * ss], fill=255)
+    d.line([(imp_x - 95 * ss, imp_y), (imp_x + 95 * ss, imp_y)], fill=245, width=4 * ss)
+
+    mask_prism = m.resize((pw, ph), Image.Resampling.LANCZOS)
+    bolt_prism_img = render_optical_glow(
+        mask_l=mask_prism,
+        spectrum_name="summon_gold",
+        ref_scale=18.0,
+        exposure=1.42,
+        core_glow=1.35,
+        halation=1.22,
+        irregularity=0.80,
+        prism_mode=True,
+        seed=seed + 919,
+    )
+    return bolt_gold_img, bolt_prism_img
+
+
+def render_crystal_shards(seed: int = 0) -> Dict[str, Image.Image]:
+    """
+    上空を2層パララックスで浮遊する多面体クリスタル破片:
+      - opt_shard_far_{0,1,2}.png (96x96, シャープな多面体結晶)
+      - opt_shard_near_{0,1,2}.png (160x160, 大口径前ボケ＋微細プリズム色収差)
+    """
+    out: Dict[str, Image.Image] = {}
+    palettes = [
+        # 0: アイスシアン・クリスタル
+        (np.array([0.48, 0.88, 1.00], dtype=np.float32), np.array([0.85, 0.97, 1.00], dtype=np.float32)),
+        # 1: シャンパンゴールド・クリスタル
+        (np.array([1.00, 0.78, 0.34], dtype=np.float32), np.array([1.00, 0.96, 0.86], dtype=np.float32)),
+        # 2: プリズム・イリデッセンス・クリスタル
+        (np.array([0.96, 0.54, 0.82], dtype=np.float32), np.array([0.56, 0.92, 1.00], dtype=np.float32)),
+    ]
+    # 3種の多角形頂点リスト（正規化座標 -1..1）
+    shapes = [
+        [(0.0, -0.72), (0.38, -0.18), (0.24, 0.68), (-0.28, 0.54), (-0.42, -0.22)],
+        [(-0.14, -0.68), (0.48, -0.32), (0.34, 0.46), (-0.18, 0.70), (-0.52, 0.08)],
+        [(0.06, -0.74), (0.52, -0.08), (0.16, 0.68), (-0.46, 0.32), (-0.36, -0.44)],
+    ]
+
+    for idx in range(3):
+        col_a, col_b = palettes[idx]
+        poly_norm = shapes[idx]
+
+        for depth, size in (("far", 96), ("near", 160)):
+            ss = 2
+            S = size * ss
+            c = S / 2.0
+            rad = S * (0.33 if depth == "far" else 0.27)
+
+            m_body = Image.new("L", (S, S), 0)
+            m_ridge = Image.new("L", (S, S), 0)
+            db = ImageDraw.Draw(m_body)
+            dr = ImageDraw.Draw(m_ridge)
+
+            pts = [(c + px * rad, c + py * rad) for (px, py) in poly_norm]
+            db.polygon(pts, fill=175, outline=255)
+            apex = (c + 0.08 * rad, c - 0.05 * rad)
+            for i in range(len(pts)):
+                p0 = pts[i]
+                p1 = pts[(i + 1) % len(pts)]
+                dr.line([p0, p1], fill=255, width=max(1, int(round(2.4 * ss))))
+                dr.line([apex, p0], fill=220 if i % 2 == 0 else 150, width=max(1, int(round(1.8 * ss))))
+
+            body = np.asarray(m_body.resize((size, size), Image.Resampling.LANCZOS), dtype=np.float32) / 255.0
+            ridge = np.asarray(m_ridge.resize((size, size), Image.Resampling.LANCZOS), dtype=np.float32) / 255.0
+
+            yy, xx = np.mgrid[0:size, 0:size].astype(np.float32)
+            grad = np.clip((xx - yy) / float(size) + 0.5, 0.0, 1.0)[..., None]
+            facet_col = col_a[None, None, :] * (1.0 - grad) + col_b[None, None, :] * grad
+
+            lin = (
+                body[..., None] * facet_col * 0.72
+                + ridge[..., None] * np.array([1.0, 0.99, 0.96], dtype=np.float32) * 1.35
+                + fft_gaussian_blur(ridge, 2.2)[..., None] * col_a[None, None, :] * 0.85
+            )
+
+            if depth == "near":
+                # 近景ボケ（浅い被写界深度＋微細色収差）
+                r_ch = fft_gaussian_blur(lin[..., 0], 5.6, shift_xy=(1.4, -0.6))
+                g_ch = fft_gaussian_blur(lin[..., 1], 5.4, shift_xy=(0.0, 0.0))
+                b_ch = fft_gaussian_blur(lin[..., 2], 5.8, shift_xy=(-1.4, 0.6))
+                lin = np.stack([r_ch, g_ch, b_ch], axis=-1) * 1.18
+            else:
+                lin = np.stack([fft_gaussian_blur(lin[..., k], 1.1) * 0.45 + lin[..., k] * 0.85 for k in range(3)], axis=-1)
+
+            srgb = linear_to_srgb(1.0 - np.exp(-np.maximum(lin, 0.0) * 1.28))
+            out[f"opt_shard_{depth}_{idx}.png"] = _srgb_to_unpremul_rgba(srgb)
+
+    return out
+
+
 def main() -> None:
     cfg = load_card_config()
     opt_cfg = cfg.get("optics", {})
@@ -1178,6 +1467,42 @@ def main() -> None:
             fname = f"opt_bokeh_{cname}_{depth}.png"
             bk.save(OUT_DIR / fname, format="PNG", optimize=True)
     print("[OK] opt_bokeh_{gold,rose,aqua,white}_{far,near}.png (160x160)")
+
+    # 10. 上空の天蓋・逆さ天球ゲート（3色 × 2層）
+    g_outer, g_inner = build_celestial_gate_masks(1024, seed=seed + 3101)
+    gate_rings = [("outer", g_outer), ("inner", g_inner)]
+    for s_idx, (cname, spec, is_prism, exp, h_val) in enumerate(mc_styles):
+        for r_idx, (rname, mask) in enumerate(gate_rings):
+            img = render_optical_glow(
+                mask_l=mask,
+                spectrum_name=spec,
+                ref_scale=20.0,
+                exposure=exp * 0.96,
+                core_glow=cg,
+                halation=h_val,
+                irregularity=irr,
+                prism_mode=is_prism,
+                seed=seed + 3100 + s_idx * 97 + r_idx * 19,
+            )
+            fname = f"opt_gate_{cname}_{rname}.png"
+            img.save(OUT_DIR / fname, format="PNG", optimize=True)
+            print(f"[OK] {fname} ({img.width}x{img.height})")
+
+    # 11. 冒頭降臨流体ウィスプ & 金/虹昇格の天啓光撃
+    meteor_img = render_descent_meteor(w=256, h=256, seed=seed + 3401)
+    meteor_img.save(OUT_DIR / "opt_meteor_blue.png", format="PNG", optimize=True)
+    print(f"[OK] opt_meteor_blue.png ({meteor_img.width}x{meteor_img.height})")
+
+    bolt_gold_img, bolt_prism_img = render_sky_bolts(seed=seed + 3601)
+    bolt_gold_img.save(OUT_DIR / "opt_bolt_gold.png", format="PNG", optimize=True)
+    bolt_prism_img.save(OUT_DIR / "opt_bolt_prism.png", format="PNG", optimize=True)
+    print("[OK] opt_bolt_gold.png (384x1024) & opt_bolt_prism.png (512x1024)")
+
+    # 12. 2層パララックス浮遊クリスタル破片（far 96x96 / near 160x160 × 3種）
+    shards = render_crystal_shards(seed=seed + 3801)
+    for fname, s_img in shards.items():
+        s_img.save(OUT_DIR / fname, format="PNG", optimize=True)
+    print("[OK] opt_shard_{far,near}_{0,1,2}.png (6 files)")
 
 
 if __name__ == "__main__":
