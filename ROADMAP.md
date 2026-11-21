@@ -49,7 +49,7 @@
 | **Phase 2B** | 召喚〜昇格の「脱CSS ＆ 3D空間光学アセット化」＋ 天蓋・空域演出 | カットイン脱ベタ帯・冒頭点火・3D床魔法陣・クリスタルオーブ・不規則ゴッドレイ・天蓋アストロラーベ・流体ウィスプ・星屑 | `scripts/render_optics.py`, `scripts/render_typography.py`, `compositions/scene-summon.*`, `compositions/scene-summon-setup.js`, `compositions/scene-result.*` | ★★★ 完了 |
 | **Phase 2.5** | フロントエンド共通化 ＆ アセット生成高速化・ストレージ最適化 | `shared-base.css`/`shared-utils.js`集約、`_optics_core.py`新設・EDT高速化・並列ビルド（41s→7.5s）、ストレージ整理・新方式定量QA検証 | `compositions/shared-*`, `scripts/_optics_core.py`, `scripts/_utils.py`, `scripts/build_all.py`, `scripts/render_*`, `package.json` | ★★★ 完了 |
 | **Phase 3** | 音響の「現代ソシャゲ音像化」＆ 映像マイクロポリッシュ（レビュー反映完遂） | 現代ソシャゲ音像刷新・`fftconvolve`残響・真空ダッキング・14.8s余韻・`-14 LUFS`統一・ローカルカスタムSEスロット基盤（`assets/se_custom/`）＋ 映像面7大改善を完了 | `scripts/_audio_dsp.py`, `scripts/_audio_slots.py`, `scripts/generate_se.py`, `assets/se_custom/README.md`, `.gitignore`, `compositions/scene-*`, `scripts/render_*` | ★★☆ 完了 |
-| **Phase 3.5** | カードタイポグラフィ点検・刷新（可変フォント・縁取り＆カラー・非対称レイアウト） | 昇格カットインは現行維持しつつ、カード側文字を可愛い・アート・2Dアニメ等の画像ジャンル別に最適化（書体・二重縁取り/ヴィヴィッド配色・スラント帯など脱中央揃えレイアウト） | `assets/fonts/*`, `card-config.js`, `scripts/render_typography.py`, `compositions/shared-base.css`, `compositions/scene-result.*`, `compositions/scene-result-setup.js` | ★★☆ 次着手 |
+| **Phase 3.5** | カードタイポグラフィ点検・刷新（可変フォント・縁取り＆カラー・非対称レイアウト） | 昇格カットインは現行維持しつつ、カード側文字を可愛い・アート・2Dアニメ等の画像ジャンル別に最適化（書体・二重縁取り/ヴィヴィッド配色・スラント帯など脱中央揃えレイアウト＋表面フレーム中央鋲） | `assets/fonts/*`, `card-config.js`, `scripts/render_typography.py`, `scripts/render_material.py`, `compositions/shared-base.css`, `compositions/scene-result.*`, `compositions/scene-result-setup.js` | ★★☆ 次着手 |
 | **Phase 4** | 運用性・量産性強化 ＆ 5軸/複数素材検証 | 任意テキスト箔同期・オートレイアウト ＋ 5品質評価軸・不要要素削減・多様な素材検証 | `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js` | ★☆☆ 仕上げ |
 | **Phase 5** | 横動画（16:9）× 横型カード対応 | 風景・周辺情報込みの横写真向け 1920×1080 ワイド演出モード追加（詳細設計: [`LANDSCAPE_PLAN.md`](./LANDSCAPE_PLAN.md)） | `card-config.js`, `index.html`, `compositions/*`, `scripts/_utils.py`, `scripts/render_material.py`, `scripts/render_typography.py`, `package.json` | ★☆☆ 拡張 |
 
@@ -241,6 +241,13 @@ Phase 2 までの急速な機能追加によって生じたコードの重複、
     6. **前面点火フラッシュ（1.34s）＆ 魔法陣配置調整**: オーブ中央収束時の着弾点火フラッシュ（`#ignition-spark`）を床魔法陣・オーブの手前へ配置移動し、床魔法陣の縦位置（`top: 52%`）をオーブ中心と整合。
     7. **クリスタルオーブの宝石化 ＆ 虹カットイン背景引き算**: オーブのフレネルバイアスと鏡面ハイライトを強化して網目感を解消。虹カットイン時はカメラ減光（`opacity: 0.45`）＋暗幕拡大（500px）＋箔タイポ拡大（112px）で主役を引き立てるメリハリを実現。
     8. **Windows 並列 I/O 堅牢化**: `_utils.py` の `save_png` をメモリバッファ経由・リトライ付き（最大5回）とし、`ThreadPoolExecutor` の並列競合エラーを完全解消。
+- [x] **3-6. 召喚前半〜3Dカード回転マイクロポリッシュ（外部レビュー反映・第2弾）**
+  - **対象**: `compositions/scene-summon-setup.js`, `compositions/scene-summon.html`, `compositions/scene-summon.css`, `scripts/render_optics.py`, `compositions/scene-result.html`, `compositions/scene-result.css`
+  - **成果**（実測 QA `renders/ssr_gacha_polish.mp4`: Gray Veil=2枚, Vacuum=10.4%, Pre-Landing Stall=0.00s, Tail Fixed max_diff=0.674, Shimmer=4.3%, LUFS=-14.1, TruePeak=-2.3dBFS で全項目 PASS）:
+    1. **流れ星＆RGB三重螺旋の流体リボン化**: 冒頭の流れ星演出を維持したまま、流れ星尾ノードおよび RGB 三重螺旋の芯ノードへ進行方向接線角（角度アンラップ付き）＋楕円ストレッチを適用し、ビーズ状の粒感を払拭して滑らかな光の帯へ刷新。
+    2. **青フェイク区間のカメラ溜め ＆ 青オーブ宝石感強化**: 本編 `1.50s〜3.66s` にカメラ微ズーム（`scale: 1.065`）＆床/天蓋パース微変化の溜めを追加。`render_optics.py` の青オーブのファセット明暗差・境界引き締め・鏡面ハイライトを強化し、青区間の `#orb-core` 不透明度を `0.42` へ抑えて硬質なクリスタル感を実現（金昇格 `3.78s` で解放）。
+    3. **虹カットインの勢い補強**: `#cutin-typo-wrap` に斜め光沢スイープ `#cutin-glint` を追加し、表示中の横ドリフト＆微拡大（`x: -24 -> 34`, `scale: 1.0 -> 1.02`）＋拡大横飛び退場（`x: 340, scale: 1.12`）へ刷新。
+    4. **3Dカード回転の金属厚み表現 ＆ 裏面タメ光**: 表裏を `translateZ(5px)` に分離し、金属側面風の厚み 5 層スライス（`.card-edge-slice`、正面着地後 `8.82s` で非表示化）を追加。さらに裏面タメ区間（本編 `7.96s〜8.40s`）へ中央紋章チャージ光（`#card-back-emblem-glow`）と外枠プリズム漏れ光（`#card-back-rim-burst`）を追加。
 
 ### Phase 3 定量完了基準（DoD）
 - `npm run qa -- --check-audio` にて統合ラウドネスが **`-14.0 LUFS (±1.5 LU)`** に収まり、`14.5s` までデジタル無音にならない滑らかな余韻が残ること。
@@ -275,24 +282,25 @@ Phase 4（量産・運用性の仕上げ）に入る前に、カードリザル�
     - ジャンル別フォントを追加選定・同梱し、`FONT_NORM_FACTORS`・`FONT_KINEMATICS`（太ゴシックやモダン明朝ではデフォルト `wobble` を抑えて精密整列させる制御を含む）・`compositions/shared-base.css` のフォールバック定義を整備する。
     - `card-config.js` にジャンル別プリセット（例：`royal-foil` / `anime-pop` / `cute-pastel` / `editorial-art` / `handwritten-sign`）を用意しつつ、スロット単位（`title`, `subtitle`, `flavor`, `rarity` 等）でフォントを個別上書きできるヴァリアブル構造にする。
 
-- [ ] **3.5-2. 縁取り（単縁・二重縁・3Dベベル）＆ カラー／マテリアル体系の拡充**
-  - **対象**: `scripts/render_typography.py`, `card-config.js`, `compositions/scene-result.css`
-  - **課題**: 現行 `MATERIALS` は金・銀・白の 5 種＋ソフト暗色ハローのみで、アニメ調のくっきり二重縁取りやヴィヴィッド／パステル配色が表現できない。
+- [ ] **3.5-2. 縁取り（単縁・二重縁・3Dベベル）＆ カラー／マテリアル体系・表面中央鋲の拡充**
+  - **対象**: `scripts/render_typography.py`, `scripts/render_material.py`, `card-config.js`, `compositions/scene-result.css`
+  - **課題**: 現行 `MATERIALS` は金・銀・白の 5 種＋ソフト暗色ハローのみで、アニメ調のくっきり二重縁取りやヴィヴィッド／パステル配色が表現できない。また表面フレームは四隅フィリグリー撤去後に均一な角丸枠となり、豪華な裏面との質感落差がある。
   - **対策**:
     - `scipy.ndimage.distance_transform_edt` 等を用いたアンチエイリアス縁取り描画を `scripts/render_typography.py` に追加し、縁取りスタイル（`none` / `single` / `double`［白インライン＋濃色太縁］ / `bevel-extrude`）とグラデーション角度（縦ツートン・斜め・金属帯）を選択可能にする。
     - マテリアル＆カラーパレットを「金属箔系（Gold / Champagne / Silver / Rose Gold / Prism）」「ヴィヴィッド＆アニメ調（例：Gold-to-White×Deep Navy 二重縁、Cyan×Cobalt、Vivid Pink×Plum、Emerald×Forest 等）」「パステル可愛い系」「アート・ミニマル系」へ拡充し、`card-config.js` からの任意カラー指定も許可する。
     - レアリティクレスト（`render_rarity_crest`）および属性プレート（`render_attribute_plate`）にもテーマカラー連動（金箔／ヴィヴィッド帯＋スターバースト等）のバリエーションを用意し、カード全体の色調を統一する。
+    - `scripts/render_material.py` の表面虹フレーム（`mat_rainbow_frame.png`）について、四隅バッジ（`#ssr-emblem` / `#attr-badge` / `#card-no-corner`）と干渉しない「上辺・下辺・左右辺の中央」のみに微小な金属ノッチ／菱形鋲を追加し、特注トレカとしての格を補強する。
 
 - [ ] **3.5-3. 脱・中央揃え：非対称・スラント帯など複数レイアウトプリセットの実装**
   - **対象**: `card-config.js`, `scripts/render_typography.py`, `compositions/scene-result.html`, `compositions/scene-result.css`, `compositions/scene-result-setup.js`
-  - **課題**: 中央下揃えの一本調子な縦積みレイアウトだけでは視覚的リズムに欠け、2Dアニメ調の躍動感やアート写真的な余白美を活かしきれない。
+  - **課題**: 中央下揃えの一本調子な縦積みレイアウトだけでは視覚的リズムに欠け、2Dアニメ調の躍動感やアート写真的な余白美を活かしきれない。また `#title-wipe-glint` の走査範囲が固定座標（`x: -235 -> 235`）にハードコードされており、星（★×5）も下部テキスト上部に小さく孤立して視線が分散しやすい。
   - **対策**:
     - `card-config.js` にレイアウト指定（例：`typography.layout`）を導入し、以下の構成を切り替え可能にする：
       - `classic-center`：現行の中央下揃え（従来互換）
       - `diagonal-ribbon`：添付参考画像ベースの対角非対称レイアウト（左上スラント帯＋スターバースト付きレアリティ、右下スラントカラー帯＋斜め右寄せタイトル＆直下の英字/サブタイトル＋帯沿いスパークル。被写体の顔を邪魔しない Z 字視線誘導）
       - `editorial-left`：左下アシンメトリー左揃え＋細線アクセント＋余白重視の雑誌表紙／写真集風レイアウト
       - `pop-sticker`：軽やかな傾き・星併置の可愛い／カジュアル向けレイアウト（必要に応じて左右反転オプションや縦書き `vertical-jp` も検討）
-    - レイアウトに合わせて文字出現アニメ（帯スライドイン・光走査ワイプ方向・星の配置）および下部ビネットの強弱を最適化し、`12.0s〜15.0s` のレイアウト完全固定仕様を厳守する。
+    - レイアウトに合わせて文字出現アニメ（帯スライドイン・光走査ワイプ方向・`#title-wipe-glint` の固定座標脱却と文字マスク連動スペキュラ統合・星 `★×5` の SSR ロゴ直下または帯上縁への UI グルーピング再設計）および下部ビネットの強弱を最適化し、`12.0s〜15.0s` のレイアウト完全固定仕様を厳守する。
 
 - [ ] **3.5-4. ジャンル別プリセット組み合わせ検証 ＆ スナップショット比較**
   - **対象**: 代表 3〜4 ジャンル（王道ポートレート／可愛い写真／アーティスティック写真／2Dアニメ画像）での出力比較
@@ -309,14 +317,15 @@ Phase 4（量産・運用性の仕上げ）に入る前に、カードリザル�
 
 任意の写真・テキストを流し込んで運用する際の品質一貫性を仕上げます。
 
-- [ ] **4-1. 任意テキスト変更時の箔タイポ自動同期 ＆ オートレイアウト強化**
+- [ ] **4-1. 任意テキスト変更時の箔タイポ自動同期 ＆ オートレイアウト・ビネット自動適応強化**
   - **対象**: `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js`
-  - **課題**: `compositions/scene-result-setup.js` の `bindTypoSlot` は `typo-manifest.js` 内の文字列と完全一致する場合のみ箔 PNG を使い、`--variables` 等でテキストを変更すると素の HTML テキストへフォールバックしてしまう。
-  - **対策**: テキスト変更時に `render_typography.py` を自動連動させて物理箔 PNG を再生成するワンコマンド実行導線（またはレンダリング前フック）を整備する。Phase 3.5 で導入する可変フォント・縁取り・非対称レイアウトプリセットを含め、長文タイトル・フレーバーや多行折り返し時の文字サイズ・配置自動調整（オートレイアウト）を強化する。
-- [ ] **4-2. 5品質評価軸 ＆ 複数入力素材による汎用性検証**
-  - **対象**: 検証チェックリスト、多様な入力画像（顔写真・人物以外の物体写真・風景・イラスト）
+  - **課題**: `compositions/scene-result-setup.js` の `bindTypoSlot` は `typo-manifest.js` 内の文字列と完全一致する場合のみ箔 PNG を使い、`--variables` 等でテキストを変更すると素の HTML テキストへフォールバックしてしまう。また明るい背景写真では下部ビネット濃度が不足する場合がある。
+  - **対策**: テキスト変更時に `render_typography.py` を自動連動させて物理箔 PNG を再生成するワンコマンド実行導線（またはレンダリング前フック）を整備する。Phase 3.5 で導入する可変フォント・縁取り・非対称レイアウトプリセットを含め、長文タイトル・フレーバーや多行折り返し時の文字サイズ・配置自動調整（オートレイアウト）を強化し、あわせて入力写真（CLI `--variables photo=...` 差し替え含む）の下部 30% 平均輝度に応じた `.photo-vignette` 濃度の自動適応も実装する。
+- [ ] **4-2. 5品質評価軸 ＆ 複数入力素材による汎用性検証（＋任意音響アタック強化）**
+  - **対象**: 検証チェックリスト、多様な入力画像（顔写真・人物以外の物体写真・風景・イラスト）、`scripts/generate_se.py`, `scripts/_audio_dsp.py`
   - **対策**: 以下の 5 品質評価軸で「足し算だけでなく不要要素を削るレビュー」を実施し、どの種類の画像（および Phase 3.5 のジャンル別タイポプリセットとの組み合わせ）を入れても品質と視認性が破綻しないことを確認する：
     - `Material`（素材ごとの質感一貫性） / `Lighting`（光源と反射・影の整合） / `Depth`（奥行き・カメラ移動） / `Timing`（予兆・溜め・解放・余韻） / `Hierarchy`（主役と脇役の優先順位）
+  - （任意）着地〜ファンファーレ頭（`card_land` / Cmaj9 着地）への高域ウィンドチャイム／金属トライアングルの煌めきおよびホーン頭倍音パンチの追加（`-14.0 LUFS` 維持）を検討・適用する。
 
 ### Phase 4 完了基準（DoD）
 - `card-config.js` または CLI 変数でタイトル・属性・フレーバーを差し替えても、素 HTML フォールバックにならず物理箔タイポ（および Phase 3.5 の選択フォント・縁取り・レイアウト）のままレイアウト崩れなく MP4 生成できること。
@@ -357,15 +366,15 @@ npm run build:assets
 # 2. HyperFrames 静的・ランタイム検査（エラー 0 件を確認）
 npm run check
 
-# 3. 重点時刻のフレーム抽出＆目視確認
-#    (0.2s 導入 / 2.75s 青脈動 / 3.82s 金昇格 / 4.85s 亀裂予兆 / 5.14s 真空の間 /
-#     5.24s 虹爆発 / 5.6s カットイン / 6.98s 純白保持 / 7.15s 白飛び抜け /
-#     7.98s 裏面タメ / 8.58s 回転中スペキュラ / 8.70s 着地インパクト / 10.5s テキスト / 13.5s 終盤微動)
-npx hyperframes snapshot --at 0.2,2.75,3.82,4.85,5.14,5.24,5.6,6.98,7.15,7.98,8.58,8.70,10.5,13.5
+# 3. 重点時刻のフレーム抽出＆目視確認（16.0s 全体時刻基準 = 本編 + 0.5s プリロール）
+#    (0.8s 流れ星+螺旋 / 1.2s 三重螺旋 / 3.4s 青オーブ / 4.32s 金昇格 / 5.64s 真空の間 /
+#     5.74s 虹爆発 / 6.4s カットイン / 7.48s 純白保持 / 7.65s 白飛び抜け /
+#     8.48s 裏面タメ / 9.02s 回転厚み / 9.20s 着地インパクト / 11.0s テキスト / 14.0s 終盤微動)
+npx hyperframes snapshot --at 0.8,1.2,3.4,4.32,5.64,5.74,6.4,7.48,7.65,8.48,9.02,9.20,11.0,14.0
 
 # 4. MP4 本レンダリング（renders/ssr_gacha.mp4）
 npm run render
 
-# 5. 定量QAチェック（全映像基準 PASS を確認。Phase 3以降は --check-audio を付与）
-npm run qa
+# 5. 定量QAチェック（全映像・音響基準 PASS を確認）
+npm run qa -- renders/ssr_gacha.mp4 --check-audio
 ```
