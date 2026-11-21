@@ -49,7 +49,7 @@
 | **Phase 2B** | 召喚〜昇格の「脱CSS ＆ 3D空間光学アセット化」＋ 天蓋・空域演出 | カットイン脱ベタ帯・冒頭点火・3D床魔法陣・クリスタルオーブ・不規則ゴッドレイ・天蓋アストロラーベ・流体ウィスプ・星屑 | `scripts/render_optics.py`, `scripts/render_typography.py`, `compositions/scene-summon.*`, `compositions/scene-summon-setup.js`, `compositions/scene-result.*` | ★★★ 完了 |
 | **Phase 2.5** | フロントエンド共通化 ＆ アセット生成高速化・ストレージ最適化 | `shared-base.css`/`shared-utils.js`集約、`_optics_core.py`新設・EDT高速化・並列ビルド（41s→7.5s）、ストレージ整理・新方式定量QA検証 | `compositions/shared-*`, `scripts/_optics_core.py`, `scripts/_utils.py`, `scripts/build_all.py`, `scripts/render_*`, `package.json` | ★★★ 完了 |
 | **Phase 3** | 音響の「現代ソシャゲ音像化」＆ 映像マイクロポリッシュ（レビュー反映完遂） | 現代ソシャゲ音像刷新・`fftconvolve`残響・真空ダッキング・14.8s余韻・`-14 LUFS`統一・ローカルカスタムSEスロット基盤（`assets/se_custom/`）＋ 映像面7大改善を完了 | `scripts/_audio_dsp.py`, `scripts/_audio_slots.py`, `scripts/generate_se.py`, `assets/se_custom/README.md`, `.gitignore`, `compositions/scene-*`, `scripts/render_*` | ★★☆ 完了 |
-| **Phase 3.5** | カードタイポグラフィ点検・刷新（可変フォント・縁取り＆カラー・非対称レイアウト） | 昇格カットイン完全分離のうえ、2大標準プリセット（`royal-foil` / `cute-pastel`）・4軸直交スキーマ・2x SSAA ローズプラム外縁・3x SSAA 表面フレーム中央鋲・星/フレーバー任意化を完遂 | `assets/fonts/*`, `assets/fonts_custom/`, `card-config.js`, `scripts/_font_slots.py`, `scripts/_typo_modern.py`, `scripts/render_typography.py`, `scripts/render_material.py`, `compositions/shared-base.css`, `compositions/scene-result.*` | ★★☆ 完了 |
+| **Phase 3.5** | カードタイポグラフィ点検・刷新（可変フォント・縁取り＆カラー・非対称レイアウト・ヘッダー共通座布団） | 昇格カットイン完全分離・中央配置のうえ、2大標準プリセット（`royal-foil` / `cute-pastel`）・4軸直交スキーマ・ヘッダー共通座布団ギミック（左A×右C）・attributeBadge/Label 分割・出力命名自動化を完遂 | `assets/fonts/*`, `assets/fonts_custom/`, `card-config.js`, `scripts/_font_slots.py`, `scripts/_typo_modern.py`, `scripts/render_typography.py`, `scripts/render_material.py`, `scripts/render_video.mjs`, `compositions/shared-base.css`, `compositions/scene-summon.*`, `compositions/scene-result.*` | ★★☆ 完了 |
 | **Phase 4** | 運用性・量産性強化 ＆ 5軸/複数素材検証 | 任意テキスト箔同期・オートレイアウト ＋ 5品質評価軸・不要要素削減・多様な素材検証 | `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js` | ★☆☆ 仕上げ |
 | **Phase 5** | 横動画（16:9）× 横型カード対応 | 風景・周辺情報込みの横写真向け 1920×1080 ワイド演出モード追加（詳細設計: [`LANDSCAPE_PLAN.md`](./LANDSCAPE_PLAN.md)） | `card-config.js`, `index.html`, `compositions/*`, `scripts/_utils.py`, `scripts/render_material.py`, `scripts/render_typography.py`, `package.json` | ★☆☆ 拡張 |
 
@@ -306,9 +306,23 @@ Phase 4（量産・運用性の仕上げ）に入る前に、カードリザル�
   - **対象**: 代表 3〜4 ジャンル（王道ポートレート／可愛い写真／アーティスティック写真／2Dアニメ画像）での出力比較
   - **対策**: 各ジャンルに対応プリセットを適用して `npm run check` および重点フレーム（`5.6s` カットイン、`10.5s` テキスト出現、`13.5s` 固定リザルト）を抽出し、カットインの不変性・文字可読性・顔保護・世界観の一致を目視および `npm run qa` で確認する。
 
+- [x] **3.5-5. ヘッダー共通座布団ギミック ＆ 属性セクション分割 ＆ 召喚カットイン整理 ＆ 出力命名自動化**
+  - **対象**: `card-config.js`, `scripts/_typo_modern.py`, `scripts/render_typography.py`, `scripts/render_video.mjs`, `compositions/scene-summon.*`, `compositions/scene-result.*`, `package.json`
+  - **課題**:
+    - 左上 `SSR`（裸の文字）と右上 `属性`（単色角丸ピル箱）で造形言語が不一致で Web UI / パワポ感が残っていた。
+    - `attribute: "光属性 / BABY"` の 1 行文字列はスラッシュで間延びし、パース依存の曖昧さがあった。
+    - 召喚カットイン（全体 6.5s 付近）の英語サブテキスト `RAINBOW ASCENSION` が過剰で主役（「昇格 SSR 確定」）の視認性を圧迫していた。
+    - レンダリング出力が固定名（`ssr_gacha.mp4`）のため、プリセットや生成日付ごとのアーカイブが困難だった。
+  - **対策**:
+    1. **ヘッダー共通座布団ギミック（左 A × 右 C）**: 左右の帯高さを `44px` で完全統一し、左上 `SSR` はハーフ座布団から文字が上下に大きく飛び出すオーバーハング構造（Pattern A）、右上 `属性` は左端の拡大メダリオン（Royal: 78px サファイア/ダイヤ、Pastel: 86px 4x SSAA 3次ベジェハート）＋共通座布団帯（Pattern C）へ刷新。文字本体の実インク中心（`alpha >= 0.80`）を基準に帯中心・メダリオン視覚重心へ厳密センタリング。
+    2. **属性セクション分割**: `card-config.js` に `attributeBadge: "愛"`（メダリオン内1文字、空で素アイコン表示）と `attributeLabel: "ANGEL"`（帯ラベル、最小幅 176px 確保＋長文オートフィット）の 2 キー設計を導入（従来の `attribute` 文字列にも完全後方互換）。
+    3. **召喚カットイン整理**: 不要な `RAINBOW ASCENSION` を完全撤去し、残った「昇格 SSR 確定」をカットイン帯の上下センターへ配置（光の走査グレアも文字中央を貫通）。
+    4. **出力命名自動化**: `scripts/render_video.mjs` を導入し、`npm run render` でプリセット名とローカル日付から `renders/SSR_{preset}_{YYYYMMDD}.mp4`（同日連番 `_2`, `_3` 付き）を自動命名・出力。
+
 ### Phase 3.5 完了基準（DoD）
 - 昇格カットイン（`5.6s` 付近）のフォント・質感に影響を与えずに、カード側タイポグラフィのフォント・縁取り・カラー・レイアウトを `card-config.js` から自在に切り替えられること。
 - 可愛い写真・アーティスティックな写真・2Dアニメ調画像それぞれに馴染むプリセット（二重縁取り＋スラント帯の対角レイアウトを含む）が破綻なく描画され、写真上の可読性と顔保護が両立していること。
+- 左上 `SSR` と右上 `属性` が共通座布団ギミックとして一体化し、単色ベタ塗りボタン感やドット溢れのない高品質なソシャゲ UI アセットとして描画されること。
 - すべてのレイアウトプリセットで `npm run check`（0 errors, 0 warnings）および `npm run qa`（12.0s〜15.0s レイアウト固定・光微動を含む）を PASS すること。
 
 ---
@@ -372,9 +386,9 @@ npm run check
 #     8.48s 裏面タメ / 9.02s 回転厚み / 9.20s 着地インパクト / 11.0s テキスト / 14.0s 終盤微動)
 npx hyperframes snapshot --at 0.8,1.2,3.4,4.32,5.64,5.74,6.4,7.48,7.65,8.48,9.02,9.20,11.0,14.0
 
-# 4. MP4 本レンダリング（renders/ssr_gacha.mp4）
+# 4. MP4 本レンダリング（renders/SSR_{preset}_{YYYYMMDD}.mp4）
 npm run render
 
 # 5. 定量QAチェック（全映像・音響基準 PASS を確認）
-npm run qa -- renders/ssr_gacha.mp4 --check-audio
+npm run qa -- renders/SSR_cute-pastel_20261122.mp4 --check-audio
 ```
