@@ -12,26 +12,26 @@ window.SSR_TYPO_MANIFEST = {
     },
     "attribute": {
       "src": "assets/generated/typo_attr.png",
-      "width": 285,
-      "height": 85,
+      "width": 286,
+      "height": 87,
       "text": "光属性 / BABY"
     },
     "subtitle": {
       "src": "assets/generated/typo_subtitle.png",
       "width": 222,
-      "height": 50,
+      "height": 52,
       "text": "【覚醒の眼光】"
     },
     "title": {
       "src": "assets/generated/typo_title.png",
-      "width": 459,
-      "height": 89,
+      "width": 461,
+      "height": 91,
       "text": "ちいさな覇王"
     },
     "flavor": {
       "src": "assets/generated/typo_flavor.png",
       "width": 745,
-      "height": 45,
+      "height": 46,
       "text": "溢れ出す鼻水は強者の証。その鋭き流し目に平伏せよ。"
     },
     "cardNo": {
@@ -48,7 +48,7 @@ window.SSR_TYPO_MANIFEST = {
     },
     "cutinMain": {
       "src": "assets/generated/typo_cutin_main.png",
-      "width": 667,
+      "width": 668,
       "height": 112,
       "text": "昇格  SSR 確定"
     }

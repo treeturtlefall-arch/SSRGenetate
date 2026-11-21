@@ -34,9 +34,11 @@ from _utils import (
     load_card_config,
     make_linear_gradient,
     polygon_mask,
+    porter_duff_over,
     resolve_seed,
-    rgba_from_float,
+    save_png,
     shade_metal_relief,
+    tight_crop_rgba,
 )
 
 FALLBACK_FONT_FILE = "TekitouPoem.ttf"
@@ -586,26 +588,12 @@ def apply_foil_and_grain_material(
     halo_alpha = np.roll(halo_alpha, shift=2, axis=0)
     halo_alpha[:2, :] = 0.0
 
-    # Porter-Duff Over: 前景(rgb, alpha) を 暗色ハロー(0, 0, 0, halo_alpha) の上に合成
-    out_alpha = alpha + halo_alpha * (1.0 - alpha)
-    safe_a = np.maximum(out_alpha, 1e-5)
-    # 暗色ハロー色: ごく深い紺黒 (#050814)
-    halo_rgb = np.array([5 / 255.0, 8 / 255.0, 20 / 255.0], dtype=np.float32)
-    out_rgb = (rgb * alpha[:, :, None] + halo_rgb[None, None, :] * (halo_alpha * (1.0 - alpha))[:, :, None]) / safe_a[:, :, None]
-    out_rgb = np.clip(out_rgb, 0.0, 1.0)
-
-    rgba = np.zeros((h, w, 4), dtype=np.uint8)
-    rgba[:, :, :3] = (out_rgb * 255.0 + 0.5).astype(np.uint8)
-    rgba[:, :, 3] = (np.clip(out_alpha, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
+    # Porter-Duff Over: 前景(rgb, alpha) を 暗色ハロー(ごく深い紺黒 #050814, halo_alpha) の上に合成
+    halo_rgb = np.broadcast_to(np.array([5 / 255.0, 8 / 255.0, 20 / 255.0], dtype=np.float32), (h, w, 3))
+    out_rgb, out_alpha = porter_duff_over(rgb, alpha, halo_rgb, halo_alpha)
 
     # 6. 最終タイトクロップ
-    ys, xs = np.where(rgba[:, :, 3] > 3)
-    if len(ys) > 0:
-        y0, y1 = max(0, int(ys.min()) - 1), min(h, int(ys.max()) + 2)
-        x0, x1 = max(0, int(xs.min()) - 1), min(w, int(xs.max()) + 2)
-        rgba = rgba[y0:y1, x0:x1, :]
-
-    return Image.fromarray(rgba, mode="RGBA")
+    return tight_crop_rgba(out_rgb, out_alpha)
 
 
 def render_multiline_block(
@@ -666,20 +654,8 @@ def render_multiline_block(
     )
 
 
-def _over(fg_rgb: np.ndarray, fg_a: np.ndarray, bg_rgb: np.ndarray, bg_a: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """Porter-Duff Over 合成"""
-    a = fg_a + bg_a * (1.0 - fg_a)
-    rgb = (fg_rgb * fg_a[..., None] + bg_rgb * (bg_a * (1.0 - fg_a))[..., None]) / np.maximum(a, 1e-5)[..., None]
-    return np.clip(rgb, 0.0, 1.0), np.clip(a, 0.0, 1.0)
-
-
-def _tight_crop(rgb: np.ndarray, a: np.ndarray) -> Image.Image:
-    ys, xs = np.where(a > 0.012)
-    if len(ys) > 0:
-        y0, y1 = max(0, int(ys.min()) - 1), min(a.shape[0], int(ys.max()) + 2)
-        x0, x1 = max(0, int(xs.min()) - 1), min(a.shape[1], int(xs.max()) + 2)
-        rgb, a = rgb[y0:y1, x0:x1], a[y0:y1, x0:x1]
-    return rgba_from_float(rgb, a)
+_over = porter_duff_over
+_tight_crop = tight_crop_rgba
 
 
 def render_rarity_crest(
@@ -954,7 +930,7 @@ def main() -> None:
         if img is None:
             continue
         out_path = OUT_DIR / filename
-        img.save(out_path, format="PNG", optimize=True)
+        save_png(img, out_path)
         manifest["items"][key] = {
             "src": f"assets/generated/{filename}",
             "width": img.width,

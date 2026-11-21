@@ -11,7 +11,7 @@ SSRGenerate — 虹金属箔フレーム・カード裏面・ホロ質感アセ�
   - assets/generated/mat_card_back.png     (CARD_W x CARD_H RGBA, ギョーシェ彫り＋金属レリーフ紋章の裏面)
   - assets/generated/mat_holo_prism.png    (360x360 RGB タイル, ダイヤ格子×薄膜干渉プリズム。screen 合成用)
   - assets/generated/mat_flake_{0..5}.png  (72x72 RGBA, 金箔・プリズム結晶片)
-  - assets/generated/mat_film_grain.png    (1080x1920 L, 暗部バンディング解消グレイン)
+  - assets/generated/mat_film_grain.png    (540x960 L, 暗部バンディング解消グレイン)
 
 使い方:
   python scripts/render_material.py
@@ -41,8 +41,10 @@ from _utils import (
     make_linear_gradient,
     norm_std,
     polygon_mask,
+    porter_duff_over,
     resolve_seed,
     rgba_from_float,
+    save_png,
     shade_metal_relief,
 )
 
@@ -215,15 +217,9 @@ def generate_rainbow_foil_frame(
     shadow = np.roll(np.roll(gaussian_blur_f(fil, 2.2), 2, axis=0), 2, axis=1) * 0.78 * inner_mask
 
     # 合成順: 写真 ← 落ち影 ← フィリグリー ← フレーム帯
-    base_a = shadow * (1.0 - fil)
-    out_a = fil + base_a
-    out_rgb = (fil_rgb * fil[..., None] + np.array([0.016, 0.024, 0.066])[None, None, :] * base_a[..., None])
-    out_rgb = out_rgb / np.maximum(out_a, 1e-5)[..., None]
-
-    final_a = frame_alpha + out_a * (1.0 - frame_alpha)
-    final_rgb = (rgb * frame_alpha[..., None] + out_rgb * (out_a * (1.0 - frame_alpha))[..., None]) / np.maximum(
-        final_a, 1e-5
-    )[..., None]
+    shadow_rgb = np.broadcast_to(np.array([0.016, 0.024, 0.066], dtype=np.float32), (h, w, 3))
+    out_rgb, out_a = porter_duff_over(fil_rgb, fil, shadow_rgb, shadow)
+    final_rgb, final_a = porter_duff_over(rgb, frame_alpha, out_rgb, out_a)
     return rgba_from_float(final_rgb, final_a)
 
 
@@ -238,26 +234,22 @@ def generate_window_depth(w: int, h: int) -> Image.Image:
     s_ref = min(w, h)
     shadow_depth = max(14, int(round(s_ref * 0.024)))
     radius = max(2.0, shadow_depth * 0.34)
+    tail_d = min(6, shadow_depth)
+    d_arr = np.arange(shadow_depth, dtype=np.float32)
+    t_lead = (shadow_depth - d_arr) / shadow_depth
+    t_tail = (tail_d - np.arange(tail_d, dtype=np.float32)) / tail_d
 
     sy = np.ones((h, 1), dtype=np.float32)
-    for d in range(shadow_depth):
-        t = (shadow_depth - d) / shadow_depth
-        sy[d, 0] *= 1.0 - 0.44 * (t ** 1.65)
-    for d in range(min(6, shadow_depth)):
-        t = (min(6, shadow_depth) - d) / min(6, shadow_depth)
-        sy[-(d + 1), 0] *= 1.0 - 0.18 * t
+    sy[:shadow_depth, 0] *= 1.0 - 0.44 * (t_lead ** 1.65)
+    sy[-tail_d:, 0] *= 1.0 - 0.18 * t_tail[::-1]
     sy_soft = np.array(
         Image.fromarray((sy * 255.0).astype(np.uint8), mode="L").filter(ImageFilter.GaussianBlur(radius=radius)),
         dtype=np.float32,
     ).ravel() / 255.0
 
     sx = np.ones((1, w), dtype=np.float32)
-    for d in range(shadow_depth):
-        t = (shadow_depth - d) / shadow_depth
-        sx[0, d] *= 1.0 - 0.38 * (t ** 1.65)
-    for d in range(min(6, shadow_depth)):
-        t = (min(6, shadow_depth) - d) / min(6, shadow_depth)
-        sx[0, -(d + 1)] *= 1.0 - 0.18 * t
+    sx[0, :shadow_depth] *= 1.0 - 0.38 * (t_lead ** 1.65)
+    sx[0, -tail_d:] *= 1.0 - 0.18 * t_tail[::-1]
     sx_soft = np.array(
         Image.fromarray((sx * 255.0).astype(np.uint8), mode="L").filter(ImageFilter.GaussianBlur(radius=radius)),
         dtype=np.float32,
@@ -479,27 +471,27 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     frame_img = generate_rainbow_foil_frame(glitter_strength=glitter, brush_strength=brush, seed=seed)
-    frame_img.save(OUT_DIR / "mat_rainbow_frame.png", format="PNG", optimize=True)
+    save_png(frame_img, OUT_DIR / "mat_rainbow_frame.png")
     print(f"[OK] mat_rainbow_frame.png ({frame_img.width}x{frame_img.height})")
 
     depth_img = generate_window_depth(CARD_INNER_W, CARD_INNER_H)
-    depth_img.save(OUT_DIR / "mat_window_depth.png", format="PNG", optimize=True)
+    save_png(depth_img, OUT_DIR / "mat_window_depth.png")
     print(f"[OK] mat_window_depth.png ({depth_img.width}x{depth_img.height})")
 
     back_img = generate_card_back(seed=seed)
-    back_img.save(OUT_DIR / "mat_card_back.png", format="PNG", optimize=True)
+    save_png(back_img, OUT_DIR / "mat_card_back.png")
     print(f"[OK] mat_card_back.png ({back_img.width}x{back_img.height})")
 
     prism_img = generate_holo_prism_tile(seed=seed)
-    prism_img.save(OUT_DIR / "mat_holo_prism.png", format="PNG", optimize=True)
+    save_png(prism_img, OUT_DIR / "mat_holo_prism.png")
     print(f"[OK] mat_holo_prism.png ({prism_img.width}x{prism_img.height})")
 
     for i, fl in enumerate(generate_foil_flakes(seed=seed)):
-        fl.save(OUT_DIR / f"mat_flake_{i}.png", format="PNG", optimize=True)
+        save_png(fl, OUT_DIR / f"mat_flake_{i}.png")
     print("[OK] mat_flake_0..5.png (72x72)")
 
-    grain_img = generate_film_grain_overlay(1080, 1920, sigma=14.0, seed=seed + 101)
-    grain_img.save(OUT_DIR / "mat_film_grain.png", format="PNG", optimize=True)
+    grain_img = generate_film_grain_overlay(540, 960, sigma=14.0, seed=seed + 101)
+    save_png(grain_img, OUT_DIR / "mat_film_grain.png")
     print(f"[OK] mat_film_grain.png ({grain_img.width}x{grain_img.height})")
 
 

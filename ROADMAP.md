@@ -47,7 +47,8 @@
 | **Phase 1** | リザルト画面の「脱Web UI化」＆ 光の微動呼吸 | バッジ・SVG・粒子・ホロ反射を最新3Dソシャゲ級へ刷新 | `compositions/scene-result.*`, `compositions/scene-result-setup.js`, `scripts/render_typography.py`, `scripts/render_material.py`, `AGENTS.md` | ★★★ 完了 |
 | **Phase 2A** | 取りこぼし修正・タイムライン骨格確定・定量QA | スペキュラはみ出し/曇り膜/光柱修正・昇格語彙差別化・真空の間・着地同期・`qa_video.py` | `index.html`, `compositions/scene-summon.html`, `compositions/scene-result.*`, `scripts/generate_se.py`, `scripts/qa_video.py`, `package.json` | ★★★ 完了 |
 | **Phase 2B** | 召喚〜昇格の「脱CSS ＆ 3D空間光学アセット化」＋ 天蓋・空域演出 | カットイン脱ベタ帯・冒頭点火・3D床魔法陣・クリスタルオーブ・不規則ゴッドレイ・天蓋アストロラーベ・流体ウィスプ・星屑 | `scripts/render_optics.py`, `scripts/render_typography.py`, `compositions/scene-summon.*`, `compositions/scene-summon-setup.js`, `compositions/scene-result.*` | ★★★ 完了 |
-| **Phase 3** | 音響の「現代ソシャゲ音像化」＆ 後半マイクロポリッシュ4点 | 脱ブラス・`fftconvolve`残響・14.8s余韻・-14 LUFS適正化 ＋ 縦版9:16の最後の一手仕上げ | `scripts/generate_se.py`, `.gitignore`, `compositions/scene-result.*`, `compositions/scene-result-setup.js`, `scripts/render_material.py` | ★★☆ 中〜高 |
+| **Phase 2.5** | フロントエンド共通化 ＆ アセット生成高速化・ストレージ最適化 | `shared-base.css`/`shared-utils.js`集約、`_optics_core.py`新設・EDT高速化・並列ビルド（41s→7.5s）、ストレージ整理・新方式定量QA検証 | `compositions/shared-*`, `scripts/_optics_core.py`, `scripts/_utils.py`, `scripts/build_all.py`, `scripts/render_*`, `package.json` | ★★★ 完了 |
+| **Phase 3** | 音響の「現代ソシャゲ音像化」＆ 後半マイクロポリッシュ4点 | 脱ブラス・`fftconvolve`残響・14.8s余韻・-14 LUFS適正化（QA -12.4dB/末尾無音の解消） ＋ 縦版9:16の最後の一手仕上げ | `scripts/generate_se.py`, `.gitignore`, `compositions/scene-result.*`, `compositions/scene-result-setup.js`, `scripts/render_material.py` | ★★☆ 次フェーズ |
 | **Phase 4** | 運用性・量産性強化 ＆ 5軸/複数素材検証 | 任意テキスト箔同期・オートレイアウト ＋ 5品質評価軸・不要要素削減・多様な素材検証 | `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js` | ★☆☆ 仕上げ |
 | **Phase 5** | 横動画（16:9）× 横型カード対応 | 風景・周辺情報込みの横写真向け 1920×1080 ワイド演出モード追加（詳細設計: [`LANDSCAPE_PLAN.md`](./LANDSCAPE_PLAN.md)） | `card-config.js`, `index.html`, `compositions/*`, `scripts/_utils.py`, `scripts/render_material.py`, `scripts/render_typography.py`, `package.json` | ★☆☆ 拡張 |
 
@@ -179,6 +180,39 @@
 
 ---
 
+## 6.5. Phase 2.5：フロントエンド共通化 ＆ アセット生成パイプライン高速化・ストレージ最適化
+
+Phase 2 までの急速な機能追加によって生じたコードの重複、生成スクリプトの実行コスト（40秒超）、および大容量検証動画によるストレージ肥大化を解消し、プロジェクト全体の保守性と開発サイクル速度を劇的に向上させるリファクタリングを実施。
+
+- [x] **2.5-1. フロントエンド共通基盤の抽出 ＆ 設定値フォールバック同期**
+  - **対象**: `compositions/shared-base.css` (新設), `compositions/shared-utils.js` (新設), `compositions/scene-summon.*`, `compositions/scene-result.*`
+  - **成果**:
+    - フォント `@font-face`、CSSカスタムプロパティ（`--gold-*`, `--prism-*` 等の共通色・カード寸法）、`.clip`, `.film-grain-overlay` 等の共通スタイルを `shared-base.css` へ集約。
+    - 決定論乱数生成器（`createRng` / Mulberry32）、相対パス解決（`resolveAssetPath`）、設定値優先フォールバック（`pickConfigValue`）、着地RGB色収差（`addChromaShock`）を `shared-utils.js` に共通モジュール化。
+    - `scene-result` / `scene-summon` の HTML/CSS/JS 全体で 2 スペースインデント統一、重複コードの排除、および初期フォールバック値を `card-config.js` に完全一致同期。
+    - `npm run check`（lint + runtime + layout + motion + contrast）にて **0 errors, 0 warnings** を確認。
+- [x] **2.5-2. 物理光学コア分離 ＆ Pythonアセット生成エンジンの高速化・並列化**
+  - **対象**: `scripts/_optics_core.py` (新設), `scripts/_utils.py`, `scripts/build_all.py` (新設), `scripts/render_optics.py`, `scripts/render_material.py`, `scripts/render_typography.py`, `package.json`
+  - **成果**:
+    - `_optics_core.py` に 6 段階物理光学発光コア（H&D分光・FFT異方性PSFガウスぼかし・FBMノイズ・マルチオクターブ合成）を抽出し、`render_optics.py` を軽量化。
+    - ピュア Python の `approx_inner_distance` を `scipy.ndimage.distance_transform_edt`（C最適化）へ置き換え、距離変換処理を数十倍高速化。
+    - Pillow の全探索最適化（`optimize=True`）が最大のボトルネックであったため、`_utils.save_png` で `compress_level=6`（標準高速圧縮）へ一本化。フィルムグレイン解像度を `540x960`（1/2）に最適化し画質を損なわずにファイルサイズを 1.6MB → 403KB へ削減。
+    - `render_optics.py` 内を `ThreadPoolExecutor` によるマルチスレッド生成・保存へ移行し、さらに `build_all.py`（新設）にて 4 スクリプト（typo, optics, material, se）を `ProcessPoolExecutor` でマルチプロセス並列実行するアーキテクチャへ刷新。
+    - `npm run build:assets` の所要時間を **41.09秒 → 7.51秒（約5.5倍高速化）** へ短縮。
+- [x] **2.5-3. ストレージ整理 ＆ .gitignore 強化**
+  - **成果**: `renders/` 配下の旧検証用 MP4 9本（約 325MB）および未追跡ファイル `repomix-output.xml` を安全に削除し、`.gitignore` に `repomix-output.xml` を追加。
+- [x] **2.5-4. 新方式レンダリング ＆ 定量QA検証（旧MP4との比較）**
+  - **成果**: `npx hyperframes render` により `renders/ssr_gacha_refactored.mp4`（15.0秒 / 450フレーム）を出力し、`scripts/qa_video.py` による自動合否判定を実施。
+  - **映像基準全項目PASS**:
+    - グレー曇り膜フレーム: **2枚**（許容 <=2枚 PASS ※旧MP4は8枚でFAIL）
+    - 真空の間（5.10s〜5.18s）の最小輝度: **9.9%**（許容 <50% PASS ※旧MP4は99.9%でFAIL）
+    - 着地前ダレ連続時間: **0.00s**（許容 <=0.20s PASS）
+    - 終盤レイアウト固定（12.0s〜15.0s）: 最大差分 **0.693**（許容 <2.5 PASS）
+    - 終盤光微動（12.0s〜15.0s）: 微動ピクセル比率 **4.31%**（許容 >0.1% PASS）
+  - **音声課題の確認**: 統合ラウドネスが `-12.4 LUFS`（目標 -15.5〜-12.5 に対し 0.1dB 超過）、14.0秒以降がデジタル無音（RMS -120dB）となっている点を確認。これらを次フェーズ（Phase 3）の必須要件として引き継ぎ。
+
+---
+
 ## 7. Phase 3：サウンドの「現代ソシャゲ音像化」＆ 後半マイクロポリッシュ4点
 
 映像側の秒数が完全に固まった段階で、音響を製品級へ刷新し、あわせて縦版（9:16）後半リザルトの最後の微調整 4 点を仕上げます。
@@ -193,8 +227,8 @@
   - **対策**: `scipy.signal.fftconvolve` を用い、指数減衰するステレオノイズ IR（インパルス応答）を畳み込む簡易コンボリューションリバーブへ置き換え、高密度なホール残響を実現する。
 - [ ] **3-3. 無音ブレーク同期・末尾余韻・ラウドネス適正化**
   - **対象**: `scripts/generate_se.py` (`build_se_upgrade`, `build_se_fanfare`, `save_wav`)
-  - **課題**: 最後の和音が `12.6s` 付近で終了して終盤がデジタル無音になりやすく、統合ラウドネスも `-12.4 LUFS` 付近とやや大きめ。
-  - **対策**: `5.10s〜5.18s` の真空の間（暗転）に合わせて SE の無音ブレークを同期させる。終盤は `12.0s〜15.0s` の光微動に寄り添う静かなシマー／ルームトーン余韻を `14.8s` まで滑らかにフェードさせ、統合ラウドネスを SNS 基準（`-14 LUFS ±1.5 LU`）へ適正化する。
+  - **課題**: 最後の和音が `12.6s` 付近で終了して終盤（14.0s以降）がデジタル無音（RMS -120dB）になり、直近の QA で統合ラウドネスが `-12.4 LUFS` と目標上限（-12.5 LUFS）を 0.1dB 超過した。
+  - **対策**: `5.10s〜5.18s` の真空の間（暗転）に合わせて SE の無音ブレークを完全同期させる。終盤は `12.0s〜15.0s` の光微動に寄り添う静かなシマー／ルームトーン余韻を `14.8s` まで滑らかにフェードさせ、統合ラウドネスを SNS 基準（`-14.0 LUFS ±1.5 LU`、許容範囲 -15.5〜-12.5 LUFS）へ適正化する。
 - [ ] **3-4. （任意拡張）ユーザー所蔵SEライブラリ併用オプションの検討**
   - **対象**: `scripts/generate_se.py`, `.gitignore`
   - **対策**: 個人環境向けに、衝撃音・ガラス破砕・クラッシュシンバル等のユーザー所蔵ワンショット WAV をローカル専用フォルダ（例: `assets/se_custom/`、`.gitignore` 対象）に配置した場合のみ読み込んでミックスし、未配置時は 100% プロシージャル合成へ自動フォールバックする拡張設計を検討する（OSS 配布時の著作権・ライセンス混入防止）。

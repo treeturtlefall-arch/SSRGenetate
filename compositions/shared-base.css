@@ -1,0 +1,84 @@
+@font-face {
+  font-family: "YujiSyuku";
+  src: url("../assets/fonts/YujiSyuku-Regular.ttf") format("truetype");
+  font-display: block;
+}
+@font-face {
+  font-family: "KleeOne";
+  src: url("../assets/fonts/KleeOne-Regular.ttf") format("truetype");
+  font-display: block;
+}
+@font-face {
+  font-family: "CineCaption";
+  src: url("../assets/fonts/cinecaption.ttf") format("truetype");
+  font-display: block;
+}
+
+:root {
+  --in-oklab: ;
+  --in-oklch: ;
+  --bg-void: #040611;
+  --ink-ivory: #f8f4ea;
+  --ink-gold-light: #f2dfb3;
+  --ink-gold: #d4a24c;
+  --font-jp: "KleeOne", "Noto Sans JP", sans-serif;
+  --font-display: "YujiSyuku", "Playfair Display", serif;
+  --font-ui: "CineCaption", "Montserrat", "Noto Sans JP", sans-serif;
+  /* scripts/_utils.py の CARD_* と同期 */
+  --card-w: 900px;
+  --card-h: 1590px;
+  --card-border: 20px;
+  --card-outer-r: 40px;
+  --card-inner-r: 24px;
+}
+
+@supports (background: linear-gradient(in oklab, white, black)) {
+  :root {
+    --in-oklab: in oklab;
+    --in-oklch: in oklch;
+  }
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  background: transparent;
+  color: var(--ink-ivory);
+  font-family: var(--font-jp);
+  -webkit-font-smoothing: antialiased;
+}
+
+.scene-root {
+  position: relative;
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.clip {
+  position: absolute;
+  inset: 0;
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.film-grain-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: url("../assets/generated/mat_film_grain.png");
+  background-size: 100% 100%;
+  mix-blend-mode: overlay;
+  opacity: 0.055;
+  pointer-events: none;
+}

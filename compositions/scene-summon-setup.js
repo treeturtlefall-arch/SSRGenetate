@@ -5,15 +5,10 @@
  * 収束粒子・上空2層パララックス浮遊クリスタル破片・星屑・タイポマニフェスト適用を行う。
  */
 (function () {
-  function createRng(seed) {
-    let s = seed >>> 0;
-    return function () {
-      s = (s + 0x6d2b79f5) | 0;
-      let t = Math.imul(s ^ (s >>> 15), 1 | s);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
+  const shared = window.SSR_SHARED;
+  const createRng = shared.createRng;
+  const resolveAssetPath = shared.resolveAssetPath;
+  const addChromaShock = shared.addChromaShock;
 
   const baseCfg = window.SSR_CARD_CONFIG || {};
   const seed = typeof baseCfg.seed === "number" ? baseCfg.seed : 20261120;
@@ -43,7 +38,7 @@
     const entry = typoItems[pair[0]];
     const el = document.getElementById(pair[1]);
     if (entry && el && entry.src) {
-      el.style.backgroundImage = 'url("../' + entry.src.replace(/^\.\//, "") + '")';
+      el.style.backgroundImage = 'url("' + resolveAssetPath(entry.src) + '")';
       el.style.width = entry.width + "px";
       el.style.height = entry.height + "px";
     }
@@ -489,18 +484,6 @@
         0.1 + g * 0.21
       );
     });
-  }
-
-  function addChromaShock(tl, targetSel, startAt, peakPx) {
-    if (!peakPx || peakPx <= 0) return;
-    tl.set(targetSel, { filter: "url(#chroma-shock)" }, startAt);
-    tl.fromTo("#chroma-r-off", { attr: { dx: 0 } }, { attr: { dx: -peakPx }, duration: 0.04, ease: "power2.out", immediateRender: false }, startAt);
-    tl.fromTo("#chroma-b-off", { attr: { dx: 0 } }, { attr: { dx: peakPx }, duration: 0.04, ease: "power2.out", immediateRender: false }, startAt);
-    tl.to("#chroma-r-off", { attr: { dx: peakPx * 0.45 }, duration: 0.06, ease: "power1.inOut" }, startAt + 0.04);
-    tl.to("#chroma-b-off", { attr: { dx: -peakPx * 0.45 }, duration: 0.06, ease: "power1.inOut" }, startAt + 0.04);
-    tl.to("#chroma-r-off", { attr: { dx: 0 }, duration: 0.1, ease: "power2.out" }, startAt + 0.1);
-    tl.to("#chroma-b-off", { attr: { dx: 0 }, duration: 0.1, ease: "power2.out" }, startAt + 0.1);
-    tl.set(targetSel, { filter: "none" }, startAt + 0.21);
   }
 
   window.SSR_SUMMON_STATE = {

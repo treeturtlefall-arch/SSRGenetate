@@ -5,15 +5,13 @@
     <meta name="viewport" content="width=1080, height=1920" />
     <title>SSRGenerate — Scene 1-2: Summon &amp; Promotion</title>
     <link rel="stylesheet" href="./scene-summon.css" />
-    <style>
-      #summon-root { position: relative; width: 1080px; height: 1920px; overflow: hidden; isolation: isolate; }
-    </style>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
     <script src="../card-config.js"></script>
     <script src="../assets/generated/typo-manifest.js"></script>
+    <script src="./shared-utils.js"></script>
   </head>
   <body>
-    <div id="summon-root" data-composition-id="scene-summon" data-start="0" data-duration="7.4" data-width="1080" data-height="1920">
+    <div id="summon-root" class="scene-root" data-composition-id="scene-summon" data-start="0" data-duration="7.4" data-width="1080" data-height="1920">
       <svg id="chroma-shock-svg" width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
         <defs>
           <filter id="chroma-shock" x="-4%" y="-2%" width="108%" height="104%" color-interpolation-filters="sRGB">
@@ -29,7 +27,7 @@
       </svg>
 
       <div id="scene-summon-stage" class="clip" data-start="0" data-duration="7.4" data-track-index="0">
-        <div id="summon-grain" data-layout-allow-overflow></div>
+        <div id="summon-grain" class="film-grain-overlay" data-layout-allow-overflow></div>
 
         <div id="summon-camera" data-layout-allow-overflow>
           <div id="ignition-spark" data-layout-allow-overflow></div>

@@ -15,22 +15,15 @@
     <meta name="viewport" content="width=1080, height=1920" />
     <title>SSRGenerate — Scene 3-5: 3D SSR Card &amp; Luminous Breathing Result</title>
     <link rel="stylesheet" href="./scene-result.css" />
-    <style>
-      #result-root {
-        position: relative;
-        width: 1080px;
-        height: 1920px;
-        overflow: hidden;
-        isolation: isolate;
-      }
-    </style>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
     <script src="../card-config.js"></script>
     <script src="../assets/generated/typo-manifest.js"></script>
+    <script src="./shared-utils.js"></script>
   </head>
   <body>
     <div
       id="result-root"
+      class="scene-root"
       data-composition-id="scene-result"
       data-start="0"
       data-duration="8.1"
@@ -57,7 +50,7 @@
         <div id="result-rays-b" class="result-rays-layer" data-layout-allow-overflow></div>
         <div id="result-halo" data-layout-allow-overflow></div>
         <div id="result-bg-ring" data-layout-allow-overflow></div>
-        <div id="result-grain" data-layout-allow-overflow></div>
+        <div id="result-grain" class="film-grain-overlay" data-layout-allow-overflow></div>
         <div id="bokeh-back-layer" data-layout-allow-overflow></div>
         <div id="landing-shockwave" data-layout-allow-overflow></div>
 
@@ -99,21 +92,21 @@
                   <div id="stars-row"></div>
                   <div id="card-subtitle-wrap" class="typo-slot">
                     <div id="card-subtitle-img" class="typo-img"></div>
-                    <div id="card-subtitle" data-layout-allow-safe-zone>【奇跡のテーブル55】</div>
+                    <div id="card-subtitle" data-layout-allow-safe-zone>【覚醒の眼光】</div>
                   </div>
                   <div id="card-title-wrap" class="typo-slot">
                     <div id="card-title-img" class="typo-img"></div>
-                    <div id="card-title" data-layout-allow-safe-zone>ちいさな美食家</div>
+                    <div id="card-title" data-layout-allow-safe-zone>ちいさな覇王</div>
                   </div>
                   <div id="card-flavor-wrap" class="typo-slot">
                     <div id="card-flavor-img" class="typo-img"></div>
-                    <div id="card-flavor" data-layout-allow-safe-zone>黄金のたまご焼きを前に、世界一の幸せを召喚する。</div>
+                    <div id="card-flavor" data-layout-allow-safe-zone>溢れ出す鼻水は強者の証。その鋭き流し目に平伏せよ。</div>
                   </div>
                   <div id="card-stats"></div>
                 </div>
                 <div id="card-no-corner">
                   <div id="card-no-img"></div>
-                  <div id="card-no-text" data-layout-allow-safe-zone>NO.055-SSR</div>
+                  <div id="card-no-text" data-layout-allow-safe-zone>NO.077-SSR</div>
                 </div>
               </div>
             </div>
@@ -245,19 +238,7 @@
           tl.to(".bk-group-" + g, { opacity: 0.14, duration: 1.25, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0 + g * 0.25));
         });
 
-        function addChromaShock(targetSel, startAt, peakPx) {
-          if (!peakPx || peakPx <= 0) return;
-          tl.set(targetSel, { filter: "url(#chroma-shock)" }, startAt);
-          tl.fromTo("#chroma-r-off", { attr: { dx: 0 } }, { attr: { dx: -peakPx }, duration: 0.04, ease: "power2.out", immediateRender: false }, startAt);
-          tl.fromTo("#chroma-b-off", { attr: { dx: 0 } }, { attr: { dx: peakPx }, duration: 0.04, ease: "power2.out", immediateRender: false }, startAt);
-          tl.to("#chroma-r-off", { attr: { dx: peakPx * 0.45 }, duration: 0.06, ease: "power1.inOut" }, startAt + 0.04);
-          tl.to("#chroma-b-off", { attr: { dx: -peakPx * 0.45 }, duration: 0.06, ease: "power1.inOut" }, startAt + 0.04);
-          tl.to("#chroma-r-off", { attr: { dx: 0 }, duration: 0.10, ease: "power2.out" }, startAt + 0.10);
-          tl.to("#chroma-b-off", { attr: { dx: 0 }, duration: 0.10, ease: "power2.out" }, startAt + 0.10);
-          tl.set(targetSel, { filter: "none" }, startAt + 0.21);
-        }
-
-        addChromaShock("#scene-result-stage", at(8.68), chromaShockPx * 0.95);
+        st.addChromaShock(tl, "#scene-result-stage", at(8.68), chromaShockPx * 0.95);
 
         tl.set("#result-root", {}, 8.1);
 

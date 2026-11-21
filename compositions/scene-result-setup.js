@@ -1,24 +1,13 @@
 (function () {
+  const shared = window.SSR_SHARED;
+  const createRng = shared.createRng;
+  const resolveAssetPath = shared.resolveAssetPath;
+  const pick = shared.pickConfigValue;
+  const addChromaShock = shared.addChromaShock;
+
   const T0 = 6.9;
   function at(globalSec) {
     return Math.max(0, Number((globalSec - T0).toFixed(4)));
-  }
-
-  function resolveAssetPath(relPath) {
-    if (!relPath) return "";
-    if (/^(https?:|data:|\/|\.\.\/)/.test(relPath)) return relPath;
-    return "../" + relPath.replace(/^\.\//, "");
-  }
-
-  function createRng(seed) {
-    let s = seed >>> 0;
-    return function () {
-      s |= 0;
-      s = (s + 0x6d2b79f5) | 0;
-      let t = Math.imul(s ^ (s >>> 15), 1 | s);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
   }
 
   const baseCfg = window.SSR_CARD_CONFIG || {};
@@ -27,25 +16,19 @@
       ? window.__hyperframes.getVariables()
       : {};
 
-  function pick(varVal, cfgVal, fallback) {
-    if (typeof varVal === "string" && varVal.trim() !== "") return varVal;
-    if (cfgVal !== undefined && cfgVal !== null && cfgVal !== "") return cfgVal;
-    return fallback;
-  }
-
   const cfg = {
     photo: pick(hfVars.photo, baseCfg.photo, "assets/photo.jpg"),
     photoFit: baseCfg.photoFit || "cover",
-    photoPosition: baseCfg.photoPosition || "50% 42%",
-    photoZoom: typeof baseCfg.photoZoom === "number" ? baseCfg.photoZoom : 1.02,
+    photoPosition: baseCfg.photoPosition || "50% 35%",
+    photoZoom: typeof baseCfg.photoZoom === "number" ? baseCfg.photoZoom : 1.05,
     rarity: pick(hfVars.rarity, baseCfg.rarity, "SSR"),
     stars: typeof baseCfg.stars === "number" ? baseCfg.stars : 5,
     attribute: typeof baseCfg.attribute === "string" ? baseCfg.attribute.trim() : "",
-    subtitle: pick(hfVars.subtitle, baseCfg.subtitle, "【奇跡のテーブル55】"),
-    title: pick(hfVars.title, baseCfg.title, "ちいさな美食家"),
-    flavor: pick(hfVars.flavor, baseCfg.flavor, "黄金のたまご焼きを前に、世界一の幸せを召喚する。"),
+    subtitle: pick(hfVars.subtitle, baseCfg.subtitle, "【覚醒の眼光】"),
+    title: pick(hfVars.title, baseCfg.title, "ちいさな覇王"),
+    flavor: pick(hfVars.flavor, baseCfg.flavor, "溢れ出す鼻水は強者の証。その鋭き流し目に平伏せよ。"),
     stats: Array.isArray(baseCfg.stats) && baseCfg.stats.length > 0 ? baseCfg.stats.slice(0, 3) : [],
-    cardNo: baseCfg.cardNo || "NO.055-SSR",
+    cardNo: baseCfg.cardNo || "NO.077-SSR",
     material: baseCfg.material || {},
     seed: typeof baseCfg.seed === "number" ? baseCfg.seed : 20261120,
   };
@@ -315,5 +298,6 @@
     sparkleData: sparkleData,
     flakeData: flakeData,
     bokehData: bokehData,
+    addChromaShock: addChromaShock,
   };
 })();

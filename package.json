@@ -7,7 +7,7 @@
     "build:optics": "python scripts/render_optics.py",
     "build:material": "python scripts/render_material.py",
     "build:se": "python scripts/generate_se.py",
-    "build:assets": "npm run build:typo && npm run build:optics && npm run build:material && npm run build:se",
+    "build:assets": "python scripts/build_all.py",
     "dev": "npx --yes hyperframes@0.9.72 preview",
     "check": "npx --yes hyperframes@0.9.72 check",
     "render": "npx --yes hyperframes@0.9.72 render -q delivery --crf 12 -o renders/ssr_gacha.mp4",

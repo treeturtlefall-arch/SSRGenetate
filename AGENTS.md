@@ -12,14 +12,18 @@
 - **ディレクトリ・ファイル構成**:
   - `card-config.js` — 写真パス・タイトル・レアリティ・物理質感（タイポグラフィ・光学・マテリアル・乱数シード）の一元設定ファイル
   - `index.html` — ルートコンポジション（音声3トラック・ホワイトアウト閃光・サブコンポジション統合）
-  - `compositions/` — シーン別サブコンポジション
+  - `compositions/` — シーン別サブコンポジション＆共通スタイル/ユーティリティ
+    - `compositions/shared-base.css` — 共通フォント定義・CSSカスタムプロパティ（カード寸法・パレット）・リセット・フィルムグレイン定義
+    - `compositions/shared-utils.js` — 決定論的PRNG（Mulberry32）・相対パス解決・設定値優先選択・瞬間RGB色収差（`addChromaShock`）の共通モジュール
     - `compositions/scene-summon.html` — Phase 1-2: 召喚陣・オーブ収束・青→金→虹フェイク昇格（0.0s 〜 7.4s）
     - `compositions/scene-result.html` — Phase 3-5: 3Dカード回転着地・SSR確定エフェクト・3秒リザルト（レイアウト固定・光微動）（6.9s 〜 15.0s）
   - `assets/` — 入力写真（例: `photo.jpg`）、プロシージャル効果音（`.wav`）、フォント（`assets/fonts/`）、および物理レンダリング生成画像（`assets/generated/`）
   - `scripts/` — 物理アセット＆効果音の決定論的生成スクリプト群（Python `numpy` / `scipy` / `Pillow`）
-    - `scripts/_utils.py` — 設定読み込み・シード解決・グラデーション・微細シボ・金属レリーフ陰影の共通モジュール
+    - `scripts/_utils.py` — 設定読み込み・シード解決・色空間変換・Porter-Duff Over合成・グラデーション・微細シボ・金属レリーフ陰影の共通モジュール
+    - `scripts/_optics_core.py` — H&D分光モデル・FFT異方性PSFガウスぼかし・ユークリッド距離変換・FBMノイズ・6段階物理光学発光コアモジュール
+    - `scripts/build_all.py` — 4つの生成スクリプトをマルチプロセス並列実行する一括ビルダー（`npm run build:assets`）
     - `scripts/render_typography.py` — 書字キネマティクス＆金属箔タイポ・SSRクレスト・属性刻印プレート透過PNG＋マニフェスト生成（`npm run build:typo`）
-    - `scripts/render_optics.py` — H&D分光モデルによる魔法陣・オーブ亀裂・星・スパークル・背景光学リング・玉ボケ発光PNG生成（`npm run build:optics`）
+    - `scripts/render_optics.py` — 魔法陣・天蓋ゲート・オーブ・亀裂・ゴッドレイ・光柱・星・スパークル・玉ボケ発光PNG並列生成（`npm run build:optics`）
     - `scripts/render_material.py` — 虹金属箔フレーム（四隅フィリグリー一体）・カード裏面・ホロプリズム・金箔結晶片・内窓立体深度PNG生成（`npm run build:material`）
     - `scripts/generate_se.py` — 15秒タイムライン完全同期のステレオWAV効果音生成（`npm run build:se`）
   - `renders/` — 出力された `.mp4` ファイル（`renders/ssr_gacha.mp4`）

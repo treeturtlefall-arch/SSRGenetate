@@ -1,325 +1,47 @@
 """
 SSRGenerate — 物理光学発光（Optical Burn-in）アセット生成エンジン
 
-FilmDateStamp の 6段階物理光学モデルを抽出し、SSRガチャ演出の発光体
-（3層魔法陣×3色、オーブ臨界亀裂、星5つ、4色スパークル）を
-芯の白飛び（Core Bleach）・H&D分光飽和・FFT3重異方性PSFハレーション・
-3階層有機ゆらぎ（Macro/Meso/Micro）付きの高精細透過PNGとして決定論的に生成する。
+`scripts/_optics_core.py` の6段階物理光学モデルと高速ノイズ関数を用い、
+SSRガチャ演出の発光体（3層魔法陣×3色、天蓋ゲート、オーブ・臨界亀裂、ゴッドレイ、
+光柱、衝撃波、カットイン、星、スパークル、玉ボケ、浮遊クリスタル破片）の
+高精細透過PNG群を決定論的に生成する。
 
 使い方:
   python scripts/render_optics.py
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import math
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw
 
-from _utils import OUT_DIR, load_card_config, resolve_seed
+from _optics_core import (
+    OPTICAL_SPECTRA,
+    aniso_fbm,
+    approx_inner_distance,
+    bilinear_warp,
+    fbm_noise,
+    fft_gaussian_blur,
+    render_optical_glow,
+    value_noise,
+)
+from _utils import (
+    OUT_DIR,
+    linear_to_srgb,
+    load_card_config,
+    resolve_seed,
+    save_png,
+    smoothstep,
+    srgb_to_unpremul_rgba,
+)
 
-
-# ==============================================================================
-# 物理分光スペクトル定義（FilmDateStamp H&D 分光モデル拡張）
-# ==============================================================================
-OPTICAL_SPECTRA: Dict[str, Dict[str, Tuple[float, float, float]]] = {
-    "summon_blue": {
-        "sens": (0.45, 1.85, 3.40),
-        "scatter": (0.04, 0.42, 1.00),
-        "tint": (0.88, 0.96, 1.00),
-    },
-    "summon_gold": {
-        "sens": (3.15, 1.55, 0.42),
-        "scatter": (1.00, 0.42, 0.04),
-        "tint": (1.00, 0.99, 0.88),
-    },
-    "star_gold": {
-        "sens": (3.25, 1.65, 0.45),
-        "scatter": (1.00, 0.40, 0.03),
-        "tint": (1.00, 0.98, 0.86),
-    },
-    "sparkle_gold": {
-        "sens": (3.10, 1.75, 0.50),
-        "scatter": (1.00, 0.48, 0.05),
-        "tint": (1.00, 0.99, 0.90),
-    },
-    "sparkle_pink": {
-        "sens": (3.05, 0.78, 2.05),
-        "scatter": (1.00, 0.24, 0.58),
-        "tint": (1.00, 0.92, 0.96),
-    },
-    "sparkle_cyan": {
-        "sens": (0.62, 2.30, 3.15),
-        "scatter": (0.10, 0.60, 1.00),
-        "tint": (0.90, 0.98, 1.00),
-    },
-    "sparkle_white": {
-        "sens": (2.95, 2.90, 2.85),
-        "scatter": (0.88, 0.86, 0.82),
-        "tint": (1.00, 0.99, 0.96),
-    },
-}
-
-
-# ==============================================================================
-# FilmDateStamp 由来 物理光学コア関数群（純粋 NumPy + Pillow）
-# ==============================================================================
-def linear_to_srgb(linear: np.ndarray) -> np.ndarray:
-    linear = np.clip(linear, 0.0, 1.0)
-    return np.where(
-        linear <= 0.0031308,
-        linear * 12.92,
-        1.055 * np.power(linear, 1.0 / 2.4) - 0.055,
-    ).astype(np.float32)
-
-
-def fft_gaussian_blur(
-    arr: np.ndarray,
-    sigma: float,
-    sigma_minor: Optional[float] = None,
-    angle_deg: float = 0.0,
-    shift_xy: Tuple[float, float] = (0.0, 0.0),
-) -> np.ndarray:
-    if sigma_minor is None:
-        sigma_minor = sigma
-    smax = max(sigma, sigma_minor)
-    if smax < 0.05 and abs(shift_xy[0]) < 1e-3 and abs(shift_xy[1]) < 1e-3:
-        return arr.astype(np.float32, copy=True)
-
-    pad = int(math.ceil(3.2 * smax + abs(shift_xy[0]) + abs(shift_xy[1]))) + 2
-    a = np.pad(arr.astype(np.float32), pad, mode="constant")
-    h, w = a.shape
-
-    fy = np.fft.fftfreq(h).astype(np.float32)[:, None]
-    fx = np.fft.rfftfreq(w).astype(np.float32)[None, :]
-    th = math.radians(angle_deg)
-    u = fx * math.cos(th) + fy * math.sin(th)
-    v = -fx * math.sin(th) + fy * math.cos(th)
-    tf = np.exp(-2.0 * math.pi ** 2 * (sigma ** 2 * u ** 2 + sigma_minor ** 2 * v ** 2))
-    if shift_xy[0] != 0.0 or shift_xy[1] != 0.0:
-        tf = tf * np.exp(-2j * math.pi * (fx * shift_xy[0] + fy * shift_xy[1]))
-
-    out = np.fft.irfft2(np.fft.rfft2(a) * tf, s=a.shape)
-    return np.maximum(out[pad:-pad, pad:-pad], 0.0).astype(np.float32)
-
-
-def approx_inner_distance(binary: np.ndarray, max_iter: int = 48) -> np.ndarray:
-    """反復モルフォロジー収縮による八角形メトリック内部距離変換（発光尾根抽出）"""
-    dist = np.zeros(binary.shape, dtype=np.float32)
-    cur = binary.astype(bool).copy()
-    for i in range(max_iter):
-        if not cur.any():
-            break
-        dist += cur
-        p = np.pad(cur, 1, constant_values=False)
-        er = p[1:-1, 1:-1] & p[:-2, 1:-1] & p[2:, 1:-1] & p[1:-1, :-2] & p[1:-1, 2:]
-        if i % 2 == 1:
-            er &= p[:-2, :-2] & p[:-2, 2:] & p[2:, :-2] & p[2:, 2:]
-        cur = er
-    return dist
-
-
-def value_noise(rng: np.random.Generator, shape: Tuple[int, int], cell: float) -> np.ndarray:
-    h, w = shape
-    cell = max(1.0, float(cell))
-    gh = int(math.ceil(h / cell)) + 4
-    gw = int(math.ceil(w / cell)) + 4
-    grid = rng.standard_normal((gh, gw)).astype(np.float32)
-    up_w, up_h = int(math.ceil(gw * cell)), int(math.ceil(gh * cell))
-    up = np.asarray(Image.fromarray(grid).resize((up_w, up_h), Image.BICUBIC), dtype=np.float32)
-    oy = int(cell + rng.random() * cell)
-    ox = int(cell + rng.random() * cell)
-    out = up[oy:oy + h, ox:ox + w]
-    std = float(out.std())
-    return ((out - out.mean()) / std).astype(np.float32) if std > 1e-6 else np.zeros(shape, np.float32)
-
-
-def fbm_noise(rng: np.random.Generator, shape: Tuple[int, int], cell: float, octaves: int = 2) -> np.ndarray:
-    acc = np.zeros(shape, dtype=np.float32)
-    amp, total = 1.0, 0.0
-    for i in range(octaves):
-        acc += value_noise(rng, shape, cell / (2 ** i)) * amp
-        total += amp
-        amp *= 0.5
-    acc /= total
-    std = float(acc.std())
-    return (acc / std).astype(np.float32) if std > 1e-6 else acc
-
-
-def bilinear_warp(field: np.ndarray, dx: np.ndarray, dy: np.ndarray) -> np.ndarray:
-    h, w = field.shape
-    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
-    sx = np.clip(xx + dx, 0.0, w - 1.001)
-    sy = np.clip(yy + dy, 0.0, h - 1.001)
-    x0 = sx.astype(np.int32)
-    y0 = sy.astype(np.int32)
-    fx = sx - x0
-    fy = sy - y0
-    a = field[y0, x0]
-    b = field[y0, x0 + 1]
-    c = field[y0 + 1, x0]
-    d = field[y0 + 1, x0 + 1]
-    return (a * (1 - fx) * (1 - fy) + b * fx * (1 - fy) + c * (1 - fx) * fy + d * fx * fy).astype(np.float32)
-
-
-def render_optical_glow(
-    mask_l: Image.Image,
-    spectrum_name: str,
-    ref_scale: float,
-    exposure: float = 1.05,
-    core_glow: float = 1.15,
-    halation: float = 1.05,
-    irregularity: float = 0.85,
-    prism_mode: bool = False,
-    seed: int = 0,
-) -> Image.Image:
-    """
-    任意のグレースケール発光マスクに対し、FilmDateStamp の6段階物理光学モデルを適用して
-    透過 RGBA 画像を生成する。
-    """
-    raw = np.asarray(mask_l, dtype=np.float32) / 255.0
-    H, W = raw.shape
-    fs = float(ref_scale)
-    irr = max(0.0, float(irregularity))
-    hal = max(0.05, float(halation))
-
-    rng_macro = np.random.default_rng([seed & 0xFFFFFFFF, 11])
-    rng_meso = np.random.default_rng([seed & 0xFFFFFFFF, 22])
-    rng_micro = np.random.default_rng([seed & 0xFFFFFFFF, 33])
-
-    # Step 1: 距離変換尾根（発光芯）
-    inside = raw > 0.28
-    dist = approx_inner_distance(inside, max_iter=36)
-    dist = fft_gaussian_blur(dist, max(0.4, fs * 0.014)) * inside
-    dmax = max(1.0, float(np.percentile(dist[inside], 92))) if inside.any() else 1.0
-    ridge = np.power(np.clip(dist / dmax, 0.0, 1.25), 1.10)
-
-    # Step 2: ① Macro ゆらぎ（素子個体差＋微光量勾配）
-    if irr > 0:
-        n_macro = value_noise(rng_macro, (H, W), max(8.0, fs * 1.4))
-        ang = rng_macro.uniform(0, 2 * math.pi)
-        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
-        lens = math.cos(ang) * (xx - W / 2) / max(1.0, W / 2) + math.sin(ang) * (yy - H / 2) / max(1.0, H / 2)
-        gain = np.clip(1.0 + irr * (0.10 * n_macro + 0.06 * lens), 0.65, 1.38)
-    else:
-        gain = np.ones((H, W), dtype=np.float32)
-
-    slit = fft_gaussian_blur(raw, max(0.35, fs * 0.022))
-    hot = ridge * gain
-    source = (0.48 * slit * gain + 1.15 * hot * core_glow) * exposure
-
-    # Step 3: 多重異方性 PSF 散乱（FFT 1パス）
-    psf_core = fft_gaussian_blur(hot, max(0.45, fs * 0.028))
-    psf_narrow = fft_gaussian_blur(source, max(0.8, fs * 0.060))
-
-    if irr > 0:
-        aniso = 1.0 + irr * 0.14 * rng_meso.uniform(0.4, 1.0)
-        hal_angle = rng_meso.uniform(0.0, 180.0)
-        sh_ang = rng_meso.uniform(0, 2 * math.pi)
-        sh_mag = irr * fs * 0.028
-        shift = (math.cos(sh_ang) * sh_mag, math.sin(sh_ang) * sh_mag)
-    else:
-        aniso, hal_angle, shift = 1.0, 0.0, (0.0, 0.0)
-
-    sig_mid = max(1.5, fs * 0.14 * math.sqrt(hal))
-    sig_wide = max(3.2, fs * 0.34 * hal)
-    sig_veil = max(6.5, fs * 0.68 * hal)
-
-    smax_all = max(sig_mid * aniso, sig_wide * aniso, sig_veil * aniso)
-    sh_max = abs(shift[0] * 1.6) + abs(shift[1] * 1.6)
-    pad = int(math.ceil(3.0 * smax_all + sh_max)) + 2
-    padded = np.pad(source, pad, mode="constant")
-    ph, pw = padded.shape
-
-    fy = np.fft.fftfreq(ph).astype(np.float32)[:, None]
-    fx = np.fft.rfftfreq(pw).astype(np.float32)[None, :]
-    th = math.radians(hal_angle)
-    u = fx * math.cos(th) + fy * math.sin(th)
-    v = -fx * math.sin(th) + fy * math.cos(th)
-
-    def calc_tf(sig: float, sc: float) -> np.ndarray:
-        s_maj, s_min = sig * aniso, sig / aniso
-        shx, shy = shift[0] * sc, shift[1] * sc
-        tf = np.exp(-2.0 * math.pi ** 2 * (s_maj ** 2 * u ** 2 + s_min ** 2 * v ** 2))
-        if shx != 0.0 or shy != 0.0:
-            tf = tf * np.exp(-2j * math.pi * (fx * shx + fy * shy))
-        return tf
-
-    tf_halo = (0.34 * calc_tf(sig_mid, 0.4) + 0.20 * calc_tf(sig_wide, 1.0) + 0.08 * calc_tf(sig_veil, 1.6)) * hal
-    out_halo = np.fft.irfft2(np.fft.rfft2(padded) * tf_halo, s=padded.shape)
-    halo = np.maximum(out_halo[pad:-pad, pad:-pad], 0.0).astype(np.float32)
-
-    # Step 4: ② Meso ゆらぎ（FBM 雲状変調＋ドメインワープ）
-    if irr > 0:
-        cloud = fbm_noise(rng_meso, (H, W), max(8.0, fs * 1.4), octaves=2)
-        halo = halo * np.clip(1.0 + irr * 0.14 * cloud, 0.55, 1.45)
-        wx = fbm_noise(rng_meso, (H, W), max(8.0, fs * 1.2), octaves=2) * (irr * fs * 0.045)
-        wy = fbm_noise(rng_meso, (H, W), max(8.0, fs * 1.2), octaves=2) * (irr * fs * 0.045)
-        halo = bilinear_warp(halo, wx, wy)
-
-    core_E = (0.88 * hot * raw + 0.55 * psf_core) * core_glow * exposure
-    body_E = (0.50 * slit * gain + 0.65 * psf_narrow) * exposure
-
-    # Step 5: ③ Micro ゆらぎ（高露光芯は滑らか、裾野だけ色素雲ちぎれ）
-    total = core_E + body_E + halo
-    mod = np.ones((H, W), dtype=np.float32)
-    fine = rng_micro.standard_normal((H, W)).astype(np.float32)
-    clump = value_noise(rng_micro, (H, W), 2.4)
-    grain_field = 0.55 * fine + 0.45 * clump
-    env = np.clip(total * 2.2, 0.0, 1.0) * np.exp(-core_E * 1.6)
-    mod *= 1.0 + 0.18 * grain_field * env
-    if irr > 0:
-        dye = value_noise(rng_micro, (H, W), 2.0)
-        tail = np.exp(-total * 5.5) * np.clip(total * 7.5, 0.0, 1.0)
-        mod *= np.clip(1.0 + irr * 0.18 * dye * tail, 0.65, 1.35)
-
-    # Step 6: H&D 分光感光飽和＋芯ブリーチ
-    bleach = np.power(np.clip(core_E, 0.0, 2.8), 1.45) * 1.45
-
-    if prism_mode:
-        # 角度に応じた連続プリズム分光（虹SSR昇格用）
-        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
-        ang_map = np.arctan2(yy - H * 0.5, xx - W * 0.5)
-        s_r = 1.85 + 1.45 * np.cos(ang_map)
-        s_g = 1.65 + 1.35 * np.cos(ang_map - 2.094)
-        s_b = 1.85 + 1.45 * np.cos(ang_map + 2.094)
-        E_r = ((core_E + body_E) * s_r + halo * s_r * 0.95 + bleach) * mod
-        E_g = ((core_E + body_E) * s_g + halo * s_g * 0.85 + bleach * 0.98) * mod
-        E_b = ((core_E + body_E) * s_b + halo * s_b * 0.95 + bleach * 0.96) * mod
-        tint = np.array([1.0, 0.99, 1.0], dtype=np.float32)
-    else:
-        spec = OPTICAL_SPECTRA[spectrum_name]
-        s_r, s_g, s_b = spec["sens"]
-        k_r, k_g, k_b = spec["scatter"]
-        E_r = ((core_E + body_E) * s_r + halo * s_r * k_r * 1.35 + bleach) * mod
-        E_g = ((core_E * 1.18 + body_E * 0.88) * s_g + halo * s_g * k_g * 0.85 + bleach * 0.96) * mod
-        E_b = ((core_E * 1.45 + body_E * 0.55) * s_b + halo * s_b * k_b * 0.65 + bleach * 0.88) * mod
-        tint = np.asarray(spec["tint"], dtype=np.float32)
-
-    E_rgb = np.maximum(np.stack([E_r, E_g, E_b], axis=-1), 0.0)
-    light_lin = (1.0 - np.exp(-np.power(E_rgb, 1.15))) * tint[None, None, :]
-    light_srgb = linear_to_srgb(light_lin)
-
-    # 透過RGBAへ変換（screen合成でも通常合成でも黒縁が出ない光学アルファ設計）
-    return _srgb_to_unpremul_rgba(light_srgb)
-
-
-def _smoothstep(e0: float, e1: float, x: np.ndarray) -> np.ndarray:
-    t = np.clip((x - e0) / (e1 - e0), 0.0, 1.0)
-    return (t * t * (3.0 - 2.0 * t)).astype(np.float32)
-
-
-def _srgb_to_unpremul_rgba(light_srgb: np.ndarray) -> Image.Image:
-    """sRGB光量配列 (H, W, 3) [0,1] から黒縁の出ない unpremul 透過 RGBA 画像を生成する"""
-    alpha = np.clip(np.max(light_srgb, axis=-1), 0.0, 1.0)
-    safe_a = np.maximum(alpha, 1e-4)
-    rgb_unpremul = np.clip(light_srgb / safe_a[:, :, None], 0.0, 1.0)
-    h, w, _ = light_srgb.shape
-    rgba = np.zeros((h, w, 4), dtype=np.uint8)
-    rgba[:, :, :3] = (rgb_unpremul * 255.0 + 0.5).astype(np.uint8)
-    rgba[:, :, 3] = (alpha * 255.0 + 0.5).astype(np.uint8)
-    return Image.fromarray(rgba, mode="RGBA")
+# 後方互換エイリアス
+_smoothstep = smoothstep
+_srgb_to_unpremul_rgba = srgb_to_unpremul_rgba
+_aniso_fbm = aniso_fbm
 
 
 # ==============================================================================
@@ -537,7 +259,6 @@ def build_sparkle_mask(size: int = 128) -> Image.Image:
     m = Image.new("L", (S, S), 0)
     d = ImageDraw.Draw(m)
     d.polygon(pts, fill=255)
-    # 中心芯を少し丸く太らせて白飛びコアを作る
     rc = S * 0.055
     d.ellipse([c - rc, c - rc, c + rc, c + rc], fill=255)
     return m.resize((size, size), Image.Resampling.LANCZOS)
@@ -575,7 +296,6 @@ def build_result_ring_mask(size: int = 1400, seed: int = 0) -> Image.Image:
         long_tick = i % 15 == 0
         radial(i * 2.0, 806 if long_tick else 822, 840, 2.6 if long_tick else 1.4, 255 if long_tick else 180)
 
-    # 擬似ルーン帯（決定論乱数で棒・点・短弧を並べる）
     a = 0.0
     while a < 360.0:
         kind = int(rng.integers(0, 3))
@@ -617,11 +337,6 @@ def render_bokeh_sprite(
     7枚絞り由来のわずかな多角形歪みと、外周リングの軸上色収差（R外側・B内側）を加える。
     """
     rng = np.random.default_rng((seed * 1664525 + 1013904223) & 0xFFFFFFFF)
-
-    def smoothstep(e0: float, e1: float, x: np.ndarray) -> np.ndarray:
-        t = np.clip((x - e0) / (e1 - e0), 0.0, 1.0)
-        return t * t * (3.0 - 2.0 * t)
-
     yy, xx = np.mgrid[0:size_px, 0:size_px].astype(np.float32)
     c = (size_px - 1) * 0.5
     th = np.arctan2(yy - c, xx - c)
@@ -629,7 +344,7 @@ def render_bokeh_sprite(
     dist = np.sqrt((xx - c) ** 2 + (yy - c) ** 2) * (1.0 + 0.035 * np.cos(7.0 * th + rot))
 
     chans = []
-    for k, (ch_tint, r_off) in enumerate(zip(tint, (1.04, 1.0, 0.96))):
+    for ch_tint, r_off in zip(tint, (1.04, 1.0, 0.96)):
         s = radius * r_off
         edge = smoothstep(s + blur * 2.8, s * 0.94, dist) * 0.50
         glow = smoothstep(s + blur * 7.0, s * 0.40, dist) * 0.50
@@ -637,47 +352,13 @@ def render_bokeh_sprite(
         ring_hi = np.exp(-((dist - s * 0.97) / max(0.8, blur * 0.9)) ** 2) * 0.35
         chans.append((edge + glow + core + ring_hi) * ch_tint)
     light = np.clip(np.stack(chans, axis=-1), 0.0, 1.4)
-    light = 1.0 - np.exp(-light * 1.35)
-    alpha = np.clip(np.max(light, axis=-1), 0.0, 1.0)
-    rgb = np.clip(light / np.maximum(alpha, 1e-4)[..., None], 0.0, 1.0)
-    out = np.zeros((size_px, size_px, 4), dtype=np.uint8)
-    out[..., :3] = (rgb * 255.0 + 0.5).astype(np.uint8)
-    out[..., 3] = (alpha * 255.0 + 0.5).astype(np.uint8)
-    return Image.fromarray(out, mode="RGBA")
+    light = (1.0 - np.exp(-light * 1.35)).astype(np.float32)
+    return srgb_to_unpremul_rgba(light)
 
 
 # ==============================================================================
 # Phase 2B 物理光学アセット群（クリスタルオーブ / 不規則ゴッドレイ / 縦ストリーク光柱 / 衝撃波 / カットイン）
 # ==============================================================================
-def _aniso_fbm(
-    rng: np.random.Generator,
-    h: int,
-    w: int,
-    cell_y: float,
-    cell_x: float,
-    octaves: int = 3,
-) -> np.ndarray:
-    """横高周波・縦低周波の異方性 FBM ノイズ（aurora_claude.hlsl の縦ストリーク用）"""
-    acc = np.zeros((h, w), dtype=np.float32)
-    amp, total = 1.0, 0.0
-    for i in range(octaves):
-        cy = max(2.0, cell_y / (2 ** i))
-        cx = max(2.0, cell_x / (2 ** i))
-        gh = int(math.ceil(h / cy)) + 4
-        gw = int(math.ceil(w / cx)) + 4
-        grid = rng.standard_normal((gh, gw)).astype(np.float32)
-        up_w, up_h = int(math.ceil(gw * cx)), int(math.ceil(gh * cy))
-        up = np.asarray(Image.fromarray(grid).resize((up_w, up_h), Image.Resampling.BICUBIC), dtype=np.float32)
-        oy = int(cy + rng.random() * cy)
-        ox = int(cx + rng.random() * cx)
-        acc += up[oy : oy + h, ox : ox + w] * amp
-        total += amp
-        amp *= 0.5
-    acc /= max(1e-6, total)
-    std = float(acc.std())
-    return (acc / std).astype(np.float32) if std > 1e-6 else np.zeros((h, w), dtype=np.float32)
-
-
 def render_crystal_orb_layers(style: str, size: int = 512, seed: int = 0) -> Tuple[Image.Image, Image.Image]:
     """
     ボロノイ多面体ファセット＋薄膜干渉／多方向スペキュラ＋フレネル光輪によるクリスタルオーブの
@@ -692,9 +373,8 @@ def render_crystal_orb_layers(style: str, size: int = 512, seed: int = 0) -> Tup
     r2 = nx * nx + ny * ny
     r = np.sqrt(r2)
     nz = np.sqrt(np.maximum(0.0, 1.0 - r2))
-    inside_soft = _smoothstep(1.015, 0.965, r)
+    inside_soft = smoothstep(1.015, 0.965, r)
 
-    # 手前半球上に 30 個の決定論ファセット中心法線を配置
     n_facets = 30
     dirs = []
     golden = math.pi * (3.0 - math.sqrt(5.0))
@@ -724,7 +404,6 @@ def render_crystal_orb_layers(style: str, size: int = 512, seed: int = 0) -> Tup
     edge = np.exp(-((d1 - d2) / 0.011) ** 2) * inside_soft
     fresnel = np.power(np.clip(1.0 - nz, 0.0, 1.0), 2.8) * inside_soft
 
-    # 多方向スタジオ反射（単一丸点ハイライトを作らず、ファセット面ごとに鋭く煌めかせる）
     lights = [
         ((-0.48, -0.58, 0.66), 1.05, 28.0),
         ((0.64, 0.42, 0.28),   0.62, 22.0),
@@ -761,7 +440,6 @@ def render_crystal_orb_layers(style: str, size: int = 512, seed: int = 0) -> Tup
         rim_col = np.array([1.00, 0.88, 0.58], dtype=np.float32)
         edge_col = np.array([1.00, 0.96, 0.82], dtype=np.float32)
     else:
-        # 薄膜干渉：ファセット法線角度＋ファセット固有位相からダイヤモンドのファイア風の多色分散を生成
         phi = phase_map * math.tau + (1.0 - nz) * 4.2 + (N[..., 0] * 1.4 - N[..., 1] * 1.1) * 2.2
         prism = np.stack([
             0.54 + 0.46 * np.cos(phi),
@@ -782,8 +460,7 @@ def render_crystal_orb_layers(style: str, size: int = 512, seed: int = 0) -> Tup
     shell_spec = np.array([1.0, 0.99, 0.96], dtype=np.float32)[None, None, :] * (spec_total * inside_soft)[..., None] * 0.90
 
     shell_lin = shell_body + shell_edge + shell_rim + shell_spec
-    # 球外縁と稜線の物理 FFT ハレーション（黒縁なし、端は 0 へフェード）
-    outer_fade = 1.0 - _smoothstep(1.16, 1.44, r)
+    outer_fade = 1.0 - smoothstep(1.16, 1.44, r)
     halo_src = np.stack([
         fft_gaussian_blur(shell_lin[..., k], size * 0.022) * 0.42
         + fft_gaussian_blur(shell_lin[..., k], size * 0.055) * 0.24
@@ -791,10 +468,9 @@ def render_crystal_orb_layers(style: str, size: int = 512, seed: int = 0) -> Tup
     ], axis=-1) * outer_fade[..., None]
     shell_lin = shell_lin * inside_soft[..., None] + halo_src * (1.0 - inside_soft[..., None] * 0.55)
     shell_srgb = linear_to_srgb(1.0 - np.exp(-np.maximum(shell_lin, 0.0) * 1.25))
-    shell_img = _srgb_to_unpremul_rgba(shell_srgb)
+    shell_img = srgb_to_unpremul_rgba(shell_srgb)
 
-    # 2. 内部エネルギー渦＋結晶屈折ライン（facet 層：球内 0.88 以内に収める）
-    inner_m = 1.0 - _smoothstep(0.52, 0.88, r)
+    inner_m = 1.0 - smoothstep(0.52, 0.88, r)
     th = np.arctan2(ny, nx)
     swirl = np.power(0.5 + 0.5 * np.sin(th * 5.0 + r * 7.5 + float(rng.uniform(0.0, math.tau))), 2.6)
     rays = np.power(0.5 + 0.5 * np.sin(th * 9.0 - r * 4.0 + 1.2), 5.0)
@@ -813,7 +489,7 @@ def render_crystal_orb_layers(style: str, size: int = 512, seed: int = 0) -> Tup
             (0.68 + 0.32 * np.cos(phi_in + 2.094)) * energy * 1.2,
         ], axis=-1)
     facet_srgb = linear_to_srgb(1.0 - np.exp(-np.maximum(f_col, 0.0) * 1.35))
-    facet_img = _srgb_to_unpremul_rgba(facet_srgb)
+    facet_img = srgb_to_unpremul_rgba(facet_srgb)
     return shell_img, facet_img
 
 
@@ -823,10 +499,10 @@ def render_orb_core_bleach(size: int = 512) -> Image.Image:
     c = (size - 1) * 0.5
     r = np.sqrt((xx - c) ** 2 + (yy - c) ** 2) / (size * 0.34)
     core = np.exp(-((r / 0.21) ** 2)) * 1.85 + np.exp(-((r / 0.42) ** 2)) * 0.45
-    core *= 1.0 - _smoothstep(0.65, 0.98, r)
+    core *= 1.0 - smoothstep(0.65, 0.98, r)
     lin = np.stack([core * 1.00, core * 0.98, core * 0.94], axis=-1)
     srgb = linear_to_srgb(1.0 - np.exp(-np.maximum(lin, 0.0) * 1.45))
-    return _srgb_to_unpremul_rgba(srgb)
+    return srgb_to_unpremul_rgba(srgb)
 
 
 def render_godrays_layer(mode: str, variant: str, size: int = 1200, seed: int = 0) -> Image.Image:
@@ -840,24 +516,23 @@ def render_godrays_layer(mode: str, variant: str, size: int = 1200, seed: int = 
     nx = (xx - c) / c
     ny = (yy - c) / c
     rad = np.sqrt(nx * nx + ny * ny)
-    r_mask = _smoothstep(0.03, 0.16, rad) * (1.0 - _smoothstep(0.50, 0.96, rad))
+    r_mask = smoothstep(0.03, 0.16, rad) * (1.0 - smoothstep(0.50, 0.96, rad))
 
     nums = (13, 19, 29) if variant == "a" else (11, 17, 23)
     weights = (0.48, 0.36, 0.28) if variant == "a" else (0.42, 0.38, 0.30)
-    total_beam = np.zeros((size, size), dtype=np.float32)
     total_needle = np.zeros((size, size), dtype=np.float32)
 
     if mode == "prism":
         layer_colors = [
-            np.array([0.46, 0.84, 0.96], dtype=np.float32),  # cyan
-            np.array([0.94, 0.55, 0.72], dtype=np.float32),  # rose
-            np.array([0.96, 0.86, 0.58], dtype=np.float32),  # champagne
+            np.array([0.46, 0.84, 0.96], dtype=np.float32),
+            np.array([0.94, 0.55, 0.72], dtype=np.float32),
+            np.array([0.96, 0.86, 0.58], dtype=np.float32),
         ]
     else:
         layer_colors = [
-            np.array([0.96, 0.86, 0.62], dtype=np.float32),  # champagne gold
-            np.array([0.92, 0.66, 0.76], dtype=np.float32),  # subtle rose tint
-            np.array([0.58, 0.84, 0.94], dtype=np.float32),  # subtle aqua tint
+            np.array([0.96, 0.86, 0.62], dtype=np.float32),
+            np.array([0.92, 0.66, 0.76], dtype=np.float32),
+            np.array([0.58, 0.84, 0.94], dtype=np.float32),
         ]
 
     col_acc = np.zeros((size, size, 3), dtype=np.float32)
@@ -870,13 +545,12 @@ def render_godrays_layer(mode: str, variant: str, size: int = 1200, seed: int = 
         lzr = np.power(0.5 + 0.5 * sn, 5.0)
         needle = np.power(np.maximum(sn, 0.0), 64.0) * 0.72
         col_acc += (lzr * w_l)[..., None] * col[None, None, :]
-        total_beam += lzr * w_l
         total_needle += needle * w_l
 
     cloud_mod = np.clip(0.68 + 0.32 * fbm_noise(rng, (size, size), size * 0.14, octaves=2), 0.35, 1.30)
     col_acc = (col_acc + total_needle[..., None] * np.array([1.0, 0.99, 0.96], dtype=np.float32)) * (cloud_mod * r_mask)[..., None]
     srgb = linear_to_srgb(1.0 - np.exp(-np.maximum(col_acc, 0.0) * 1.15))
-    return _srgb_to_unpremul_rgba(srgb)
+    return srgb_to_unpremul_rgba(srgb)
 
 
 def render_light_pillar(style: str, w: int = 512, h: int = 1680, seed: int = 0) -> Image.Image:
@@ -888,13 +562,13 @@ def render_light_pillar(style: str, w: int = 512, h: int = 1680, seed: int = 0) 
     u = np.linspace(-1.0, 1.0, w, dtype=np.float32)[None, :]
     v = np.linspace(0.0, 1.0, h, dtype=np.float32)[:, None]
 
-    rays_a = _smoothstep(0.32, 0.90, 0.5 + 0.25 * _aniso_fbm(rng, h, w, cell_y=150.0, cell_x=11.0, octaves=3))
-    rays_b = _smoothstep(0.46, 0.94, 0.5 + 0.25 * _aniso_fbm(rng, h, w, cell_y=92.0, cell_x=5.5, octaves=2))
+    rays_a = smoothstep(0.32, 0.90, 0.5 + 0.25 * aniso_fbm(rng, h, w, cell_y=150.0, cell_x=11.0, octaves=3))
+    rays_b = smoothstep(0.46, 0.94, 0.5 + 0.25 * aniso_fbm(rng, h, w, cell_y=92.0, cell_x=5.5, octaves=2))
     ray_mix = rays_a * 0.72 + rays_b * 0.45
 
-    v_env = _smoothstep(0.01, 0.24, v) * (1.0 - _smoothstep(0.74, 0.99, v))
-    v_core = _smoothstep(0.06, 0.30, v) * (1.0 - _smoothstep(0.68, 0.94, v))
-    h_fade = 1.0 - _smoothstep(0.66, 0.96, np.abs(u))
+    v_env = smoothstep(0.01, 0.24, v) * (1.0 - smoothstep(0.74, 0.99, v))
+    v_core = smoothstep(0.06, 0.30, v) * (1.0 - smoothstep(0.68, 0.94, v))
+    h_fade = 1.0 - smoothstep(0.66, 0.96, np.abs(u))
 
     h_core = np.exp(-((u / 0.045) ** 2))
     h_mid = np.exp(-((u / 0.22) ** 2))
@@ -911,7 +585,6 @@ def render_light_pillar(style: str, w: int = 512, h: int = 1680, seed: int = 0) 
             + streak_int[..., None] * (0.7 * streak_col + 0.3 * outer_col)
         )
     else:
-        # 横位置とストリークノイズに応じたオーロラ分光
         hue_t = u * 2.2 + (rays_a - 0.5) * 1.4
         aurora_col = np.stack([
             0.62 + 0.38 * np.cos(hue_t + 0.5),
@@ -921,7 +594,7 @@ def render_light_pillar(style: str, w: int = 512, h: int = 1680, seed: int = 0) 
         lin = core_int[..., None] * np.array([1.0, 0.99, 1.0], dtype=np.float32) + streak_int[..., None] * aurora_col
 
     srgb = linear_to_srgb(1.0 - np.exp(-np.maximum(lin, 0.0) * 1.25))
-    return _srgb_to_unpremul_rgba(srgb)
+    return srgb_to_unpremul_rgba(srgb)
 
 
 def render_shockwave_ring(style: str, size: int = 640, seed: int = 0) -> Image.Image:
@@ -934,16 +607,12 @@ def render_shockwave_ring(style: str, size: int = 640, seed: int = 0) -> Image.I
 
     wobble = 0.014 * np.sin(th * 5.0 + 0.4) + 0.009 * np.cos(th * 9.0 - 1.1)
     r = r_base + wobble
-    edge_fade = 1.0 - _smoothstep(0.76, 0.96, r_base)
+    edge_fade = 1.0 - smoothstep(0.76, 0.96, r_base)
 
-    # 非対称リングプロファイル（内縁 0.54 で急に立ち上がり、外縁へなだらかに滲む）
     R0 = 0.54
     chans = []
     offsets = (1.016, 1.000, 0.984)
-    if style == "gold":
-        tints = (1.00, 0.84, 0.46)
-    else:
-        tints = None
+    tints = (1.00, 0.84, 0.46) if style == "gold" else None
 
     for ch_idx, r_mul in enumerate(offsets):
         d = r - R0 * r_mul
@@ -958,7 +627,7 @@ def render_shockwave_ring(style: str, size: int = 640, seed: int = 0) -> Image.I
             chans.append(band * prism_w + core_ridge * edge_fade * 0.35)
 
     lin = np.stack(chans, axis=-1)
-    # 外縁に飛散する微細光粒ドット
+    # 外縁に飛散する微細光粒ドット（一括生成して加算）
     sp_mask = np.zeros((size, size), dtype=np.float32)
     for _ in range(90):
         ang = float(rng.uniform(0.0, math.tau))
@@ -970,7 +639,7 @@ def render_shockwave_ring(style: str, size: int = 640, seed: int = 0) -> Image.I
     lin += sp_glow[..., None] * np.array([1.0, 0.95, 0.88], dtype=np.float32)
     lin = np.stack([fft_gaussian_blur(lin[..., k], 1.6) * 0.35 + lin[..., k] * 0.85 for k in range(3)], axis=-1)
     srgb = linear_to_srgb(1.0 - np.exp(-np.maximum(lin, 0.0) * 1.25))
-    return _srgb_to_unpremul_rgba(srgb)
+    return srgb_to_unpremul_rgba(srgb)
 
 
 def render_cutin_assets(seed: int = 0) -> Tuple[Image.Image, Image.Image]:
@@ -982,7 +651,7 @@ def render_cutin_assets(seed: int = 0) -> Tuple[Image.Image, Image.Image]:
     yy, xx = np.mgrid[0:fh, 0:fw].astype(np.float32)
     nx = (xx - (fw - 1) * 0.5) / ((fw - 1) * 0.5)
     ny = (yy - (fh - 1) * 0.5) / ((fh - 1) * 0.5)
-    edge_fade = (1.0 - _smoothstep(0.76, 0.98, np.abs(nx))) * (1.0 - _smoothstep(0.60, 0.96, np.abs(ny)))
+    edge_fade = (1.0 - smoothstep(0.76, 0.98, np.abs(nx))) * (1.0 - smoothstep(0.60, 0.96, np.abs(ny)))
 
     core_line = np.exp(-((ny / 0.022) ** 2)) * np.exp(-((nx / 0.72) ** 2)) * 1.6
     mid_band = np.exp(-((ny / 0.11) ** 2)) * np.exp(-((nx / 0.82) ** 2)) * 0.65
@@ -997,14 +666,15 @@ def render_cutin_assets(seed: int = 0) -> Tuple[Image.Image, Image.Image]:
         (core_line + diamond)[..., None] * np.array([1.0, 0.99, 0.96], dtype=np.float32)
         + (mid_band + halo_band)[..., None] * col_band
     ) * edge_fade[..., None]
-    flare_img = _srgb_to_unpremul_rgba(linear_to_srgb(1.0 - np.exp(-np.maximum(lin_flare, 0.0) * 1.3)))
+    flare_img = srgb_to_unpremul_rgba(linear_to_srgb(1.0 - np.exp(-np.maximum(lin_flare, 0.0) * 1.3)))
 
-    # 2. opt_cutin_speedlines.png (1080x420)
+    # 2. opt_cutin_speedlines.png (1080x420) — 1D分離ベクトル計算で高速化
     sw, sh = 1080, 420
     sl = np.zeros((sh, sw, 3), dtype=np.float32)
-    y_grid, x_grid = np.mgrid[0:sh, 0:sw].astype(np.float32)
-    v_fade = _smoothstep(0.04, 0.28, y_grid / sh) * (1.0 - _smoothstep(0.72, 0.96, y_grid / sh))
-    h_fade = 1.0 - _smoothstep(0.80, 0.98, np.abs((x_grid - sw * 0.5) / (sw * 0.5)))
+    y_1d = np.arange(sh, dtype=np.float32)[:, None]
+    x_1d = np.arange(sw, dtype=np.float32)[None, :]
+    v_fade = smoothstep(0.04, 0.28, y_1d / sh) * (1.0 - smoothstep(0.72, 0.96, y_1d / sh))
+    h_fade = 1.0 - smoothstep(0.80, 0.98, np.abs((x_1d - sw * 0.5) / (sw * 0.5)))
 
     palette = [
         np.array([1.00, 0.96, 0.84], dtype=np.float32),
@@ -1017,13 +687,14 @@ def render_cutin_assets(seed: int = 0) -> Tuple[Image.Image, Image.Image]:
         half_len = float(rng.uniform(90, 420))
         thick = float(rng.uniform(0.8, 2.2))
         amp = float(rng.uniform(0.30, 0.95))
-        line_y = np.exp(-((y_grid - yc) / thick) ** 2)
-        line_x = np.maximum(0.0, 1.0 - np.abs(x_grid - xc) / half_len) ** 1.6
+        # (sh, 1) と (1, sw) の1次元配列で計算してから外積をとることで 420x1080 全要素の exp を回避
+        line_y = np.exp(-((y_1d - yc) / thick) ** 2)
+        line_x = (np.maximum(0.0, 1.0 - np.abs(x_1d - xc) / half_len) ** 1.6) * amp
         col = palette[i % len(palette)]
-        sl += (line_y * line_x * amp)[..., None] * col[None, None, :]
+        sl += (line_y @ line_x)[..., None] * col[None, None, :]
 
-    sl *= (v_fade * h_fade)[..., None]
-    speed_img = _srgb_to_unpremul_rgba(linear_to_srgb(1.0 - np.exp(-np.maximum(sl, 0.0) * 1.2)))
+    sl *= (v_fade @ h_fade)[..., None]
+    speed_img = srgb_to_unpremul_rgba(linear_to_srgb(1.0 - np.exp(-np.maximum(sl, 0.0) * 1.2)))
     return flare_img, speed_img
 
 
@@ -1065,7 +736,6 @@ def build_celestial_gate_masks(size: int = 1024, seed: int = 0) -> Tuple[Image.I
         v_t = 255 if is_major else (200 if is_mid else 155)
         radial(d, deg, r_in, 434, w_t, v_t)
 
-    # 星座弧（8セクションの星図ノードと折れ線＋天球アーク）
     circle(d, 390, 2.2, 220)
     for sec in range(8):
         base_deg = sec * 45.0 + 8.0
@@ -1116,8 +786,6 @@ def build_celestial_gate_masks(size: int = 1024, seed: int = 0) -> Tuple[Image.I
 def render_descent_meteor(w: int = 256, h: int = 256, seed: int = 0) -> Image.Image:
     """
     冒頭 0.08s〜1.45s に天蓋から曲線軌道で柔らかく降臨する流体シルクリボン用ウィスプ (256x256)。
-    多ノード加算時にも白飛び塊や矩形境界モアレが一切出ないよう、繊細な発光核＋透き通る青シアン霞＋
-    ブラー後の厳密な円形コサイン減衰（外縁 alpha=0 保証）で生成する。
     """
     rng = np.random.default_rng((seed * 65537 + 41) & 0xFFFFFFFF)
     yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
@@ -1125,10 +793,9 @@ def render_descent_meteor(w: int = 256, h: int = 256, seed: int = 0) -> Image.Im
     ny = (yy - (h - 1) * 0.5) / ((h - 1) * 0.5)
 
     r = np.sqrt(nx * nx + ny * ny + 1e-6)
-    noise = _aniso_fbm(rng, h, w, cell_y=32.0, cell_x=32.0)
-    r_wobble = np.maximum(0.0, r + 0.035 * noise * _smoothstep(0.08, 0.55, r))
+    noise = aniso_fbm(rng, h, w, cell_y=32.0, cell_x=32.0)
+    r_wobble = np.maximum(0.0, r + 0.035 * noise * smoothstep(0.08, 0.55, r))
 
-    # 中心は力強くも柔らかな光核にし、周囲を豊かなアクア〜アズールのソフトハローで包む
     core = np.exp(-((r / 0.145) ** 1.85)) * 1.42
     inner_mist = np.exp(-((r_wobble / 0.34) ** 1.70)) * 0.82
     outer_veil = np.exp(-((r_wobble / 0.56) ** 1.60)) * (0.85 + 0.15 * noise) * 0.42
@@ -1144,12 +811,11 @@ def render_descent_meteor(w: int = 256, h: int = 256, seed: int = 0) -> Image.Im
     )
 
     lin = np.stack([fft_gaussian_blur(lin[..., k], 2.6) * 0.42 + lin[..., k] * 0.78 for k in range(3)], axis=-1)
-    # ブラー適用後に厳密な円形フェードを掛け、正方形バウンディング境界を完全にゼロにする
-    post_fade = (1.0 - _smoothstep(0.56, 0.90, r)) ** 2
+    post_fade = (1.0 - smoothstep(0.56, 0.90, r)) ** 2
     lin *= post_fade[..., None]
 
     srgb = linear_to_srgb(1.0 - np.exp(-np.maximum(lin, 0.0) * 1.18))
-    return _srgb_to_unpremul_rgba(srgb)
+    return srgb_to_unpremul_rgba(srgb)
 
 
 def render_sky_bolts(seed: int = 0) -> Tuple[Image.Image, Image.Image]:
@@ -1158,26 +824,23 @@ def render_sky_bolts(seed: int = 0) -> Tuple[Image.Image, Image.Image]:
       1. opt_bolt_gold.png (384x1024): 金昇格(3.68-3.78s)用の黄金の螺旋天啓光槍
       2. opt_bolt_prism.png (512x1024): 虹昇格(5.19-5.20s)用の有機分岐プリズム落雷
     """
-    # 1. 黄金の天啓光槍 (384x1024)
     gw, gh = 384, 1024
     yy, xx = np.mgrid[0:gh, 0:gw].astype(np.float32)
     nx = (xx - (gw - 1) * 0.5) / ((gw - 1) * 0.5)
     ny = yy / float(gh - 1)
 
-    v_env = _smoothstep(0.02, 0.10, ny) * (1.0 - _smoothstep(0.88, 0.98, ny))
-    h_env = 1.0 - _smoothstep(0.74, 0.96, np.abs(nx))
+    v_env = smoothstep(0.02, 0.10, ny) * (1.0 - smoothstep(0.88, 0.98, ny))
+    h_env = 1.0 - smoothstep(0.74, 0.96, np.abs(nx))
     env = v_env * h_env
 
     lance_taper = 0.016 + 0.022 * np.sin(np.clip(ny / 0.88, 0.0, 1.0) * math.pi)
     core_shaft = np.exp(-((nx / lance_taper) ** 2)) * 1.65
     outer_shaft = np.exp(-((nx / (lance_taper * 4.2)) ** 2)) * 0.75
 
-    # 二重螺旋リボン
     h1_x = 0.085 * np.sin(ny * 19.0) * (1.0 - 0.55 * ny)
     h2_x = -0.085 * np.sin(ny * 19.0 + 0.8) * (1.0 - 0.55 * ny)
     helix = (np.exp(-(((nx - h1_x) / 0.024) ** 2)) + np.exp(-(((nx - h2_x) / 0.024) ** 2))) * 0.85
 
-    # 先端（ny=0.84）の着弾クロスフレア
     tip_y = 0.84
     tip_flare = np.exp(-(((ny - tip_y) / 0.045) ** 2) - ((nx / 0.16) ** 2)) * 1.75
     tip_cross = np.exp(-(((ny - tip_y) / 0.011) ** 2)) * np.exp(-((nx / 0.65) ** 2)) * 1.35
@@ -1188,9 +851,8 @@ def render_sky_bolts(seed: int = 0) -> Tuple[Image.Image, Image.Image]:
         (core_shaft + tip_flare + tip_cross)[..., None] * col_w
         + (outer_shaft + helix + tip_flare * 0.6)[..., None] * col_g
     ) * env[..., None]
-    bolt_gold_img = _srgb_to_unpremul_rgba(linear_to_srgb(1.0 - np.exp(-np.maximum(lin_gold, 0.0) * 1.30)))
+    bolt_gold_img = srgb_to_unpremul_rgba(linear_to_srgb(1.0 - np.exp(-np.maximum(lin_gold, 0.0) * 1.30)))
 
-    # 2. 有機分岐プリズム落雷 (512x1024)
     pw, ph = 512, 1024
     ss = 2
     W, H = pw * ss, ph * ss
@@ -1222,7 +884,6 @@ def render_sky_bolts(seed: int = 0) -> Tuple[Image.Image, Image.Image]:
                 trace_lightning(pts[i][0], pts[i][1], bx, by, max(5, steps // 2), w_start * 0.55, 1.0, int(val * 0.86), depth - 1)
 
     trace_lightning(W * 0.5, H * 0.05, W * 0.5, H * 0.85, steps=16, w_start=7.0, w_end=4.8, val=255, depth=2)
-    # 下端着弾コアの閃光星
     imp_x, imp_y = W * 0.5, H * 0.85
     d.ellipse([imp_x - 18 * ss, imp_y - 18 * ss, imp_x + 18 * ss, imp_y + 18 * ss], fill=255)
     d.line([(imp_x - 95 * ss, imp_y), (imp_x + 95 * ss, imp_y)], fill=245, width=4 * ss)
@@ -1250,14 +911,10 @@ def render_crystal_shards(seed: int = 0) -> Dict[str, Image.Image]:
     """
     out: Dict[str, Image.Image] = {}
     palettes = [
-        # 0: アイスシアン・クリスタル
         (np.array([0.48, 0.88, 1.00], dtype=np.float32), np.array([0.85, 0.97, 1.00], dtype=np.float32)),
-        # 1: シャンパンゴールド・クリスタル
         (np.array([1.00, 0.78, 0.34], dtype=np.float32), np.array([1.00, 0.96, 0.86], dtype=np.float32)),
-        # 2: プリズム・イリデッセンス・クリスタル
         (np.array([0.96, 0.54, 0.82], dtype=np.float32), np.array([0.56, 0.92, 1.00], dtype=np.float32)),
     ]
-    # 3種の多角形頂点リスト（正規化座標 -1..1）
     shapes = [
         [(0.0, -0.72), (0.38, -0.18), (0.24, 0.68), (-0.28, 0.54), (-0.42, -0.22)],
         [(-0.14, -0.68), (0.48, -0.32), (0.34, 0.46), (-0.18, 0.70), (-0.52, 0.08)],
@@ -1302,7 +959,6 @@ def render_crystal_shards(seed: int = 0) -> Dict[str, Image.Image]:
             )
 
             if depth == "near":
-                # 近景ボケ（浅い被写界深度＋微細色収差）
                 r_ch = fft_gaussian_blur(lin[..., 0], 5.6, shift_xy=(1.4, -0.6))
                 g_ch = fft_gaussian_blur(lin[..., 1], 5.4, shift_xy=(0.0, 0.0))
                 b_ch = fft_gaussian_blur(lin[..., 2], 5.8, shift_xy=(-1.4, 0.6))
@@ -1311,7 +967,7 @@ def render_crystal_shards(seed: int = 0) -> Dict[str, Image.Image]:
                 lin = np.stack([fft_gaussian_blur(lin[..., k], 1.1) * 0.45 + lin[..., k] * 0.85 for k in range(3)], axis=-1)
 
             srgb = linear_to_srgb(1.0 - np.exp(-np.maximum(lin, 0.0) * 1.28))
-            out[f"opt_shard_{depth}_{idx}.png"] = _srgb_to_unpremul_rgba(srgb)
+            out[f"opt_shard_{depth}_{idx}.png"] = srgb_to_unpremul_rgba(srgb)
 
     return out
 
@@ -1326,7 +982,7 @@ def main() -> None:
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 1. 魔法陣 3色 × 3層（1024px 精密階層化）
+    # 独立したマスク群を事前構築
     m_outer, m_mid, m_inner = build_magic_circle_masks(1024, seed=seed + 77)
     rings = [("outer", m_outer), ("mid", m_mid), ("inner", m_inner)]
     mc_styles = [
@@ -1334,175 +990,196 @@ def main() -> None:
         ("gold",    "summon_gold", False, 1.12, hal * 1.10),
         ("rainbow", "summon_gold", True,  1.22, hal * 1.25),
     ]
-    for s_idx, (cname, spec, is_prism, exp, h_val) in enumerate(mc_styles):
-        for r_idx, (rname, mask) in enumerate(rings):
-            img = render_optical_glow(
-                mask_l=mask,
-                spectrum_name=spec,
-                ref_scale=20.0,
-                exposure=exp,
-                core_glow=cg,
-                halation=h_val,
-                irregularity=irr,
-                prism_mode=is_prism,
-                seed=seed + s_idx * 100 + r_idx * 17,
-            )
-            fname = f"opt_mc_{cname}_{rname}.png"
-            img.save(OUT_DIR / fname, format="PNG", optimize=True)
-            print(f"[OK] {fname} ({img.width}x{img.height})")
-
-    # 2. オーブ臨界亀裂（有機分岐・テーパー付き 512px）
-    cracks_mask = build_orb_cracks_mask(512, seed=seed + 501)
-    cracks_img = render_optical_glow(
-        mask_l=cracks_mask,
-        spectrum_name="summon_gold",
-        ref_scale=20.0,
-        exposure=1.32,
-        core_glow=cg * 1.20,
-        halation=hal * 1.20,
-        irregularity=irr,
-        prism_mode=True,
-        seed=seed + 501,
-    )
-    cracks_img.save(OUT_DIR / "opt_orb_cracks.png", format="PNG", optimize=True)
-    print(f"[OK] opt_orb_cracks.png ({cracks_img.width}x{cracks_img.height})")
-
-    # 3. 多面体クリスタルオーブ（3色 × shell/facet + 共通コア）
-    for i, cname in enumerate(("blue", "gold", "rainbow")):
-        sh_img, fc_img = render_crystal_orb_layers(cname, size=512, seed=seed + 2101 + i * 37)
-        sh_img.save(OUT_DIR / f"opt_orb_{cname}_shell.png", format="PNG", optimize=True)
-        fc_img.save(OUT_DIR / f"opt_orb_{cname}_facet.png", format="PNG", optimize=True)
-        print(f"[OK] opt_orb_{cname}_{{shell,facet}}.png (512x512)")
-    core_img = render_orb_core_bleach(size=512)
-    core_img.save(OUT_DIR / "opt_orb_core_bleach.png", format="PNG", optimize=True)
-    print("[OK] opt_orb_core_bleach.png (512x512)")
-
-    # 4. 不規則ゴッドレイ 2層（虹昇格用 & リザルト用）
-    for mode in ("prism", "gold"):
-        for var in ("a", "b"):
-            gr_img = render_godrays_layer(mode=mode, variant=var, size=1200, seed=seed + 2301)
-            fname = f"opt_godrays_{mode}_{var}.png"
-            gr_img.save(OUT_DIR / fname, format="PNG", optimize=True)
-            print(f"[OK] {fname} ({gr_img.width}x{gr_img.height})")
-
-    # 5. 縦ストリーク光柱 2層 & 光学衝撃波リング & カットイン光学素材
-    for style in ("gold", "rainbow"):
-        pl_img = render_light_pillar(style=style, w=512, h=1680, seed=seed + 2501)
-        pl_img.save(OUT_DIR / f"opt_pillar_{style}.png", format="PNG", optimize=True)
-        print(f"[OK] opt_pillar_{style}.png ({pl_img.width}x{pl_img.height})")
-        sw_img = render_shockwave_ring(style=style, size=640, seed=seed + 2701)
-        sw_img.save(OUT_DIR / f"opt_shock_{style}.png", format="PNG", optimize=True)
-        print(f"[OK] opt_shock_{style}.png ({sw_img.width}x{sw_img.height})")
-
-    flare_img, speed_img = render_cutin_assets(seed=seed + 2901)
-    flare_img.save(OUT_DIR / "opt_cutin_flare.png", format="PNG", optimize=True)
-    speed_img.save(OUT_DIR / "opt_cutin_speedlines.png", format="PNG", optimize=True)
-    print("[OK] opt_cutin_flare.png (1080x360) & opt_cutin_speedlines.png (1080x420)")
-
-    # 6. リザルト星5つ
-    star_mask = build_star_mask(144)
-    star_img = render_optical_glow(
-        mask_l=star_mask,
-        spectrum_name="star_gold",
-        ref_scale=18.0,
-        exposure=1.18,
-        core_glow=cg * 1.10,
-        halation=hal * 0.95,
-        irregularity=irr * 0.65,
-        prism_mode=False,
-        seed=seed + 701,
-    )
-    star_img.save(OUT_DIR / "opt_star_gold.png", format="PNG", optimize=True)
-    print(f"[OK] opt_star_gold.png ({star_img.width}x{star_img.height})")
-
-    # 7. 周囲スパークル 4色
-    sp_mask = build_sparkle_mask(128)
-    for i, (cname, spec) in enumerate([
-        ("gold",  "sparkle_gold"),
-        ("white", "sparkle_white"),
-        ("pink",  "sparkle_pink"),
-        ("cyan",  "sparkle_cyan"),
-    ]):
-        sp_img = render_optical_glow(
-            mask_l=sp_mask,
-            spectrum_name=spec,
-            ref_scale=16.0,
-            exposure=1.15,
-            core_glow=cg * 1.15,
-            halation=hal * 1.05,
-            irregularity=irr * 0.70,
-            prism_mode=False,
-            seed=seed + 901 + i * 31,
-        )
-        fname = f"opt_sparkle_{cname}.png"
-        sp_img.save(OUT_DIR / fname, format="PNG", optimize=True)
-        print(f"[OK] {fname} ({sp_img.width}x{sp_img.height})")
-
-    # 8. リザルト背景の光学魔法リング
-    ring_mask = build_result_ring_mask(1400, seed=seed + 1201)
-    ring_img = render_optical_glow(
-        mask_l=ring_mask,
-        spectrum_name="summon_gold",
-        ref_scale=14.0,
-        exposure=0.95,
-        core_glow=cg,
-        halation=hal * 1.15,
-        irregularity=irr,
-        prism_mode=False,
-        seed=seed + 1201,
-    )
-    ring_img.save(OUT_DIR / "opt_result_ring.png", format="PNG", optimize=True)
-    print(f"[OK] opt_result_ring.png ({ring_img.width}x{ring_img.height})")
-
-    # 9. 玉ボケ光粒（遠景=シャープ / 近景=大ボケ）× 4色
-    bokeh_tints = {
-        "gold": (1.00, 0.84, 0.52),
-        "rose": (1.00, 0.62, 0.78),
-        "aqua": (0.55, 0.88, 1.00),
-        "white": (1.00, 0.97, 0.92),
-    }
-    for i, (cname, tint) in enumerate(bokeh_tints.items()):
-        for depth, blur in (("far", 1.6), ("near", 9.0)):
-            bk = render_bokeh_sprite(tint, size_px=160, radius=44.0 if depth == "far" else 40.0, blur=blur, seed=seed + 1301 + i)
-            fname = f"opt_bokeh_{cname}_{depth}.png"
-            bk.save(OUT_DIR / fname, format="PNG", optimize=True)
-    print("[OK] opt_bokeh_{gold,rose,aqua,white}_{far,near}.png (160x160)")
-
-    # 10. 上空の天蓋・逆さ天球ゲート（3色 × 2層）
     g_outer, g_inner = build_celestial_gate_masks(1024, seed=seed + 3101)
     gate_rings = [("outer", g_outer), ("inner", g_inner)]
-    for s_idx, (cname, spec, is_prism, exp, h_val) in enumerate(mc_styles):
-        for r_idx, (rname, mask) in enumerate(gate_rings):
+    cracks_mask = build_orb_cracks_mask(512, seed=seed + 501)
+    star_mask = build_star_mask(144)
+    sp_mask = build_sparkle_mask(128)
+    ring_mask = build_result_ring_mask(1400, seed=seed + 1201)
+
+    # マルチスレッド並列レンダリング＆保存タスクの構築（NumPy/SciPy/Pillow の GIL 解放を活用）
+    tasks = []
+
+    def submit_glow(
+        ex: ThreadPoolExecutor,
+        fname: str,
+        mask: Image.Image,
+        spec: str,
+        ref_scale: float,
+        exp: float,
+        core_g: float,
+        hal_v: float,
+        irr_v: float,
+        is_prism: bool,
+        s_val: int,
+    ) -> None:
+        def _job() -> str:
             img = render_optical_glow(
                 mask_l=mask,
                 spectrum_name=spec,
-                ref_scale=20.0,
-                exposure=exp * 0.96,
-                core_glow=cg,
-                halation=h_val,
-                irregularity=irr,
+                ref_scale=ref_scale,
+                exposure=exp,
+                core_glow=core_g,
+                halation=hal_v,
+                irregularity=irr_v,
                 prism_mode=is_prism,
-                seed=seed + 3100 + s_idx * 97 + r_idx * 19,
+                seed=s_val,
             )
-            fname = f"opt_gate_{cname}_{rname}.png"
-            img.save(OUT_DIR / fname, format="PNG", optimize=True)
-            print(f"[OK] {fname} ({img.width}x{img.height})")
+            save_png(img, OUT_DIR / fname)
+            return f"[OK] {fname} ({img.width}x{img.height})"
 
-    # 11. 冒頭降臨流体ウィスプ & 金/虹昇格の天啓光撃
-    meteor_img = render_descent_meteor(w=256, h=256, seed=seed + 3401)
-    meteor_img.save(OUT_DIR / "opt_meteor_blue.png", format="PNG", optimize=True)
-    print(f"[OK] opt_meteor_blue.png ({meteor_img.width}x{meteor_img.height})")
+        tasks.append(ex.submit(_job))
 
-    bolt_gold_img, bolt_prism_img = render_sky_bolts(seed=seed + 3601)
-    bolt_gold_img.save(OUT_DIR / "opt_bolt_gold.png", format="PNG", optimize=True)
-    bolt_prism_img.save(OUT_DIR / "opt_bolt_prism.png", format="PNG", optimize=True)
-    print("[OK] opt_bolt_gold.png (384x1024) & opt_bolt_prism.png (512x1024)")
+    with ThreadPoolExecutor() as ex:
+        # 1. 魔法陣 3色 × 3層
+        for s_idx, (cname, spec, is_prism, exp, h_val) in enumerate(mc_styles):
+            for r_idx, (rname, mask) in enumerate(rings):
+                submit_glow(
+                    ex,
+                    f"opt_mc_{cname}_{rname}.png",
+                    mask,
+                    spec,
+                    20.0,
+                    exp,
+                    cg,
+                    h_val,
+                    irr,
+                    is_prism,
+                    seed + s_idx * 100 + r_idx * 17,
+                )
 
-    # 12. 2層パララックス浮遊クリスタル破片（far 96x96 / near 160x160 × 3種）
-    shards = render_crystal_shards(seed=seed + 3801)
-    for fname, s_img in shards.items():
-        s_img.save(OUT_DIR / fname, format="PNG", optimize=True)
-    print("[OK] opt_shard_{far,near}_{0,1,2}.png (6 files)")
+        # 2. オーブ臨界亀裂
+        submit_glow(
+            ex,
+            "opt_orb_cracks.png",
+            cracks_mask,
+            "summon_gold",
+            20.0,
+            1.32,
+            cg * 1.20,
+            hal * 1.20,
+            irr,
+            True,
+            seed + 501,
+        )
+
+        # 3. 多面体クリスタルオーブ（3色 × shell/facet + 共通コア）
+        for i, cname in enumerate(("blue", "gold", "rainbow")):
+            def _orb_job(cn: str = cname, idx: int = i) -> str:
+                sh_img, fc_img = render_crystal_orb_layers(cn, size=512, seed=seed + 2101 + idx * 37)
+                save_png(sh_img, OUT_DIR / f"opt_orb_{cn}_shell.png")
+                save_png(fc_img, OUT_DIR / f"opt_orb_{cn}_facet.png")
+                return f"[OK] opt_orb_{cn}_{{shell,facet}}.png (512x512)"
+
+            tasks.append(ex.submit(_orb_job))
+
+        def _core_job() -> str:
+            core_img = render_orb_core_bleach(size=512)
+            save_png(core_img, OUT_DIR / "opt_orb_core_bleach.png")
+            return "[OK] opt_orb_core_bleach.png (512x512)"
+
+        tasks.append(ex.submit(_core_job))
+
+        # 4. 不規則ゴッドレイ 2層（虹昇格用 & リザルト用）
+        for mode in ("prism", "gold"):
+            for var in ("a", "b"):
+                def _gr_job(m: str = mode, v: str = var) -> str:
+                    gr_img = render_godrays_layer(mode=m, variant=v, size=1200, seed=seed + 2301)
+                    fname = f"opt_godrays_{m}_{v}.png"
+                    save_png(gr_img, OUT_DIR / fname)
+                    return f"[OK] {fname} ({gr_img.width}x{gr_img.height})"
+
+                tasks.append(ex.submit(_gr_job))
+
+        # 5. 縦ストリーク光柱 2層 & 光学衝撃波リング & カットイン光学素材
+        for style in ("gold", "rainbow"):
+            def _pl_job(st: str = style) -> str:
+                pl_img = render_light_pillar(style=st, w=512, h=1680, seed=seed + 2501)
+                save_png(pl_img, OUT_DIR / f"opt_pillar_{st}.png")
+                sw_img = render_shockwave_ring(style=st, size=640, seed=seed + 2701)
+                save_png(sw_img, OUT_DIR / f"opt_shock_{st}.png")
+                return f"[OK] opt_pillar_{st}.png & opt_shock_{st}.png"
+
+            tasks.append(ex.submit(_pl_job))
+
+        def _cutin_job() -> str:
+            flare_img, speed_img = render_cutin_assets(seed=seed + 2901)
+            save_png(flare_img, OUT_DIR / "opt_cutin_flare.png")
+            save_png(speed_img, OUT_DIR / "opt_cutin_speedlines.png")
+            return "[OK] opt_cutin_flare.png (1080x360) & opt_cutin_speedlines.png (1080x420)"
+
+        tasks.append(ex.submit(_cutin_job))
+
+        # 6. リザルト星5つ
+        submit_glow(ex, "opt_star_gold.png", star_mask, "star_gold", 18.0, 1.18, cg * 1.10, hal * 0.95, irr * 0.65, False, seed + 701)
+
+        # 7. 周囲スパークル 4色
+        for i, (cname, spec) in enumerate([
+            ("gold",  "sparkle_gold"),
+            ("white", "sparkle_white"),
+            ("pink",  "sparkle_pink"),
+            ("cyan",  "sparkle_cyan"),
+        ]):
+            submit_glow(ex, f"opt_sparkle_{cname}.png", sp_mask, spec, 16.0, 1.15, cg * 1.15, hal * 1.05, irr * 0.70, False, seed + 901 + i * 31)
+
+        # 8. リザルト背景の光学魔法リング
+        submit_glow(ex, "opt_result_ring.png", ring_mask, "summon_gold", 14.0, 0.95, cg, hal * 1.15, irr, False, seed + 1201)
+
+        # 9. 玉ボケ光粒
+        def _bokeh_job() -> str:
+            bokeh_tints = {
+                "gold": (1.00, 0.84, 0.52),
+                "rose": (1.00, 0.62, 0.78),
+                "aqua": (0.55, 0.88, 1.00),
+                "white": (1.00, 0.97, 0.92),
+            }
+            for i, (cname, tint) in enumerate(bokeh_tints.items()):
+                for depth, blur in (("far", 1.6), ("near", 9.0)):
+                    bk = render_bokeh_sprite(tint, size_px=160, radius=44.0 if depth == "far" else 40.0, blur=blur, seed=seed + 1301 + i)
+                    save_png(bk, OUT_DIR / f"opt_bokeh_{cname}_{depth}.png")
+            return "[OK] opt_bokeh_{gold,rose,aqua,white}_{far,near}.png (160x160)"
+
+        tasks.append(ex.submit(_bokeh_job))
+
+        # 10. 上空の天蓋・逆さ天球ゲート（3色 × 2層）
+        for s_idx, (cname, spec, is_prism, exp, h_val) in enumerate(mc_styles):
+            for r_idx, (rname, mask) in enumerate(gate_rings):
+                submit_glow(
+                    ex,
+                    f"opt_gate_{cname}_{rname}.png",
+                    mask,
+                    spec,
+                    20.0,
+                    exp * 0.96,
+                    cg,
+                    h_val,
+                    irr,
+                    is_prism,
+                    seed + 3100 + s_idx * 97 + r_idx * 19,
+                )
+
+        # 11. 冒頭降臨流体ウィスプ & 金/虹昇格の天啓光撃
+        def _meteor_bolts_job() -> str:
+            meteor_img = render_descent_meteor(w=256, h=256, seed=seed + 3401)
+            save_png(meteor_img, OUT_DIR / "opt_meteor_blue.png")
+            bolt_gold_img, bolt_prism_img = render_sky_bolts(seed=seed + 3601)
+            save_png(bolt_gold_img, OUT_DIR / "opt_bolt_gold.png")
+            save_png(bolt_prism_img, OUT_DIR / "opt_bolt_prism.png")
+            return "[OK] opt_meteor_blue.png & opt_bolt_{gold,prism}.png"
+
+        tasks.append(ex.submit(_meteor_bolts_job))
+
+        # 12. 2層パララックス浮遊クリスタル破片
+        def _shards_job() -> str:
+            shards = render_crystal_shards(seed=seed + 3801)
+            for fname, s_img in shards.items():
+                save_png(s_img, OUT_DIR / fname)
+            return "[OK] opt_shard_{far,near}_{0,1,2}.png (6 files)"
+
+        tasks.append(ex.submit(_shards_job))
+
+        for fut in tasks:
+            print(fut.result())
 
 
 if __name__ == "__main__":

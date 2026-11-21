@@ -1,55 +1,4 @@
-@font-face {
-  font-family: "KleeOne";
-  src: url("../assets/fonts/KleeOne-Regular.ttf") format("truetype");
-  font-display: block;
-}
-@font-face {
-  font-family: "CineCaption";
-  src: url("../assets/fonts/cinecaption.ttf") format("truetype");
-  font-display: block;
-}
-
-:root {
-  --in-oklab: ;
-  --in-oklch: ;
-  --bg-void: #040611;
-  --ink-ivory: #f8f4ea;
-  --font-jp: "KleeOne", "Noto Sans JP", sans-serif;
-  --font-ui: "CineCaption", "Montserrat", "Noto Sans JP", sans-serif;
-}
-
-@supports (background: linear-gradient(in oklab, white, black)) {
-  :root {
-    --in-oklab: in oklab;
-    --in-oklch: in oklch;
-  }
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html,
-body {
-  width: 1080px;
-  height: 1920px;
-  overflow: hidden;
-  background: transparent;
-  color: var(--ink-ivory);
-  font-family: var(--font-jp);
-  -webkit-font-smoothing: antialiased;
-}
-
-.clip {
-  position: absolute;
-  inset: 0;
-  width: 1080px;
-  height: 1920px;
-  overflow: hidden;
-  pointer-events: none;
-}
+@import "./shared-base.css";
 
 #scene-summon-stage {
   z-index: 10;
@@ -57,13 +6,6 @@ body {
 }
 
 #summon-grain {
-  position: absolute;
-  inset: 0;
-  background-image: url("../assets/generated/mat_film_grain.png");
-  background-size: 100% 100%;
-  mix-blend-mode: overlay;
-  opacity: 0.055;
-  pointer-events: none;
   z-index: 5;
 }
 

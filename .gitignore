@@ -6,6 +6,7 @@ renders/*.webm
 *.log
 __pycache__/
 *.pyc
+repomix-output.xml
 
 # Private input photos
 assets/*.jpg

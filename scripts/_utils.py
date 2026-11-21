@@ -3,11 +3,13 @@ SSRGenerate — アセット生成スクリプト共通ユーティリティ
 
 - card-config.js の読み込み (`load_card_config`)
 - 決定論的シード解決 (`resolve_seed`)
+- スカラー補間・色変換・合成ヘルパー (`smoothstep`, `linear_to_srgb`, `srgb_to_unpremul_rgba`, `porter_duff_over`, `tight_crop_rgba`)
 - 斜め多段ストップ・リニアグラデーション生成 (`make_linear_gradient`)
 - 多周波微細シボ高さマップ生成 (`generate_micro_emboss_height`)
 - 標準偏差正規化 (`norm_std`)
 - カード物理寸法・金属パレット定数 (`CARD_*`, `GOLD_RAMP`, `SILVER_RAMP`)
 - 金属レリーフ陰影（法線勾配ランバート＋ブリン・フォン）(`shade_metal_relief`)
+- 高速PNG保存ヘルパー (`save_png`)
 """
 from __future__ import annotations
 
@@ -18,7 +20,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
+from scipy.ndimage import gaussian_filter
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ASSETS_DIR = PROJECT_ROOT / "assets"
@@ -27,7 +30,7 @@ OUT_DIR = ASSETS_DIR / "generated"
 CONFIG_PATH = PROJECT_ROOT / "card-config.js"
 DEFAULT_SEED = 20261120
 
-# リザルトカードの物理寸法（compositions/scene-result.css の --card-w / --card-h / --card-border と一致させること）
+# リザルトカードの物理寸法（compositions/shared-base.css の --card-w / --card-h / --card-border と一致させること）
 CARD_W = 900
 CARD_H = 1590
 CARD_BORDER = 20
@@ -89,6 +92,57 @@ def resolve_seed(cfg: Dict[str, Any], section: str | None = None, override: int 
         if sec_seed is not None:
             return int(sec_seed)
     return int(cfg.get("seed", DEFAULT_SEED))
+
+
+def save_png(img: Image.Image, path: Path, compress_level: int = 6) -> None:
+    """総当たりフィルタ探索(optimize=True)を避け、バランスの良い圧縮レベルで高速にPNG保存する"""
+    img.save(path, format="PNG", compress_level=compress_level)
+
+
+def smoothstep(e0: float, e1: float, x: np.ndarray) -> np.ndarray:
+    """エルミート3次補間 smoothstep"""
+    t = np.clip((x - e0) / (e1 - e0), 0.0, 1.0)
+    return (t * t * (3.0 - 2.0 * t)).astype(np.float32)
+
+
+def linear_to_srgb(linear: np.ndarray) -> np.ndarray:
+    """リニアRGB [0, 1] から sRGB [0, 1] へのガンマ変換"""
+    linear = np.clip(linear, 0.0, 1.0)
+    return np.where(
+        linear <= 0.0031308,
+        linear * 12.92,
+        1.055 * np.power(linear, 1.0 / 2.4) - 0.055,
+    ).astype(np.float32)
+
+
+def srgb_to_unpremul_rgba(light_srgb: np.ndarray) -> Image.Image:
+    """sRGB発光配列 (H, W, 3) [0,1] から黒縁の出ない unpremul 透過 RGBA 画像を生成する"""
+    alpha = np.clip(np.max(light_srgb, axis=-1), 0.0, 1.0)
+    safe_a = np.maximum(alpha, 1e-4)
+    rgb_unpremul = np.clip(light_srgb / safe_a[:, :, None], 0.0, 1.0)
+    return rgba_from_float(rgb_unpremul, alpha)
+
+
+def porter_duff_over(
+    fg_rgb: np.ndarray,
+    fg_a: np.ndarray,
+    bg_rgb: np.ndarray,
+    bg_a: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Porter-Duff Over 合成: 前景 (fg_rgb, fg_a) を 背景 (bg_rgb, bg_a) の上に重ねる"""
+    a = fg_a + bg_a * (1.0 - fg_a)
+    rgb = (fg_rgb * fg_a[..., None] + bg_rgb * (bg_a * (1.0 - fg_a))[..., None]) / np.maximum(a, 1e-5)[..., None]
+    return np.clip(rgb, 0.0, 1.0), np.clip(a, 0.0, 1.0)
+
+
+def tight_crop_rgba(rgb: np.ndarray, a: np.ndarray, alpha_threshold: float = 0.012) -> Image.Image:
+    """アルファ値閾値を超える実インク領域の外接矩形でタイトクロップした RGBA Image を返す"""
+    ys, xs = np.where(a > alpha_threshold)
+    if len(ys) > 0:
+        y0, y1 = max(0, int(ys.min()) - 1), min(a.shape[0], int(ys.max()) + 2)
+        x0, x1 = max(0, int(xs.min()) - 1), min(a.shape[1], int(xs.max()) + 2)
+        rgb, a = rgb[y0:y1, x0:x1], a[y0:y1, x0:x1]
+    return rgba_from_float(rgb, a)
 
 
 def norm_std(arr: np.ndarray) -> np.ndarray:
@@ -155,8 +209,6 @@ def gaussian_blur_f(arr: np.ndarray, sigma: float) -> np.ndarray:
     """float32 配列へのガウスぼかし（scipy.ndimage）"""
     if sigma <= 0.05:
         return arr.astype(np.float32, copy=True)
-    from scipy.ndimage import gaussian_filter
-
     return gaussian_filter(arr.astype(np.float32), sigma=sigma, mode="constant").astype(np.float32)
 
 
@@ -172,8 +224,6 @@ def ramp_lookup(t: np.ndarray, ramp: List[Tuple[int, int, int]]) -> np.ndarray:
 
 def polygon_mask(w: int, h: int, pts: List[Tuple[float, float]], ss: int = 3) -> np.ndarray:
     """スーパーサンプリング付きの多角形マスク [0, 1] (H, W) float32"""
-    from PIL import ImageDraw
-
     im = Image.new("L", (w * ss, h * ss), 0)
     ImageDraw.Draw(im).polygon([(x * ss, y * ss) for x, y in pts], fill=255)
     return np.asarray(im.resize((w, h), Image.Resampling.LANCZOS), dtype=np.float32) / 255.0
@@ -227,14 +277,15 @@ def rgba_from_float(rgb: np.ndarray, alpha: np.ndarray) -> Image.Image:
 
 
 def generate_film_grain_overlay(
-    w: int = 1080,
-    h: int = 1920,
+    w: int = 540,
+    h: int = 960,
     sigma: float = 14.0,
     seed: int = DEFAULT_SEED,
 ) -> Image.Image:
     """
     暗部バンディング解消用の決定論的フィルムグレイン（中性グレー128中心のグレースケール画像）を生成する。
     高周波の微細粒子とわずかな中周波シボをブレンドし、overlay/soft-light 合成で自然な階調補間を行う。
+    540x960（1/4画素数）で生成し、ファイルサイズと生成時間を 1/4 に抑えつつ視覚品質を維持する。
     """
     rng = np.random.default_rng((int(seed) * 2654435761 + 97) & 0xFFFFFFFF)
     fine = rng.standard_normal((h, w)).astype(np.float32)
