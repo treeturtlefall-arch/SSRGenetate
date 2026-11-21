@@ -48,8 +48,8 @@ window.SSR_TYPO_MANIFEST = {
     },
     "cutinMain": {
       "src": "assets/generated/typo_cutin_main.png",
-      "width": 668,
-      "height": 112,
+      "width": 784,
+      "height": 131,
       "text": "昇格  SSR 確定"
     }
   }

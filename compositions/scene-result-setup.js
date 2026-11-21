@@ -88,11 +88,18 @@
   const starsRow = document.getElementById("stars-row");
   const starCount = Math.max(1, Math.min(6, cfg.stars));
   const starEls = [];
+  const starFlareEls = [];
   for (let i = 0; i < starCount; i++) {
     const star = document.createElement("div");
     star.className = "star-item";
+    const flare = document.createElement("span");
+    flare.className = "star-flare";
+    flare.setAttribute("data-layout-allow-overflow", "");
+    flare.setAttribute("data-layout-ignore", "");
+    star.appendChild(flare);
     starsRow.appendChild(star);
     starEls.push(star);
+    starFlareEls.push(flare);
   }
 
   const statsEl = document.getElementById("card-stats");
@@ -129,31 +136,31 @@
   // =========================================================================
   const sparkleClusters = [
     // 主クラスター A: 左上コーナー外縁（特大1 + 中1 + 極小3）
-    { x: -468, y: -790, tier: "hero",  color: "gold",  group: 0 },
-    { x: -492, y: -670, tier: "mid",   color: "white", group: 1 },
+    { x: -438, y: -776, tier: "hero",  color: "gold",  group: 0 },
+    { x: -472, y: -665, tier: "mid",   color: "white", group: 1 },
     { x: -395, y: -832, tier: "micro", color: "pink",  group: 2 },
-    { x: -504, y: -740, tier: "micro", color: "gold",  group: 0 },
+    { x: -494, y: -740, tier: "micro", color: "gold",  group: 0 },
     { x: -445, y: -595, tier: "micro", color: "cyan",  group: 3 },
     // 主クラスター B: 右下コーナー外縁（特大1 + 中2 + 極小4）
-    { x: 472,  y: 735,  tier: "hero",  color: "white", group: 1 },
-    { x: 492,  y: 610,  tier: "mid",   color: "gold",  group: 2 },
+    { x: 438,  y: 765,  tier: "hero",  color: "white", group: 1 },
+    { x: 472,  y: 610,  tier: "mid",   color: "gold",  group: 2 },
     { x: 388,  y: 825,  tier: "mid",   color: "pink",  group: 3 },
-    { x: 504,  y: 685,  tier: "micro", color: "cyan",  group: 0 },
+    { x: 494,  y: 685,  tier: "micro", color: "cyan",  group: 0 },
     { x: 448,  y: 810,  tier: "micro", color: "gold",  group: 1 },
-    { x: 496,  y: 525,  tier: "micro", color: "white", group: 2 },
+    { x: 492,  y: 525,  tier: "micro", color: "white", group: 2 },
     { x: 315,  y: 838,  tier: "micro", color: "gold",  group: 3 },
     // 副クラスター C: 右上〜右中段（特大1 + 中1 + 極小4）
-    { x: 478,  y: -510, tier: "hero",  color: "pink",  group: 2 },
-    { x: 465,  y: -785, tier: "mid",   color: "cyan",  group: 0 },
-    { x: 500,  y: -435, tier: "micro", color: "white", group: 1 },
-    { x: 490,  y: -600, tier: "micro", color: "gold",  group: 3 },
+    { x: 440,  y: -515, tier: "hero",  color: "pink",  group: 2 },
+    { x: 462,  y: -785, tier: "mid",   color: "cyan",  group: 0 },
+    { x: 494,  y: -435, tier: "micro", color: "white", group: 1 },
+    { x: 488,  y: -600, tier: "micro", color: "gold",  group: 3 },
     { x: 405,  y: -832, tier: "micro", color: "white", group: 2 },
-    { x: 498,  y: -150, tier: "micro", color: "cyan",  group: 0 },
+    { x: 494,  y: -150, tier: "micro", color: "cyan",  group: 0 },
     // 副クラスター D: 左下段（中1 + 極小3）
-    { x: -478, y: 555,  tier: "mid",   color: "cyan",  group: 3 },
-    { x: -498, y: 475,  tier: "micro", color: "gold",  group: 1 },
+    { x: -472, y: 555,  tier: "mid",   color: "cyan",  group: 3 },
+    { x: -494, y: 475,  tier: "micro", color: "gold",  group: 1 },
     { x: -465, y: 775,  tier: "micro", color: "pink",  group: 2 },
-    { x: -498, y: 185,  tier: "micro", color: "white", group: 0 },
+    { x: -494, y: 185,  tier: "micro", color: "white", group: 0 },
   ];
 
   const sparkleData = [];
@@ -295,6 +302,7 @@
     cfg: cfg,
     chromaShockPx: chromaShockPx,
     starEls: starEls,
+    starFlareEls: starFlareEls,
     sparkleData: sparkleData,
     flakeData: flakeData,
     bokehData: bokehData,

@@ -13,9 +13,11 @@ SSRGenerate — アセット生成スクリプト共通ユーティリティ
 """
 from __future__ import annotations
 
+import io
 import json
 import math
 import subprocess
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -95,8 +97,19 @@ def resolve_seed(cfg: Dict[str, Any], section: str | None = None, override: int 
 
 
 def save_png(img: Image.Image, path: Path, compress_level: int = 6) -> None:
-    """総当たりフィルタ探索(optimize=True)を避け、バランスの良い圧縮レベルで高速にPNG保存する"""
-    img.save(path, format="PNG", compress_level=compress_level)
+    """総当たりフィルタ探索(optimize=True)を避け、並列エンコード＋リトライ付きで安全にPNG保存する"""
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", compress_level=compress_level)
+    data = buf.getvalue()
+    for attempt in range(5):
+        try:
+            with open(path, "wb") as f:
+                f.write(data)
+            return
+        except OSError:
+            if attempt == 4:
+                raise
+            time.sleep(0.08 * (attempt + 1))
 
 
 def smoothstep(e0: float, e1: float, x: np.ndarray) -> np.ndarray:

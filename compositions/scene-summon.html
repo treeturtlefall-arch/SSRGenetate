@@ -30,7 +30,6 @@
         <div id="summon-grain" class="film-grain-overlay" data-layout-allow-overflow></div>
 
         <div id="summon-camera" data-layout-allow-overflow>
-          <div id="ignition-spark" data-layout-allow-overflow></div>
           <div id="aura-blue" class="bg-aura" data-layout-allow-overflow></div>
           <div id="aura-gold" class="bg-aura" data-layout-allow-overflow></div>
           <div id="aura-rainbow" class="bg-aura" data-layout-allow-overflow></div>
@@ -103,6 +102,7 @@
             <img id="orb-core" src="../assets/generated/opt_orb_core_bleach.png" alt="" data-layout-allow-overflow />
             <img id="orb-cracks" src="../assets/generated/opt_orb_cracks.png" alt="" data-layout-allow-overflow />
           </div>
+          <div id="ignition-spark" data-layout-allow-overflow></div>
 
           <div id="sky-shards-near" data-layout-allow-overflow></div>
           <div id="flash-gold" data-layout-allow-overflow></div>
@@ -146,13 +146,15 @@
         const chromaShockPx = st.chromaShockPx;
         const tl = gsap.timeline({ paused: true });
         tl.set("#scene-summon-stage", { filter: "none" }, 0);
-        tl.set("#summon-camera", { scale: 1, rotation: 0 }, 0);
+        tl.set("#summon-camera", { scale: 1, rotation: 0, opacity: 1 }, 0);
         tl.set("#vacuum-dimmer, #flash-gold, #flash-rainbow-core, #flash-rainbow-streak, #light-pillar-rainbow, #bolt-gold, #bolt-prism", { opacity: 0 }, 0);
         tl.set("#sky-shards-far, #sky-shards-near", { opacity: 1 }, 0);
 
         // --- PHASE 1: IGNITION, CELESTIAL GATE & METEOR DESCENT (0.0s - 1.55s) ---
         tl.fromTo("#ignition-spark", { opacity: 0.85, scale: 0.28, rotation: -20 }, { opacity: 1, scale: 1.55, rotation: 15, duration: 0.14, ease: "power2.out" }, 0);
         tl.to("#ignition-spark", { opacity: 0, scale: 0.28, rotation: 45, duration: 0.36, ease: "power2.in" }, 0.14);
+        tl.fromTo("#ignition-spark", { opacity: 0, scale: 0.35, rotation: 0 }, { opacity: 0.95, scale: 1.75, rotation: 35, duration: 0.14, ease: "power2.out", immediateRender: false }, 1.34);
+        tl.to("#ignition-spark", { opacity: 0, scale: 0.50, rotation: 70, duration: 0.24, ease: "power2.in" }, 1.48);
         tl.fromTo("#aura-blue", { opacity: 0.24, scale: 0.52 }, { opacity: 0.88, scale: 1.0, duration: 1.40, ease: "power2.out" }, 0);
         tl.fromTo("#summon-top-hud", { opacity: 0, y: -12 }, { opacity: 0.90, y: 0, duration: 0.70, ease: "power2.out" }, 0.20);
         tl.fromTo("#celestial-gate-wrap", { opacity: 0.32, scale: 0.45, rotationX: -68, y: -24 }, { opacity: 0.62, scale: 1.08, rotationX: -62, y: 0, duration: 1.38, ease: "power3.out" }, 0);
@@ -245,11 +247,13 @@
         tl.to("#hud-node-3", { backgroundColor: "#ffd6f0", borderColor: "#ffffff", boxShadow: "0 0 14px rgba(232,141,180,1)", duration: 0.16 }, 5.21);
 
         // --- CINEMATIC BORDERLESS CUT-IN (5.62s - 6.60s) & CRITICAL BURST (6.48s - 7.02s) ---
+        tl.to("#summon-camera", { opacity: 0.45, duration: 0.12, ease: "power2.out" }, 5.60);
+        tl.to("#summon-camera", { opacity: 1.0, duration: 0.16, ease: "power2.inOut" }, 6.36);
         tl.fromTo("#cutin-band", { opacity: 0 }, { opacity: 1, duration: 0.10, ease: "power2.out" }, 5.62);
         tl.to("#cutin-band", { opacity: 0, duration: 0.16, ease: "power2.in" }, 6.44);
-        tl.fromTo("#cutin-flare", { scaleX: 0.12, scaleY: 0.35, opacity: 0 }, { scaleX: 1.14, scaleY: 1.05, opacity: 1, duration: 0.18, ease: "expo.out", immediateRender: false }, 5.62);
-        tl.to("#cutin-flare", { scaleX: 1.0, scaleY: 0.9, duration: 0.64, ease: "power1.out" }, 5.80);
-        tl.fromTo("#cutin-speedlines", { x: -180, opacity: 0 }, { x: 0, opacity: 0.95, duration: 0.20, ease: "power3.out", immediateRender: false }, 5.62);
+        tl.fromTo("#cutin-flare", { scaleX: 0.12, scaleY: 0.35, opacity: 0 }, { scaleX: 1.14, scaleY: 1.05, opacity: 0.92, duration: 0.16, ease: "expo.out", immediateRender: false }, 5.62);
+        tl.to("#cutin-flare", { scaleX: 1.0, scaleY: 0.85, opacity: 0.42, duration: 0.20, ease: "power2.out" }, 5.78);
+        tl.fromTo("#cutin-speedlines", { x: -180, opacity: 0 }, { x: 0, opacity: 0.66, duration: 0.20, ease: "power3.out", immediateRender: false }, 5.62);
         tl.to("#cutin-speedlines", { x: 160, duration: 0.78, ease: "none" }, 5.82);
         tl.fromTo("#cutin-typo-wrap", { x: -180, scale: 1.14, opacity: 0 }, { x: 0, scale: 1.0, opacity: 1, duration: 0.22, ease: "power4.out", immediateRender: false }, 5.64);
         tl.to("#cutin-typo-wrap", { x: 24, duration: 0.54, ease: "none" }, 5.86);

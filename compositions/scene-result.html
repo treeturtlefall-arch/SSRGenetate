@@ -65,6 +65,7 @@
             <div class="card-face card-front">
               <img id="mat-rainbow-frame" src="../assets/generated/mat_rainbow_frame.png" alt="" />
               <div id="frame-holo-glint"></div>
+              <div id="frame-rim-glare" data-layout-allow-overflow data-layout-ignore></div>
               <div id="spin-spec-front-clip">
                 <div id="spin-spec-front" data-layout-allow-overflow></div>
               </div>
@@ -97,6 +98,7 @@
                   <div id="card-title-wrap" class="typo-slot">
                     <div id="card-title-img" class="typo-img"></div>
                     <div id="card-title" data-layout-allow-safe-zone>ちいさな覇王</div>
+                    <div id="title-wipe-glint" data-layout-allow-overflow data-layout-ignore></div>
                   </div>
                   <div id="card-flavor-wrap" class="typo-slot">
                     <div id="card-flavor-img" class="typo-img"></div>
@@ -124,6 +126,7 @@
         const cfg = st.cfg;
         const chromaShockPx = st.chromaShockPx;
         const starEls = st.starEls;
+        const starFlareEls = st.starFlareEls;
         const sparkleData = st.sparkleData;
         const flakeData = st.flakeData;
         const bokehData = st.bokehData;
@@ -171,31 +174,46 @@
 
         // Center-Attenuated Prism Holo Sweeps & Frame Rim Shimmer
         tl.fromTo("#holo-sweep-1", { x: 0 }, { x: 1850, duration: 1.10, ease: "power2.inOut" }, at(8.92));
-        tl.fromTo("#holo-sweep-1", { opacity: 0 }, { opacity: 0.92, duration: 0.25, ease: "power1.out" }, at(8.92));
+        tl.fromTo("#holo-sweep-1", { opacity: 0 }, { opacity: 0.76, duration: 0.25, ease: "power1.out" }, at(8.92));
         tl.to("#holo-sweep-1", { opacity: 0, duration: 0.26, ease: "power1.in" }, at(9.76));
 
         tl.fromTo("#holo-sweep-2", { x: 0 }, { x: 1850, duration: 1.10, ease: "power2.inOut" }, at(10.45));
-        tl.fromTo("#holo-sweep-2", { opacity: 0 }, { opacity: 0.78, duration: 0.25, ease: "power1.out" }, at(10.45));
+        tl.fromTo("#holo-sweep-2", { opacity: 0 }, { opacity: 0.60, duration: 0.25, ease: "power1.out" }, at(10.45));
         tl.to("#holo-sweep-2", { opacity: 0, duration: 0.25, ease: "power1.in" }, at(11.30));
 
         tl.fromTo("#holo-static-sheen", { opacity: 0 }, { opacity: 0.72, duration: 0.85, ease: "power2.out" }, at(11.00));
         tl.fromTo("#frame-holo-glint", { opacity: 0, backgroundPosition: "0% 0%, 0 0" }, { opacity: 0.78, backgroundPosition: "60% 60%, 0 0", duration: 2.00, ease: "power2.out" }, at(9.90));
 
-        // Crest, Attribute Plate, Stars & Foil Typography Stamping
+        // Crest, Attribute Plate, Stars & Foil Typography Light-Wipe Stamping
         tl.fromTo("#ssr-emblem", { opacity: 0, scale: 2.05, rotation: -10 }, { opacity: 1, scale: 1.0, rotation: 0, duration: 0.44, ease: "back.out(2.1)" }, at(8.76));
         if (cfg.attribute) {
           tl.fromTo("#attr-badge", { opacity: 0, x: 34, scale: 0.92 }, { opacity: 1, x: 0, scale: 1.0, duration: 0.40, ease: "back.out(1.6)" }, at(8.98));
         }
         starEls.forEach(function (star, idx) {
-          tl.fromTo(star, { opacity: 0, scale: 0.1, rotation: -45 }, { opacity: 1, scale: 1.0, rotation: 0, duration: 0.36, ease: "back.out(2.4)" }, at(9.00 + idx * 0.14));
+          const tStar = at(9.00 + idx * 0.14);
+          tl.fromTo(star, { opacity: 0, scale: 0.1, rotation: -45 }, { opacity: 1, scale: 1.0, rotation: 0, duration: 0.36, ease: "back.out(2.4)" }, tStar);
+          const flare = starFlareEls[idx];
+          if (flare) {
+            tl.fromTo(flare, { opacity: 0, scale: 0.25 }, { opacity: 0.96, scale: 1.45, duration: 0.09, ease: "power2.out" }, tStar);
+            tl.to(flare, { opacity: 0, scale: 0.55, duration: 0.18, ease: "power2.in" }, +(tStar + 0.09).toFixed(4));
+          }
         });
-        tl.fromTo("#card-subtitle-wrap", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.42, ease: "power2.out" }, at(9.38));
-        tl.fromTo("#card-title-wrap", { opacity: 0, y: 24, scale: 0.92 }, { opacity: 1, y: 0, scale: 1.0, duration: 0.50, ease: "back.out(1.5)" }, at(9.60));
-        tl.fromTo("#card-flavor-wrap", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.42, ease: "power2.out" }, at(9.96));
+        tl.fromTo("#card-subtitle-wrap", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.18, ease: "power2.out" }, at(9.38));
+        tl.fromTo("#card-subtitle-img, #card-subtitle", { clipPath: "inset(-10px 100% -10px -10px)" }, { clipPath: "inset(-10px -4% -10px -10px)", duration: 0.38, ease: "power2.inOut" }, at(9.38));
+
+        tl.fromTo("#card-title-wrap", { opacity: 0, scale: 1.07 }, { opacity: 1, scale: 1.0, duration: 0.46, ease: "back.out(1.6)" }, at(9.60));
+        tl.fromTo("#card-title-img, #card-title", { clipPath: "inset(-14px 100% -14px -14px)" }, { clipPath: "inset(-14px -4% -14px -14px)", duration: 0.42, ease: "power2.inOut" }, at(9.60));
+        tl.fromTo("#title-wipe-glint", { x: -235, opacity: 0 }, { x: 235, duration: 0.42, ease: "power2.inOut" }, at(9.60));
+        tl.to("#title-wipe-glint", { opacity: 1, duration: 0.08, ease: "power2.out" }, at(9.60));
+        tl.to("#title-wipe-glint", { opacity: 0, duration: 0.12, ease: "power2.in" }, at(9.92));
+
+        tl.fromTo("#card-flavor-wrap", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.18, ease: "power2.out" }, at(9.96));
+        tl.fromTo("#card-flavor-img, #card-flavor", { clipPath: "inset(-10px 100% -10px -10px)" }, { clipPath: "inset(-10px -4% -10px -10px)", duration: 0.44, ease: "power2.inOut" }, at(9.96));
         if (cfg.stats.length > 0) {
-          tl.fromTo("#card-stats", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.46, ease: "power2.out" }, at(10.22));
+          tl.fromTo("#card-stats", { opacity: 0, x: -14, clipPath: "inset(-10px 100% -10px -10px)" }, { opacity: 1, x: 0, clipPath: "inset(-10px -4% -10px -10px)", duration: 0.44, ease: "power2.out" }, at(10.22));
         }
-        tl.fromTo("#card-no-corner", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.44, ease: "power2.out" }, at(10.36));
+        tl.fromTo("#card-no-corner", { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.18, ease: "power2.out" }, at(10.36));
+        tl.fromTo("#card-no-img, #card-no-text", { clipPath: "inset(-10px 100% -10px -10px)" }, { clipPath: "inset(-10px -4% -10px -10px)", duration: 0.34, ease: "power2.inOut" }, at(10.36));
 
         // Clustered Sparkles, 3D Foil Flakes & Bokeh Orbs
         sparkleData.forEach(function (sp) {
@@ -226,6 +244,9 @@
 
         // 12.0s - 15.0s: Layout Fixed, Luminous Breathing Only
         tl.to("#frame-holo-glint", { backgroundPosition: "160% 160%, 0 0", opacity: 0.92, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));
+        tl.fromTo("#frame-rim-glare", { backgroundPosition: "0% 0%", opacity: 0 }, { backgroundPosition: "100% 100%", duration: 0.90, ease: "power2.inOut" }, at(12.95));
+        tl.to("#frame-rim-glare", { opacity: 0.96, duration: 0.16, ease: "power2.out" }, at(12.95));
+        tl.to("#frame-rim-glare", { opacity: 0, duration: 0.22, ease: "power2.in" }, at(13.63));
         tl.to("#holo-static-sheen", { opacity: 0.96, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));
         tl.to("#result-halo", { opacity: 0.76, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));
         tl.to("#result-rays-a", { opacity: 0.42, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));

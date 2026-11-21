@@ -132,6 +132,7 @@ def generate_rainbow_foil_frame(
     glitter_strength: float = 0.45,
     brush_strength: float = 0.85,
     seed: int = 20261120,
+    with_filigree: bool = False,
 ) -> Image.Image:
     """
     デジタル感のない「物理金属箔・ホログラム虹フレーム」を生成する（内窓は透過）。
@@ -202,6 +203,9 @@ def generate_rainbow_foil_frame(
         sparkle_raw = (rng.uniform(0.0, 1.0, (h, w)) > 0.955).astype(np.float32)
         sparkle = sparkle_raw * glitter_strength * (0.55 + 0.45 * dome)
         rgb = np.clip(rgb + sparkle[:, :, None], 0.0, 1.0)
+
+    if not with_filigree:
+        return rgba_from_float(rgb, frame_alpha)
 
     # --- 四隅の金属フィリグリー ---
     csz = border + 96
@@ -393,6 +397,21 @@ def generate_card_back(w: int = CARD_W, h: int = CARD_H, seed: int = 20261120) -
     hair = np.clip(line_outer - line_inner, 0.0, 1.0)
     hair_rgb = shade_metal_relief(hair, GOLD_RAMP, bevel_px=0.8, depth=3.0, tone=0.62)
     rgb = rgb * (1.0 - hair[..., None]) + hair_rgb * hair[..., None]
+
+    # 四隅の金属フィリグリー（裏面のみ維持）
+    inner_mask = _make_rounded_rect_mask(w, h, pad=CARD_BORDER, radius=CARD_INNER_R, ss=2)
+    csz = CARD_BORDER + 96
+    fil_tl = _corner_filigree_mask(csz, CARD_BORDER)
+    fil = np.zeros((h, w), dtype=np.float32)
+    fil[:csz, :csz] = np.maximum(fil[:csz, :csz], fil_tl)
+    fil[:csz, w - csz:] = np.maximum(fil[:csz, w - csz:], fil_tl[:, ::-1])
+    fil[h - csz:, :csz] = np.maximum(fil[h - csz:, :csz], fil_tl[::-1, :])
+    fil[h - csz:, w - csz:] = np.maximum(fil[h - csz:, w - csz:], fil_tl[::-1, ::-1])
+    fil *= inner_mask
+    fil_rgb = shade_metal_relief(fil, GOLD_RAMP, bevel_px=1.3, depth=5.0, tone=0.66, shininess=36.0)
+    fil_shadow = np.roll(np.roll(gaussian_blur_f(fil, 2.2), 2, axis=0), 2, axis=1) * 0.78 * inner_mask
+    rgb = rgb * (1.0 - fil_shadow[..., None] * (1.0 - fil[..., None]))
+    rgb = rgb * (1.0 - fil[..., None]) + fil_rgb * fil[..., None]
 
     # 微細シボ＋ビネット
     emb = generate_micro_emboss_height(h, w, rng)

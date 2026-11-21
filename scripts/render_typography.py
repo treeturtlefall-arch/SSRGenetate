@@ -881,7 +881,7 @@ def main() -> None:
         ("flavor",    str(cfg.get("flavor", "")),        29, 780, 2, "typo_flavor.png"),
         ("cardNo",    str(cfg.get("cardNo", "")),        24, 340, 1, "typo_cardno.png"),
         ("cutinSub",  "RAINBOW ASCENSION",               34, 820, 1, "typo_cutin_sub.png"),
-        ("cutinMain", "昇格  SSR 確定",                  94, 980, 1, "typo_cutin_main.png"),
+        ("cutinMain", "昇格  SSR 確定",                  112, 980, 1, "typo_cutin_main.png"),
     ]
 
     manifest: Dict[str, Any] = {

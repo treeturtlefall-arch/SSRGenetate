@@ -44,26 +44,97 @@
     }
   });
 
-  // 2. [C] 冒頭降臨の流体シルクリボン・ウィスプ (3筋 × 18ノード + 余韻スターダスト18粒)
+  // 2. [C] 冒頭降臨の光の三原色（RGB）3D円錐三重螺旋ウィスプ (3筋 × 星核ヘッド + 42尾ノード + 余韻スターダスト30粒)
   const wispContainer = document.getElementById("wisp-streams");
+  const wispHeads = [];
   const wispNodes = [];
   const wispDusts = [];
+
+  function evalHelixPoint(sd, p, spread) {
+    const yProg = 0.65 * p + 0.35 * (0.5 - 0.5 * Math.cos(Math.PI * p));
+    const theta = sd.theta0 + Math.PI * 2 * sd.turns * (0.72 * p + 0.28 * Math.pow(p, 1.75));
+    const rEnv = Math.pow(Math.max(0, 1 - p), 0.72);
+    const radius = Math.max(
+      0,
+      (128 * (1 - p) + 265 * Math.sin(Math.PI * Math.pow(p, 0.82))) * rEnv + spread * (1 - p)
+    );
+    const z = Math.sin(theta);
+    const x = radius * Math.cos(theta);
+    const y = -755 * (1 - yProg) + radius * 0.28 * z;
+    const depthScale = 1.0 + 0.22 * z;
+    const depthAlpha = 0.86 + 0.14 * z;
+    return {
+      x: +x.toFixed(1),
+      y: +y.toFixed(1),
+      depthScale: depthScale,
+      depthAlpha: depthAlpha,
+    };
+  }
+
   if (wispContainer) {
     const streamDefs = [
-      { delay: 0.05, dur: 1.32, startX: -18, startY: -745, sway1: 135, sway2: -95 },
-      { delay: 0.12, dur: 1.26, startX: -105, startY: -735, sway1: -185, sway2: 130 },
-      { delay: 0.19, dur: 1.22, startX: 105, startY: -735, sway1: 180, sway2: -125 },
+      {
+        color: "blue",
+        delay: 0.04,
+        dur: 1.34,
+        theta0: -Math.PI / 6,
+        turns: 1.65,
+        headSize: 196,
+        tailScale: 1.22,
+        dustCols: ["cyan", "white"],
+      },
+      {
+        color: "red",
+        delay: 0.08,
+        dur: 1.32,
+        theta0: -Math.PI / 6 + (Math.PI * 2) / 3,
+        turns: 1.65,
+        headSize: 146,
+        tailScale: 0.94,
+        dustCols: ["pink", "white"],
+      },
+      {
+        color: "green",
+        delay: 0.12,
+        dur: 1.30,
+        theta0: -Math.PI / 6 + (Math.PI * 4) / 3,
+        turns: 1.65,
+        headSize: 142,
+        tailScale: 0.90,
+        dustCols: ["cyan", "white"],
+      },
     ];
-    const nPerStream = 18;
-    streamDefs.forEach(function (sd, sIdx) {
+    const nPerStream = 42;
+    streamDefs.forEach(function (sd) {
+      // 各ストリーム先頭の星核ヘッド
+      const headEl = document.createElement("div");
+      headEl.className = "wisp-head wisp-head-" + sd.color;
+      headEl.setAttribute("data-layout-allow-overflow", "");
+      headEl.setAttribute("data-layout-ignore", "");
+      headEl.style.cssText =
+        "width:" +
+        sd.headSize +
+        "px;height:" +
+        sd.headSize +
+        "px;margin-left:" +
+        (-sd.headSize / 2).toFixed(1) +
+        "px;margin-top:" +
+        (-sd.headSize / 2).toFixed(1) +
+        "px";
+      wispContainer.appendChild(headEl);
+      wispHeads.push({ el: headEl, sd: sd });
+
       for (let k = 0; k < nPerStream; k++) {
         const tLag = k / (nPerStream - 1);
-        const isVeil = k > 0 && k % 4 === 0;
+        const isVeil = k > 0 && k % 5 === 0;
         const el = document.createElement("div");
-        el.className = "wisp-node";
+        el.className = "wisp-node wisp-node-" + sd.color;
         el.setAttribute("data-layout-allow-overflow", "");
-        // 存在感のある力強い光核から後方へしなやかに先細りさせ、オーロラ霞で豊かに包む
-        const size = isVeil ? Math.round(168 + tLag * 48) : Math.round(124 * (1 - tLag * 0.52));
+        el.setAttribute("data-layout-ignore", "");
+        // 針状白芯＋広大宝石色オーラで、綿棒感を排除したまま堂々たる大スケールを描く
+        const size = isVeil
+          ? Math.round((152 + tLag * 32) * sd.tailScale)
+          : Math.round(58 * sd.tailScale * Math.pow(1 - tLag * 0.78, 1.12));
         el.style.cssText =
           "width:" +
           size +
@@ -76,13 +147,13 @@
           "px";
         wispContainer.appendChild(el);
 
-        const spread = (rng() - 0.5) * tLag * 26;
+        const spread = (rng() - 0.5) * tLag * 12;
         const peakAlpha =
           k === 0
-            ? 1.0
+            ? 0.95
             : isVeil
-              ? +(0.26 * (1 - tLag * 0.45)).toFixed(3)
-              : +(0.72 * Math.pow(1 - tLag, 1.25)).toFixed(3);
+              ? +(0.17 * (1 - tLag * 0.45)).toFixed(3)
+              : +(0.86 * Math.pow(1 - tLag, 1.05)).toFixed(3);
 
         wispNodes.push({
           el: el,
@@ -90,21 +161,22 @@
           k: k,
           tLag: tLag,
           isVeil: isVeil,
-          startAt: +(sd.delay + k * 0.015).toFixed(3),
+          startAt: +(sd.delay + k * 0.0105).toFixed(3),
           dur: sd.dur,
           spread: spread,
           peakAlpha: peakAlpha,
         });
       }
 
-      // 軌道からふわっとこぼれ落ちて漂う微細スターダスト (各ストリーム6粒)
-      for (let d = 0; d < 6; d++) {
-        const p = 0.18 + (d / 6) * 0.68;
+      // 軌道からこぼれ落ちて漂う微細スターダスト (各ストリーム10粒)
+      for (let d = 0; d < 10; d++) {
+        const p = 0.14 + (d / 10) * 0.74;
         const el = document.createElement("div");
         el.className = "sky-star";
         el.setAttribute("data-layout-allow-overflow", "");
-        const dSize = 26 + Math.floor(rng() * 20);
-        const spCol = (sIdx + d) % 2 === 0 ? "cyan" : "white";
+        el.setAttribute("data-layout-ignore", "");
+        const dSize = 18 + Math.floor(rng() * 24);
+        const spCol = sd.dustCols[d % 2];
         el.style.cssText =
           "left:50%;top:47%;width:" +
           dSize +
@@ -118,16 +190,15 @@
           spCol +
           '.png")';
         wispContainer.appendChild(el);
-        const yAt = sd.startY * (1 - p);
-        const xAt = p < 0.5 ? sd.sway1 * Math.sin(p * Math.PI * 2) : sd.sway2 * Math.sin((p - 0.5) * Math.PI * 2);
+        const pt = evalHelixPoint(sd, p, 0);
         wispDusts.push({
           el: el,
-          x0: +(xAt + (rng() - 0.5) * 28).toFixed(1),
-          y0: +yAt.toFixed(1),
-          dx: +((rng() - 0.5) * 56).toFixed(1),
-          dy: +(-18 + rng() * 44).toFixed(1),
+          x0: +(pt.x + (rng() - 0.5) * 32).toFixed(1),
+          y0: +pt.y.toFixed(1),
+          dx: +((rng() - 0.5) * 62).toFixed(1),
+          dy: +(-20 + rng() * 48).toFixed(1),
           appearAt: +(sd.delay + p * sd.dur + 0.04).toFixed(3),
-          dur: +(0.38 + rng() * 0.24).toFixed(3),
+          dur: +(0.40 + rng() * 0.24).toFixed(3),
         });
       }
     });
@@ -396,38 +467,69 @@
       tl.to(p.el, { opacity: 0, duration: 0.1 }, p.delay + p.dur);
     });
 
-    // 流体シルクリボン・ウィスプ: Y軸(連続sine/power降下) × X軸(3セグメント連続sine.inOutしなり) による完全スムーズ曲線
+    const STEPS = 28;
+
+    // 先頭星核ヘッド: 120°位相差の3D円錐三重螺旋を描きながら中央へ収束してオーブを生む
+    wispHeads.forEach(function (wh) {
+      const sd = wh.sd;
+      const p0 = evalHelixPoint(sd, 0, 0);
+      tl.set(
+        wh.el,
+        { x: p0.x, y: p0.y, scale: +(0.42 * p0.depthScale).toFixed(3), rotation: -14, opacity: 0 },
+        0
+      );
+      const frames = [];
+      for (let i = 1; i <= STEPS; i++) {
+        const p = i / STEPS;
+        const pt = evalHelixPoint(sd, p, 0);
+        const inEnv = p < 0.12 ? p / 0.12 : 1.0;
+        let baseScale;
+        let alphaEnv;
+        if (p < 0.12) {
+          baseScale = 0.42 + 0.64 * inEnv;
+          alphaEnv = inEnv;
+        } else if (p <= 0.90) {
+          baseScale = 1.06;
+          alphaEnv = 1.0;
+        } else {
+          const outT = (p - 0.90) / 0.10;
+          baseScale = outT < 0.35 ? 1.06 + 0.26 * (outT / 0.35) : 1.32 - 1.10 * ((outT - 0.35) / 0.65);
+          alphaEnv = Math.max(0, 1.0 - Math.pow(outT, 1.4));
+        }
+        frames.push({
+          x: pt.x,
+          y: pt.y,
+          scale: +(baseScale * pt.depthScale).toFixed(3),
+          opacity: +(alphaEnv * pt.depthAlpha).toFixed(3),
+        });
+      }
+      tl.to(wh.el, { keyframes: frames, duration: sd.dur, ease: "none" }, sd.delay);
+      tl.to(wh.el, { rotation: 36, duration: sd.dur, ease: "none" }, sd.delay);
+    });
+
+    // 3D円錐三重螺旋・尾ノード: keyframes による競合ゼロの単一軌道トゥイーン
     wispNodes.forEach(function (wn) {
       const sd = wn.sd;
       const t0 = wn.startAt;
-      const d1 = +(wn.dur * 0.36).toFixed(4);
-      const d2 = +(wn.dur * 0.36).toFixed(4);
-      const d3 = +(wn.dur - d1 - d2).toFixed(4);
-
-      tl.set(
-        wn.el,
-        { x: sd.startX, y: sd.startY, scale: wn.k === 0 ? 0.85 : 0.65, opacity: 0 },
-        0
-      );
-      // 立ち上がりフェード
-      tl.to(wn.el, { opacity: wn.peakAlpha, scale: 1.0, duration: 0.16, ease: "sine.out" }, t0);
-      // Y軸: 1本の滑らかな連続曲線で天蓋の穴からオーブ中心へ吸い込まれる
-      tl.to(wn.el, { y: 0, duration: wn.dur, ease: "sine.inOut" }, t0);
-      // X軸: sine.inOut の連続S字しなりで流体のように柔らかく蛇行して中央(0)へ収束
-      tl.to(wn.el, { x: +(sd.sway1 + wn.spread).toFixed(1), duration: d1, ease: "sine.inOut" }, t0);
-      tl.to(wn.el, { x: +(sd.sway2 - wn.spread * 0.7).toFixed(1), duration: d2, ease: "sine.inOut" }, +(t0 + d1).toFixed(4));
-      tl.to(wn.el, { x: 0, duration: d3, ease: "sine.inOut" }, +(t0 + d1 + d2).toFixed(4));
-      // 着弾時: 柔らかい余韻としてふわっと膨らみながら溶ける
-      tl.to(
-        wn.el,
-        {
-          scale: wn.isVeil ? 2.1 : 1.55,
-          opacity: 0,
-          duration: +(0.24 + (1 - wn.tLag) * 0.14).toFixed(3),
-          ease: "sine.out",
-        },
-        +(t0 + wn.dur - 0.06).toFixed(4)
-      );
+      const p0 = evalHelixPoint(sd, 0, wn.spread);
+      tl.set(wn.el, { x: p0.x, y: p0.y, scale: +(0.65 * p0.depthScale).toFixed(3), opacity: 0 }, 0);
+      const frames = [];
+      for (let i = 1; i <= STEPS; i++) {
+        const p = i / STEPS;
+        const pt = evalHelixPoint(sd, p, wn.spread);
+        const inEnv = p < 0.12 ? p / 0.12 : 1.0;
+        const outEnv = p > 0.88 ? Math.max(0, (1 - p) / 0.12) : 1.0;
+        const scaleBoost = 1 + (wn.isVeil ? 0.35 : 0.18) * (1 - outEnv);
+        const sc = (0.65 + 0.35 * Math.min(1, inEnv)) * scaleBoost * pt.depthScale;
+        const op = wn.peakAlpha * Math.min(1, inEnv) * outEnv * pt.depthAlpha;
+        frames.push({
+          x: pt.x,
+          y: pt.y,
+          scale: +sc.toFixed(3),
+          opacity: i === STEPS ? 0 : +op.toFixed(3),
+        });
+      }
+      tl.to(wn.el, { keyframes: frames, duration: wn.dur, ease: "none" }, t0);
     });
 
     wispDusts.forEach(function (wd) {

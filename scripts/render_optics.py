@@ -401,13 +401,13 @@ def render_crystal_orb_layers(style: str, size: int = 512, seed: int = 0) -> Tup
     N_len = np.sqrt(np.sum(N_raw * N_raw, axis=-1, keepdims=True))
     N = N_raw / np.maximum(N_len, 1e-5)
 
-    edge = np.exp(-((d1 - d2) / 0.011) ** 2) * inside_soft
+    edge = np.exp(-((d1 - d2) / 0.0072) ** 2) * inside_soft
     fresnel = np.power(np.clip(1.0 - nz, 0.0, 1.0), 2.8) * inside_soft
 
     lights = [
-        ((-0.48, -0.58, 0.66), 1.05, 28.0),
-        ((0.64, 0.42, 0.28),   0.62, 22.0),
-        ((-0.68, 0.26, 0.42),  0.46, 20.0),
+        ((-0.48, -0.58, 0.66), 1.32, 48.0),
+        ((0.64, 0.42, 0.28),   0.68, 34.0),
+        ((-0.68, 0.26, 0.42),  0.48, 28.0),
     ]
     spec_total = np.zeros((size, size), dtype=np.float32)
     diff_total = np.zeros((size, size), dtype=np.float32)
@@ -421,7 +421,7 @@ def render_crystal_orb_layers(style: str, size: int = 512, seed: int = 0) -> Tup
         spec_total += np.power(np.clip(N[..., 0] * hx + N[..., 1] * hy + N[..., 2] * hz, 0.0, 1.0), shin) * w_l
 
     phase_map = f_phases[f_idx]
-    facet_tone = np.clip(0.14 + 0.72 * np.power(np.clip(diff_total, 0.0, 1.4), 1.35) + 0.26 * phase_map, 0.08, 1.25)
+    facet_tone = np.clip(0.08 + 0.82 * np.power(np.clip(diff_total, 0.0, 1.5), 1.55) + 0.22 * phase_map, 0.05, 1.32)
 
     if style == "blue":
         base_col = np.stack([
@@ -455,9 +455,10 @@ def render_crystal_orb_layers(style: str, size: int = 512, seed: int = 0) -> Tup
         edge_col = np.array([1.00, 0.98, 1.00], dtype=np.float32)
 
     shell_body = base_col * inside_soft[..., None] * (0.46 + 0.44 * (1.0 - nz * 0.55))[..., None]
-    shell_edge = edge_col * edge[..., None] * 0.95
-    shell_rim = rim_col * (fresnel[..., None] * 1.25)
-    shell_spec = np.array([1.0, 0.99, 0.96], dtype=np.float32)[None, None, :] * (spec_total * inside_soft)[..., None] * 0.90
+    edge_mask = np.clip(0.14 + 0.95 * fresnel + 0.85 * np.clip(spec_total, 0.0, 1.0), 0.0, 1.0)
+    shell_edge = edge_col * (edge * edge_mask)[..., None] * 0.65
+    shell_rim = rim_col * (fresnel[..., None] * 1.42)
+    shell_spec = np.array([1.0, 0.99, 0.96], dtype=np.float32)[None, None, :] * (spec_total * inside_soft)[..., None] * 1.18
 
     shell_lin = shell_body + shell_edge + shell_rim + shell_spec
     outer_fade = 1.0 - smoothstep(1.16, 1.44, r)
@@ -783,9 +784,29 @@ def build_celestial_gate_masks(size: int = 1024, seed: int = 0) -> Tuple[Image.I
     )
 
 
-def render_descent_meteor(w: int = 256, h: int = 256, seed: int = 0) -> Image.Image:
+WISP_PALETTES = {
+    "blue": (
+        np.array([0.96, 0.99, 1.00], dtype=np.float32),
+        np.array([0.32, 0.84, 1.00], dtype=np.float32),
+        np.array([0.10, 0.42, 0.98], dtype=np.float32),
+    ),
+    "red": (
+        np.array([1.00, 0.95, 0.97], dtype=np.float32),
+        np.array([1.00, 0.34, 0.50], dtype=np.float32),
+        np.array([0.90, 0.12, 0.34], dtype=np.float32),
+    ),
+    "green": (
+        np.array([0.94, 1.00, 0.97], dtype=np.float32),
+        np.array([0.24, 0.96, 0.68], dtype=np.float32),
+        np.array([0.08, 0.72, 0.48], dtype=np.float32),
+    ),
+}
+
+
+def render_descent_meteor(style: str = "blue", w: int = 256, h: int = 256, seed: int = 0) -> Image.Image:
     """
-    冒頭 0.08s〜1.45s に天蓋から曲線軌道で柔らかく降臨する流体シルクリボン用ウィスプ (256x256)。
+    冒頭 0.04s〜1.50s に天蓋から曲線軌道で降臨する光の三原色ウィスプの尾用ノード (256x256)。
+    針状白芯＋高彩度内側光層＋広大で透き通った宝石色オーラを分離し、綿棒感を排除する。
     """
     rng = np.random.default_rng((seed * 65537 + 41) & 0xFFFFFFFF)
     yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
@@ -796,25 +817,57 @@ def render_descent_meteor(w: int = 256, h: int = 256, seed: int = 0) -> Image.Im
     noise = aniso_fbm(rng, h, w, cell_y=32.0, cell_x=32.0)
     r_wobble = np.maximum(0.0, r + 0.035 * noise * smoothstep(0.08, 0.55, r))
 
-    core = np.exp(-((r / 0.145) ** 1.85)) * 1.42
-    inner_mist = np.exp(-((r_wobble / 0.34) ** 1.70)) * 0.82
-    outer_veil = np.exp(-((r_wobble / 0.56) ** 1.60)) * (0.85 + 0.15 * noise) * 0.42
+    core = np.exp(-((r / 0.068) ** 2.1)) * 2.15
+    inner_band = np.exp(-((r_wobble / 0.165) ** 1.9)) * 0.78
+    outer_aura = np.exp(-((r_wobble / 0.48) ** 1.55)) * (0.82 + 0.18 * noise) * 0.30
 
-    col_white = np.array([0.97, 0.99, 1.00], dtype=np.float32)
-    col_aqua = np.array([0.42, 0.88, 1.00], dtype=np.float32)
-    col_azure = np.array([0.16, 0.50, 0.98], dtype=np.float32)
+    col_core, col_inner, col_aura = WISP_PALETTES.get(style, WISP_PALETTES["blue"])
 
     lin = (
-        core[..., None] * col_white
-        + inner_mist[..., None] * col_aqua
-        + outer_veil[..., None] * col_azure
+        core[..., None] * col_core
+        + inner_band[..., None] * col_inner
+        + outer_aura[..., None] * col_aura
     )
 
-    lin = np.stack([fft_gaussian_blur(lin[..., k], 2.6) * 0.42 + lin[..., k] * 0.78 for k in range(3)], axis=-1)
-    post_fade = (1.0 - smoothstep(0.56, 0.90, r)) ** 2
+    lin = np.stack([fft_gaussian_blur(lin[..., k], 0.9) * 0.22 + lin[..., k] * 0.90 for k in range(3)], axis=-1)
+    post_fade = (1.0 - smoothstep(0.50, 0.92, r)) ** 2
     lin *= post_fade[..., None]
 
     srgb = linear_to_srgb(1.0 - np.exp(-np.maximum(lin, 0.0) * 1.18))
+    return srgb_to_unpremul_rgba(srgb)
+
+
+def render_wisp_head(style: str = "blue", size: int = 256, seed: int = 0) -> Image.Image:
+    """
+    光の三原色ウィスプ各条の先頭を飾る専用星核ヘッド (256x256)。
+    超高輝度星核＋水平アナモルフィック閃光＋四芒星スパイク＋薄い宝石色ハロー。
+    """
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32)
+    nx = (xx - (size - 1) * 0.5) / ((size - 1) * 0.5)
+    ny = (yy - (size - 1) * 0.5) / ((size - 1) * 0.5)
+    r = np.sqrt(nx * nx + ny * ny + 1e-6)
+
+    star_core = np.exp(-((r / 0.068) ** 2.0)) * 2.4
+    anamorphic = np.exp(-((ny / 0.020) ** 2)) * np.exp(-((nx / 0.68) ** 2)) * 1.45
+    spike_v = np.exp(-((nx / 0.018) ** 2)) * np.exp(-((ny / 0.46) ** 2)) * 1.15
+
+    u45 = (nx + ny) * 0.7071
+    v45 = (nx - ny) * 0.7071
+    spike_diag = (
+        np.exp(-((u45 / 0.015) ** 2)) * np.exp(-((v45 / 0.26) ** 2))
+        + np.exp(-((v45 / 0.015) ** 2)) * np.exp(-((u45 / 0.26) ** 2))
+    ) * 0.55
+
+    halo = np.exp(-((r / 0.34) ** 1.7)) * 0.46
+    col_core, col_inner, col_aura = WISP_PALETTES.get(style, WISP_PALETTES["blue"])
+
+    lin = (
+        (star_core + anamorphic * 0.75 + spike_v * 0.75 + spike_diag * 0.6)[..., None] * col_core
+        + (anamorphic * 0.55 + spike_v * 0.45 + halo)[..., None] * col_inner
+        + (halo * 0.55)[..., None] * col_aura
+    )
+    lin *= ((1.0 - smoothstep(0.62, 0.96, r)) ** 2)[..., None]
+    srgb = linear_to_srgb(1.0 - np.exp(-np.maximum(lin, 0.0) * 1.25))
     return srgb_to_unpremul_rgba(srgb)
 
 
@@ -1030,7 +1083,7 @@ def main() -> None:
 
         tasks.append(ex.submit(_job))
 
-    with ThreadPoolExecutor() as ex:
+    with ThreadPoolExecutor(max_workers=8) as ex:
         # 1. 魔法陣 3色 × 3層
         for s_idx, (cname, spec, is_prism, exp, h_val) in enumerate(mc_styles):
             for r_idx, (rname, mask) in enumerate(rings):
@@ -1158,14 +1211,17 @@ def main() -> None:
                     seed + 3100 + s_idx * 97 + r_idx * 19,
                 )
 
-        # 11. 冒頭降臨流体ウィスプ & 金/虹昇格の天啓光撃
+        # 11. 冒頭降臨光の三原色ウィスプ（尾＋星核ヘッド） & 金/虹昇格の天啓光撃
         def _meteor_bolts_job() -> str:
-            meteor_img = render_descent_meteor(w=256, h=256, seed=seed + 3401)
-            save_png(meteor_img, OUT_DIR / "opt_meteor_blue.png")
+            for c_idx, cname in enumerate(("blue", "red", "green")):
+                meteor_img = render_descent_meteor(style=cname, w=256, h=256, seed=seed + 3401 + c_idx * 13)
+                save_png(meteor_img, OUT_DIR / f"opt_meteor_{cname}.png")
+                head_img = render_wisp_head(style=cname, size=256, seed=seed + 3451 + c_idx * 13)
+                save_png(head_img, OUT_DIR / f"opt_wisp_head_{cname}.png")
             bolt_gold_img, bolt_prism_img = render_sky_bolts(seed=seed + 3601)
             save_png(bolt_gold_img, OUT_DIR / "opt_bolt_gold.png")
             save_png(bolt_prism_img, OUT_DIR / "opt_bolt_prism.png")
-            return "[OK] opt_meteor_blue.png & opt_bolt_{gold,prism}.png"
+            return "[OK] opt_meteor_{blue,red,green}.png, opt_wisp_head_{blue,red,green}.png & opt_bolt_{gold,prism}.png"
 
         tasks.append(ex.submit(_meteor_bolts_job))
 

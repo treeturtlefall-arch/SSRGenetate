@@ -48,7 +48,7 @@
 | **Phase 2A** | 取りこぼし修正・タイムライン骨格確定・定量QA | スペキュラはみ出し/曇り膜/光柱修正・昇格語彙差別化・真空の間・着地同期・`qa_video.py` | `index.html`, `compositions/scene-summon.html`, `compositions/scene-result.*`, `scripts/generate_se.py`, `scripts/qa_video.py`, `package.json` | ★★★ 完了 |
 | **Phase 2B** | 召喚〜昇格の「脱CSS ＆ 3D空間光学アセット化」＋ 天蓋・空域演出 | カットイン脱ベタ帯・冒頭点火・3D床魔法陣・クリスタルオーブ・不規則ゴッドレイ・天蓋アストロラーベ・流体ウィスプ・星屑 | `scripts/render_optics.py`, `scripts/render_typography.py`, `compositions/scene-summon.*`, `compositions/scene-summon-setup.js`, `compositions/scene-result.*` | ★★★ 完了 |
 | **Phase 2.5** | フロントエンド共通化 ＆ アセット生成高速化・ストレージ最適化 | `shared-base.css`/`shared-utils.js`集約、`_optics_core.py`新設・EDT高速化・並列ビルド（41s→7.5s）、ストレージ整理・新方式定量QA検証 | `compositions/shared-*`, `scripts/_optics_core.py`, `scripts/_utils.py`, `scripts/build_all.py`, `scripts/render_*`, `package.json` | ★★★ 完了 |
-| **Phase 3** | 音響の「現代ソシャゲ音像化」＆ 後半マイクロポリッシュ4点 | 脱ブラス・`fftconvolve`残響・14.8s余韻・-14 LUFS適正化（QA -12.4dB/末尾無音の解消） ＋ 縦版9:16の最後の一手仕上げ | `scripts/generate_se.py`, `.gitignore`, `compositions/scene-result.*`, `compositions/scene-result-setup.js`, `scripts/render_material.py` | ★★☆ 次フェーズ |
+| **Phase 3** | 音響の「現代ソシャゲ音像化」＆ 映像マイクロポリッシュ（レビュー反映完遂） | 映像面7大改善（ウィスプ3D螺旋・オーブ宝石化・前面点火・カットイン引き算・四隅整理・光走査・外枠グレア）完了済み。次ステップで脱ブラス・`fftconvolve`残響・14.8s余韻・-14 LUFS適正化へ着手 | `scripts/generate_se.py`, `.gitignore`, `compositions/scene-*`, `scripts/render_*` | ★★☆ 進行中（映像完了・音響着手へ） |
 | **Phase 4** | 運用性・量産性強化 ＆ 5軸/複数素材検証 | 任意テキスト箔同期・オートレイアウト ＋ 5品質評価軸・不要要素削減・多様な素材検証 | `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js` | ★☆☆ 仕上げ |
 | **Phase 5** | 横動画（16:9）× 横型カード対応 | 風景・周辺情報込みの横写真向け 1920×1080 ワイド演出モード追加（詳細設計: [`LANDSCAPE_PLAN.md`](./LANDSCAPE_PLAN.md)） | `card-config.js`, `index.html`, `compositions/*`, `scripts/_utils.py`, `scripts/render_material.py`, `scripts/render_typography.py`, `package.json` | ★☆☆ 拡張 |
 
@@ -232,13 +232,17 @@ Phase 2 までの急速な機能追加によって生じたコードの重複、
 - [ ] **3-4. （任意拡張）ユーザー所蔵SEライブラリ併用オプションの検討**
   - **対象**: `scripts/generate_se.py`, `.gitignore`
   - **対策**: 個人環境向けに、衝撃音・ガラス破砕・クラッシュシンバル等のユーザー所蔵ワンショット WAV をローカル専用フォルダ（例: `assets/se_custom/`、`.gitignore` 対象）に配置した場合のみ読み込んでミックスし、未配置時は 100% プロシージャル合成へ自動フォールバックする拡張設計を検討する（OSS 配布時の著作権・ライセンス混入防止）。
-- [ ] **3-5. 後半（リザルト）マイクロポリッシュ 4 点（縦版 9:16 完成）**
-  - **対象**: `compositions/scene-result.html`, `compositions/scene-result.css`, `compositions/scene-result-setup.js`, `scripts/render_material.py`
-  - **対策**:
-    1. 左上 `#ssr-emblem`・右上 `#attr-badge` とフレーム四隅の L 字フィリグリーの微干渉を解消する（上 2 隅のフィリグリー位置調整または下 2 隅中心の装飾整理）。
-    2. タイトル等テキスト出現（`9.38s〜10.5s`）の Web 的フェードイン（`opacity + y` 浮上）を、左→右への光の走査ワイプ（`clip-path`＋閃光ライン）または一瞬のスケール打刻へ刷新する。
-    3. カード左右余白（各 90px）に対する特大スパークルの押し込み感を解消するため、コーナー頂点アンカー化またはカード幅の微調整を行う。
-    4. `12.0s〜15.0s` のレイアウト完全固定を保ったまま、`13.2s` 付近でカード外枠リム上を細い高輝度グレアが 1 回ハッキリ滑る演出を追加し、終盤 3 秒の「生きているホログラム」感を明確化する。
+- [x] **3-5. 映像マイクロポリッシュ完遂 ＆ 外部レビュー指摘全項目クリア（縦版 9:16 映像完成）**
+  - **対象**: `scripts/render_optics.py`, `scripts/render_typography.py`, `scripts/render_material.py`, `scripts/_utils.py`, `compositions/scene-summon.*`, `compositions/scene-summon-setup.js`, `compositions/scene-result.*`, `compositions/scene-result-setup.js`
+  - **成果**:
+    1. **表面四隅フィリグリー撤去（裏面は 4 隅維持）**: `mat_rainbow_frame.png`（表面）から四隅の L 字フィリグリーを外して左上 `#ssr-emblem`・右上 `#attr-badge` との干渉を完全解消。裏面（`mat_card_back.png`）には 4 隅フィリグリーを移植・維持。
+    2. **テキスト＆星出現の脱 Web フェードイン**: 5 つ星点灯時の白閃光フラッシュ（`.star-flare`）を追加し、肩書・タイトル（光走査ライン＋着地スケール）・フレーバー・カード番号を左→右の光走査ワイプ（`clip-path` 単位整合）へ刷新。
+    3. **右端スパークル見切れ解消 ＆ ホロスイープ白幕感軽減**: スパークルクラスター座標を内側へ寄せ、`#holo-sweep-1/-2` の帯幅を半減（`190px`）して鋭いプリズム閃光へ調整。
+    4. **13.2s 外枠リムグレア追加**: `12.0s〜15.0s` のレイアウト完全固定を保ったまま、`12.95s〜13.85s` でカード外枠リム上を細い高輝度グレア `#frame-rim-glare` が走る演出を追加。
+    5. **冒頭ウィスプの RGB 三原色 3D 円錐三重螺旋 ＆ 専用星核ヘッド**: 冒頭 3 条のウィスプを青・赤・緑の三原色パレットへ分離し、120° 位相差の 3D 円錐螺旋評価式（`evalHelixPoint`）と GSAP keyframes（28 ステップ）で有機的螺旋描画。各先端に専用星核ヘッド（`opt_wisp_head_*`）、針状白芯＋広大オーラ（`opt_meteor_*`）を配置。
+    6. **前面点火フラッシュ（1.34s）＆ 魔法陣配置調整**: オーブ中央収束時の着弾点火フラッシュ（`#ignition-spark`）を床魔法陣・オーブの手前へ配置移動し、床魔法陣の縦位置（`top: 52%`）をオーブ中心と整合。
+    7. **クリスタルオーブの宝石化 ＆ 虹カットイン背景引き算**: オーブのフレネルバイアスと鏡面ハイライトを強化して網目感を解消。虹カットイン時はカメラ減光（`opacity: 0.45`）＋暗幕拡大（500px）＋箔タイポ拡大（112px）で主役を引き立てるメリハリを実現。
+    8. **Windows 並列 I/O 堅牢化**: `_utils.py` の `save_png` をメモリバッファ経由・リトライ付き（最大5回）とし、`ThreadPoolExecutor` の並列競合エラーを完全解消。
 
 ### Phase 3 定量完了基準（DoD）
 - `npm run qa -- --check-audio` にて統合ラウドネスが **`-14.0 LUFS (±1.5 LU)`** に収まり、`14.5s` までデジタル無音にならない滑らかな余韻が残ること。
