@@ -18,7 +18,7 @@
     <style>
       :root {
         --in-oklab: ;
-        --bg-void: #040611;
+        --bg-edge-black: #000000;
       }
 
       @supports (background: linear-gradient(in oklab, white, black)) {
@@ -38,7 +38,7 @@
         width: 1080px;
         height: 1920px;
         overflow: hidden;
-        background: var(--bg-void);
+        background: var(--bg-edge-black);
         -webkit-font-smoothing: antialiased;
       }
 
@@ -47,7 +47,7 @@
         width: 1080px;
         height: 1920px;
         overflow: hidden;
-        background: var(--bg-void);
+        background: var(--bg-edge-black);
         isolation: isolate;
       }
 
@@ -58,6 +58,12 @@
         height: 1920px;
         overflow: hidden;
         pointer-events: none;
+      }
+
+      #preroll-bg {
+        z-index: 5;
+        opacity: 0;
+        background: radial-gradient(circle at 50% 47% var(--in-oklab), #101b3f 0%, #060a1b 58%, #020309 100%);
       }
 
       #comp-summon {
@@ -73,6 +79,12 @@
         background: #ffffff;
         opacity: 0;
       }
+
+      #edge-fade-out {
+        z-index: 70;
+        background: #000000;
+        opacity: 0;
+      }
     </style>
   </head>
   <body>
@@ -80,17 +92,17 @@
       id="root"
       data-composition-id="main"
       data-start="0"
-      data-duration="15"
+      data-duration="16"
       data-width="1080"
       data-height="1920"
     >
       <!-- =====================================================
-           Audio Tracks (Procedural WAVs synced to 15.0s timeline)
+           Audio Tracks (0.5s silent preroll + 15.0s main + 0.5s silent tail)
            ===================================================== -->
       <audio
         id="audio-summon"
         src="assets/se_summon.wav"
-        data-start="0"
+        data-start="0.5"
         data-duration="3.5"
         data-volume="0.85"
         data-track-index="10"
@@ -98,7 +110,7 @@
       <audio
         id="audio-upgrade"
         src="assets/se_upgrade.wav"
-        data-start="2.5"
+        data-start="3.0"
         data-duration="4.8"
         data-volume="0.92"
         data-track-index="11"
@@ -106,42 +118,52 @@
       <audio
         id="audio-fanfare"
         src="assets/se_fanfare.wav"
-        data-start="6.8"
+        data-start="7.3"
         data-duration="8.0"
         data-volume="0.95"
         data-track-index="12"
       ></audio>
 
       <!-- =====================================================
-           Sub-Composition 1: Summon Circle, Orb & Fake Upgrade (0.0s - 7.4s)
+           Preroll Fade-In Background (0.0s - 0.55s)
+           ===================================================== -->
+      <div id="preroll-bg" class="clip" data-start="0" data-duration="0.55" data-track-index="3"></div>
+
+      <!-- =====================================================
+           Sub-Composition 1: Summon Circle, Orb & Fake Upgrade (0.5s - 7.9s)
            ===================================================== -->
       <div
         id="comp-summon"
         class="clip"
         data-composition-id="scene-summon"
         data-composition-src="compositions/scene-summon.html"
-        data-start="0"
+        data-start="0.5"
         data-duration="7.4"
         data-track-index="0"
       ></div>
 
       <!-- =====================================================
-           Sub-Composition 2: 3D SSR Card Reveal & Static Result (6.9s - 15.0s)
+           Sub-Composition 2: 3D SSR Card Reveal & Static Result (7.4s - 16.0s)
            ===================================================== -->
       <div
         id="comp-result"
         class="clip"
         data-composition-id="scene-result"
         data-composition-src="compositions/scene-result.html"
-        data-start="6.9"
-        data-duration="8.1"
+        data-start="7.4"
+        data-duration="8.6"
         data-track-index="1"
       ></div>
 
       <!-- =====================================================
-           Whiteout Flash Transition Layer (6.6s - 7.7s)
+           Whiteout Flash Transition Layer (7.1s - 8.2s)
            ===================================================== -->
-      <div id="flash-layer" class="clip" data-start="6.6" data-duration="1.1" data-track-index="2"></div>
+      <div id="flash-layer" class="clip" data-start="7.1" data-duration="1.1" data-track-index="2"></div>
+
+      <!-- =====================================================
+           Tail Fade-Out Layer (15.45s - 16.0s)
+           ===================================================== -->
+      <div id="edge-fade-out" class="clip" data-start="15.45" data-duration="0.55" data-track-index="4"></div>
     </div>
 
     <script>
@@ -163,18 +185,30 @@
 
         const tl = gsap.timeline({ paused: true });
 
-        tl.set("#flash-layer", { opacity: 0 }, 6.6);
-        // Critical whiteout transition: sharp expo.in -> 3-frame pure white hold (6.98-7.08s) -> sharp expo.out reveal
+        // Preroll fade-in from pure black to deep void (0.0s - 0.5s)
+        tl.fromTo("#preroll-bg", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, 0);
+
+        tl.set("#flash-layer", { opacity: 0 }, 7.1);
+        // Critical whiteout transition: sharp expo.in -> 3-frame pure white hold (7.48-7.58s) -> sharp expo.out reveal
         tl.fromTo(
           "#flash-layer",
           { opacity: 0 },
           { opacity: 1, duration: 0.24, ease: "expo.in", immediateRender: false },
-          6.74
+          7.24
         );
-        tl.to("#flash-layer", { opacity: 0, duration: 0.22, ease: "expo.out" }, 7.08);
+        tl.to("#flash-layer", { opacity: 0, duration: 0.22, ease: "expo.out" }, 7.58);
 
-        // Anchor 15.0s total duration
-        tl.set("#root", {}, 15.0);
+        // Tail fade-out to pure black (15.5s - 16.0s)
+        tl.set("#edge-fade-out", { opacity: 0 }, 15.45);
+        tl.fromTo(
+          "#edge-fade-out",
+          { opacity: 0 },
+          { opacity: 1, duration: 0.5, ease: "power2.inOut", immediateRender: false },
+          15.5
+        );
+
+        // Anchor 16.0s total duration
+        tl.set("#root", {}, 16.0);
 
         window.__timelines = window.__timelines || {};
         window.__timelines["main"] = tl;

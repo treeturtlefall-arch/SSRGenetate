@@ -656,3 +656,39 @@
     drop-shadow(0 4px 10px rgba(0, 0, 0, 0.96))
     drop-shadow(0 10px 28px rgba(0, 0, 0, 0.92));
 }
+
+/* 冒頭導入：左から右斜め下へ駆け抜ける流れ星 */
+#intro-shooting-star {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 26;
+}
+
+.intro-meteor-head,
+.intro-meteor-streak,
+.intro-meteor-node,
+.intro-meteor-dust {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  transform-origin: 50% 50%;
+}
+
+.intro-meteor-head {
+  background-image: url("../assets/generated/opt_wisp_head_blue.png");
+}
+
+.intro-meteor-streak {
+  background-image: url("../assets/generated/opt_cutin_flare.png");
+  background-size: 100% 100%;
+}
+
+.intro-meteor-node {
+  background-image: url("../assets/generated/opt_meteor_blue.png");
+}

@@ -33,7 +33,7 @@
 | **5. 横画像・横動画対応（Phase 5）** | 風景・周辺情報込みでカード化したい横写真向けに、**動画キャンバス自体を 16:9（1920×1080）にした横型 SSR カード演出（パターン B）** をサポートする。縦（9:16）での演出・音響・運用性のこだわりを Phase 0〜4 で完成させた後、最後尾の Phase 5 として実装する。 |
 
 ### 不変の原則（絶対ルール）
-- **総尺**: 15.0 秒以内を厳守する。
+- **総尺**: **16.0 秒**（冒頭 `0.5s` 無音・背景フェードイン ＋ 本編 `15.0s` ＋ 末尾 `0.5s` 無音・黒フェードアウト）を厳守する。
 - **写真保護**: 入力写真は 100% クリアなまま一切汚さない（写真自体へ処理を加える必要が生じた場合は `/media-use` の `media-treatments` 規範を遵守する）。
 - **決定論的レンダリング**: `Math.random()`・`Date.now()`・外部ネットワーク取得を禁止し、シード付き疑似乱数と登録済み GSAP タイムラインのみで描画する。
 
@@ -48,7 +48,7 @@
 | **Phase 2A** | 取りこぼし修正・タイムライン骨格確定・定量QA | スペキュラはみ出し/曇り膜/光柱修正・昇格語彙差別化・真空の間・着地同期・`qa_video.py` | `index.html`, `compositions/scene-summon.html`, `compositions/scene-result.*`, `scripts/generate_se.py`, `scripts/qa_video.py`, `package.json` | ★★★ 完了 |
 | **Phase 2B** | 召喚〜昇格の「脱CSS ＆ 3D空間光学アセット化」＋ 天蓋・空域演出 | カットイン脱ベタ帯・冒頭点火・3D床魔法陣・クリスタルオーブ・不規則ゴッドレイ・天蓋アストロラーベ・流体ウィスプ・星屑 | `scripts/render_optics.py`, `scripts/render_typography.py`, `compositions/scene-summon.*`, `compositions/scene-summon-setup.js`, `compositions/scene-result.*` | ★★★ 完了 |
 | **Phase 2.5** | フロントエンド共通化 ＆ アセット生成高速化・ストレージ最適化 | `shared-base.css`/`shared-utils.js`集約、`_optics_core.py`新設・EDT高速化・並列ビルド（41s→7.5s）、ストレージ整理・新方式定量QA検証 | `compositions/shared-*`, `scripts/_optics_core.py`, `scripts/_utils.py`, `scripts/build_all.py`, `scripts/render_*`, `package.json` | ★★★ 完了 |
-| **Phase 3** | 音響の「現代ソシャゲ音像化」＆ 映像マイクロポリッシュ（レビュー反映完遂） | 映像面7大改善（ウィスプ3D螺旋・オーブ宝石化・前面点火・カットイン引き算・四隅整理・光走査・外枠グレア）完了済み。次ステップで脱ブラス・`fftconvolve`残響・14.8s余韻・-14 LUFS適正化へ着手 | `scripts/generate_se.py`, `.gitignore`, `compositions/scene-*`, `scripts/render_*` | ★★☆ 進行中（映像完了・音響着手へ） |
+| **Phase 3** | 音響の「現代ソシャゲ音像化」＆ 映像マイクロポリッシュ（レビュー反映完遂） | 現代ソシャゲ音像刷新・`fftconvolve`残響・真空ダッキング・14.8s余韻・`-14 LUFS`統一・ローカルカスタムSEスロット基盤（`assets/se_custom/`）＋ 映像面7大改善を完了 | `scripts/_audio_dsp.py`, `scripts/_audio_slots.py`, `scripts/generate_se.py`, `assets/se_custom/README.md`, `.gitignore`, `compositions/scene-*`, `scripts/render_*` | ★★☆ 完了 |
 | **Phase 4** | 運用性・量産性強化 ＆ 5軸/複数素材検証 | 任意テキスト箔同期・オートレイアウト ＋ 5品質評価軸・不要要素削減・多様な素材検証 | `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js` | ★☆☆ 仕上げ |
 | **Phase 5** | 横動画（16:9）× 横型カード対応 | 風景・周辺情報込みの横写真向け 1920×1080 ワイド演出モード追加（詳細設計: [`LANDSCAPE_PLAN.md`](./LANDSCAPE_PLAN.md)） | `card-config.js`, `index.html`, `compositions/*`, `scripts/_utils.py`, `scripts/render_material.py`, `scripts/render_typography.py`, `package.json` | ★☆☆ 拡張 |
 
@@ -217,21 +217,18 @@ Phase 2 までの急速な機能追加によって生じたコードの重複、
 
 映像側の秒数が完全に固まった段階で、音響を製品級へ刷新し、あわせて縦版（9:16）後半リザルトの最後の微調整 4 点を仕上げます。
 
-- [ ] **3-1. ファンファーレ音色の刷新（現代ソシャゲ音像・完全プロシージャル）**
-  - **対象**: `scripts/generate_se.py` (`synth_brass_note`, `build_se_fanfare`, `build_se_upgrade`)
-  - **課題**: 上位 10 倍音鋸波＋固定カットオフのローパス＋平坦 ADSR による 90 年代シンセブラス感・着メロ感が目立っている。
-  - **対策**: Python（`numpy` / `scipy`）のみで、**重厚なサブベース＆ティンパニ打撃 ＋ 金属クラッシュシンバル残響（高域バンドパスノイズ） ＋ 広がりのあるシマーパッド＆高精細クリスタル／ハープアルペジオ**を中心とする現代ソシャゲ音像へ再構築する（ブラス要素を残す場合もアタック時フィルタ開閉エンベロープと微細ピッチ表現に留め、主役を交代させる）。
-- [ ] **3-2. コンボリューションリバーブ化**
-  - **対象**: `scripts/generate_se.py` (`simple_stereo_reverb`)
-  - **課題**: 6 タップの単純ディレイでは残響密度が薄くパタパタ感が出る。
-  - **対策**: `scipy.signal.fftconvolve` を用い、指数減衰するステレオノイズ IR（インパルス応答）を畳み込む簡易コンボリューションリバーブへ置き換え、高密度なホール残響を実現する。
-- [ ] **3-3. 無音ブレーク同期・末尾余韻・ラウドネス適正化**
-  - **対象**: `scripts/generate_se.py` (`build_se_upgrade`, `build_se_fanfare`, `save_wav`)
-  - **課題**: 最後の和音が `12.6s` 付近で終了して終盤（14.0s以降）がデジタル無音（RMS -120dB）になり、直近の QA で統合ラウドネスが `-12.4 LUFS` と目標上限（-12.5 LUFS）を 0.1dB 超過した。
-  - **対策**: `5.10s〜5.18s` の真空の間（暗転）に合わせて SE の無音ブレークを完全同期させる。終盤は `12.0s〜15.0s` の光微動に寄り添う静かなシマー／ルームトーン余韻を `14.8s` まで滑らかにフェードさせ、統合ラウドネスを SNS 基準（`-14.0 LUFS ±1.5 LU`、許容範囲 -15.5〜-12.5 LUFS）へ適正化する。
-- [ ] **3-4. （任意拡張）ユーザー所蔵SEライブラリ併用オプションの検討**
-  - **対象**: `scripts/generate_se.py`, `.gitignore`
-  - **対策**: 個人環境向けに、衝撃音・ガラス破砕・クラッシュシンバル等のユーザー所蔵ワンショット WAV をローカル専用フォルダ（例: `assets/se_custom/`、`.gitignore` 対象）に配置した場合のみ読み込んでミックスし、未配置時は 100% プロシージャル合成へ自動フォールバックする拡張設計を検討する（OSS 配布時の著作権・ライセンス混入防止）。
+- [x] **3-1. ファンファーレ音色の刷新（現代ソシャゲ音像・完全プロシージャル）**
+  - **対象**: `scripts/_audio_dsp.py` (新設), `scripts/generate_se.py`
+  - **成果**: 90年代固定 LPF 鋸波ブラスを廃止し、ステレオ・シマーストリングスパッド＋重厚サブドロップ＆ティンパニ打撃＋金属クラッシュシンバル＋チェレスタ＆物理風ハープ撥弦＋動的ローパス＆アタックピッチ滑り込み付きモダンホーン（補助）へ刷新。
+- [x] **3-2. コンボリューションリバーブ化**
+  - **対象**: `scripts/_audio_dsp.py` (`make_hall_ir`, `convolution_reverb`)
+  - **成果**: `scipy.signal.fftconvolve` による高密度ホール・インパルス応答（初期反射＋空気吸収減衰＋シマー残響＋Wet 180Hz HPF）へ置換し、ディレイのパタパタ感を解消。
+- [x] **3-3. 無音ブレーク同期・末尾余韻・ラウドネス適正化**
+  - **対象**: `scripts/generate_se.py`, `scripts/_audio_dsp.py` (`measure_lufs`, `soft_limit`)
+  - **成果**: コンボリューションリバーブ後に真空の間（`5.06s〜5.18s`）の急峻ダッキングを適用し、終盤 `12.0s〜14.8s`（全体 `12.5s〜15.3s`）へ光呼吸に寄り添う Cmaj9 シマー余韻＆外枠グレア音を配置。さらに再生冒頭の音切れ・末尾のぶつ切りを防ぐため前後 `0.5s` 無音＆映像フェードイン／アウト余白（総尺 16.0s）を追加。BS.1770-4 準拠 3トラック統合マスタリング＋4x TruePeak 対応ソフトリミッターにより、実測 QA（`renders/ssr_gacha_16s_meteor_v2.mp4`）で **LUFS=-14.1（基準 -15.5〜-12.5 PASS）・TruePeak=-2.3dBFS・Head(0-0.5s)=-120.0dB・Tail(14.5-15.0s)=-38.6dB・Pad(15.5-16.0s)=-120.0dB・Edge Padding(0.0/0.0)** を達成。
+- [x] **3-4. （任意拡張）ユーザー所蔵SEライブラリ併用オプションの実装**
+  - **対象**: `scripts/_audio_slots.py` (新設), `scripts/generate_se.py`, `assets/se_custom/README.md` (新設), `.gitignore`
+  - **成果**: `.gitignore` で完全隔離された `assets/se_custom/` に全11スロット（`ignition`, `heartbeat`, `gold_hit`, `orb_crack`, `rainbow_shatter`, `cutin_whoosh`, `riser`, `whiteout_impact`, `card_whoosh`, `card_land`, `star_chime`）と `slots.json` による `layer` / `replace` 制御を実装。8/16/24/32-bit・IEEE float・任意SR・モノラル自動変換、自動ピッチ展開、リバーブ・LUFS 一体適用に対応し、未配置時は 100% プロシージャルへ自動フォールバック。
 - [x] **3-5. 映像マイクロポリッシュ完遂 ＆ 外部レビュー指摘全項目クリア（縦版 9:16 映像完成）**
   - **対象**: `scripts/render_optics.py`, `scripts/render_typography.py`, `scripts/render_material.py`, `scripts/_utils.py`, `compositions/scene-summon.*`, `compositions/scene-summon-setup.js`, `compositions/scene-result.*`, `compositions/scene-result-setup.js`
   - **成果**:

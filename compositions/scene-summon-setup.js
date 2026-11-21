@@ -44,6 +44,130 @@
     }
   });
 
+  // 1.5 冒頭導入：左から右斜め下へ駆け抜ける物理光学流れ星（Shooting Star）
+  const meteorRng = createRng(seed ^ 0x51a7f3);
+  const meteorContainer = document.getElementById("intro-shooting-star");
+  let introMeteorHead = null;
+  let introMeteorStreak = null;
+  const introMeteorNodes = [];
+  const introMeteorDusts = [];
+
+  function evalIntroMeteor(p) {
+    const x = -140 + 1370 * p;
+    const y = 260 + 680 * p - 55 * Math.sin(Math.PI * p);
+    const dx = 1370;
+    const dy = 680 - 55 * Math.PI * Math.cos(Math.PI * p);
+    const rad = Math.atan2(dy, dx);
+    return {
+      x: +x.toFixed(1),
+      y: +y.toFixed(1),
+      rad: rad,
+      deg: +((rad * 180) / Math.PI).toFixed(2),
+    };
+  }
+
+  if (meteorContainer) {
+    const headSize = 210;
+    const headEl = document.createElement("div");
+    headEl.className = "intro-meteor-head";
+    headEl.setAttribute("data-layout-allow-overflow", "");
+    headEl.setAttribute("data-layout-ignore", "");
+    headEl.style.cssText =
+      "width:" +
+      headSize +
+      "px;height:" +
+      headSize +
+      "px;margin-left:" +
+      (-headSize / 2) +
+      "px;margin-top:" +
+      (-headSize / 2) +
+      "px";
+    meteorContainer.appendChild(headEl);
+    introMeteorHead = headEl;
+
+    const streakW = 440;
+    const streakH = 96;
+    const streakEl = document.createElement("div");
+    streakEl.className = "intro-meteor-streak";
+    streakEl.setAttribute("data-layout-allow-overflow", "");
+    streakEl.setAttribute("data-layout-ignore", "");
+    streakEl.style.cssText =
+      "width:" +
+      streakW +
+      "px;height:" +
+      streakH +
+      "px;margin-left:" +
+      (-streakW / 2) +
+      "px;margin-top:" +
+      (-streakH / 2) +
+      "px";
+    meteorContainer.appendChild(streakEl);
+    introMeteorStreak = streakEl;
+
+    const nMeteorNodes = 18;
+    for (let k = 0; k < nMeteorNodes; k++) {
+      const tLag = k / (nMeteorNodes - 1);
+      const sz = Math.round(64 - tLag * 46); // 64px -> 18px
+      const nodeEl = document.createElement("div");
+      nodeEl.className = "intro-meteor-node";
+      nodeEl.setAttribute("data-layout-allow-overflow", "");
+      nodeEl.setAttribute("data-layout-ignore", "");
+      nodeEl.style.cssText =
+        "width:" +
+        sz +
+        "px;height:" +
+        sz +
+        "px;margin-left:" +
+        (-sz / 2) +
+        "px;margin-top:" +
+        (-sz / 2) +
+        "px";
+      meteorContainer.appendChild(nodeEl);
+      introMeteorNodes.push({
+        el: nodeEl,
+        delay: +(k * 0.008).toFixed(4),
+        peakAlpha: +(0.86 * Math.pow(1 - tLag, 0.92)).toFixed(3),
+      });
+    }
+
+    const nMeteorDusts = 16;
+    for (let i = 0; i < nMeteorDusts; i++) {
+      const pDust = 0.12 + (i / (nMeteorDusts - 1)) * 0.74;
+      const pt = evalIntroMeteor(pDust);
+      const sz = 22 + Math.floor(meteorRng() * 25); // 22..46px
+      const col = i % 2 === 0 ? "white" : "cyan";
+      const dEl = document.createElement("div");
+      dEl.className = "intro-meteor-dust";
+      dEl.setAttribute("data-layout-allow-overflow", "");
+      dEl.setAttribute("data-layout-ignore", "");
+      dEl.style.cssText =
+        "width:" +
+        sz +
+        "px;height:" +
+        sz +
+        "px;margin-left:" +
+        (-sz / 2) +
+        "px;margin-top:" +
+        (-sz / 2) +
+        'px;background-image:url("../assets/generated/opt_sparkle_' +
+        col +
+        '.png")';
+      meteorContainer.appendChild(dEl);
+      introMeteorDusts.push({
+        el: dEl,
+        x0: +(pt.x + (meteorRng() - 0.5) * 24).toFixed(1),
+        y0: +(pt.y + (meteorRng() - 0.5) * 24).toFixed(1),
+        dx: +(22 + meteorRng() * 38).toFixed(1),
+        dy: +(26 + meteorRng() * 48).toFixed(1),
+        rot0: +((meteorRng() - 0.5) * 60).toFixed(1),
+        drot: +((meteorRng() - 0.5) * 90).toFixed(1),
+        appearAt: +(pDust * 0.58 + 0.02).toFixed(3),
+        dur: +(0.48 + meteorRng() * 0.30).toFixed(3),
+        peakAlpha: +(0.55 + meteorRng() * 0.35).toFixed(3),
+      });
+    }
+  }
+
   // 2. [C] 冒頭降臨の光の三原色（RGB）3D円錐三重螺旋ウィスプ (3筋 × 星核ヘッド + 42尾ノード + 余韻スターダスト30粒)
   const wispContainer = document.getElementById("wisp-streams");
   const wispHeads = [];
@@ -468,6 +592,89 @@
     });
 
     const STEPS = 28;
+
+    // 冒頭導入：左上→右斜め下へ駆け抜ける流れ星タイムライン
+    if (introMeteorHead && introMeteorStreak) {
+      const M_STEPS = 20;
+      const mDur = 0.58;
+      const p0 = evalIntroMeteor(0);
+      tl.set(introMeteorHead, { x: p0.x, y: p0.y, scale: 0.45, rotation: p0.deg, opacity: 0 }, 0);
+      tl.set(
+        introMeteorStreak,
+        {
+          x: +(p0.x - 115 * Math.cos(p0.rad)).toFixed(1),
+          y: +(p0.y - 115 * Math.sin(p0.rad)).toFixed(1),
+          scaleX: 0.55,
+          scaleY: 0.65,
+          rotation: p0.deg,
+          opacity: 0,
+        },
+        0
+      );
+
+      const headFrames = [];
+      const streakFrames = [];
+      for (let i = 1; i <= M_STEPS; i++) {
+        const p = i / M_STEPS;
+        const pt = evalIntroMeteor(p);
+        const envIn = p < 0.16 ? p / 0.16 : 1.0;
+        const envOut = p > 0.72 ? Math.max(0, (1 - p) / 0.28) : 1.0;
+        const bell = Math.sin(Math.PI * p);
+        const alpha = envIn * envOut;
+        const sc = 0.65 + 0.55 * bell;
+        headFrames.push({
+          x: pt.x,
+          y: pt.y,
+          scale: +sc.toFixed(3),
+          rotation: +(pt.deg + p * 22).toFixed(2),
+          opacity: +(alpha * 0.96).toFixed(3),
+        });
+        streakFrames.push({
+          x: +(pt.x - 115 * Math.cos(pt.rad)).toFixed(1),
+          y: +(pt.y - 115 * Math.sin(pt.rad)).toFixed(1),
+          scaleX: +(0.65 + 0.55 * bell).toFixed(3),
+          scaleY: +(0.72 + 0.35 * bell).toFixed(3),
+          rotation: pt.deg,
+          opacity: +(alpha * 0.88).toFixed(3),
+        });
+      }
+      tl.to(introMeteorHead, { keyframes: headFrames, duration: mDur, ease: "power1.inOut" }, 0);
+      tl.to(introMeteorStreak, { keyframes: streakFrames, duration: mDur, ease: "power1.inOut" }, 0);
+
+      introMeteorNodes.forEach(function (mn) {
+        tl.set(mn.el, { x: p0.x, y: p0.y, scale: 0.5, rotation: p0.deg, opacity: 0 }, 0);
+        const nFrames = [];
+        for (let i = 1; i <= M_STEPS; i++) {
+          const p = i / M_STEPS;
+          const pt = evalIntroMeteor(p);
+          const envIn = p < 0.14 ? p / 0.14 : 1.0;
+          const envOut = p > 0.70 ? Math.max(0, (1 - p) / 0.30) : 1.0;
+          nFrames.push({
+            x: pt.x,
+            y: pt.y,
+            scale: +(0.75 + 0.35 * Math.sin(Math.PI * p)).toFixed(3),
+            rotation: pt.deg,
+            opacity: i === M_STEPS ? 0 : +(mn.peakAlpha * envIn * envOut).toFixed(3),
+          });
+        }
+        tl.to(mn.el, { keyframes: nFrames, duration: 0.54, ease: "power1.inOut" }, mn.delay);
+      });
+
+      introMeteorDusts.forEach(function (md) {
+        tl.set(md.el, { x: md.x0, y: md.y0, scale: 0.35, rotation: md.rot0, opacity: 0 }, 0);
+        tl.to(md.el, { opacity: md.peakAlpha, scale: 1.0, duration: 0.08, ease: "power2.out" }, md.appearAt);
+        tl.to(
+          md.el,
+          { x: +(md.x0 + md.dx).toFixed(1), y: +(md.y0 + md.dy).toFixed(1), rotation: +(md.rot0 + md.drot).toFixed(1), duration: md.dur, ease: "sine.out" },
+          md.appearAt
+        );
+        tl.to(
+          md.el,
+          { opacity: 0, scale: 0.25, duration: +(md.dur * 0.72).toFixed(3), ease: "sine.in" },
+          +(md.appearAt + md.dur * 0.28).toFixed(3)
+        );
+      });
+    }
 
     // 先頭星核ヘッド: 120°位相差の3D円錐三重螺旋を描きながら中央へ収束してオーブを生む
     wispHeads.forEach(function (wh) {

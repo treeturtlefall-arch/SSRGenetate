@@ -25,6 +25,9 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
+PREROLL_SEC = 0.5
+TOTAL_LIMIT_SEC = 16.05
+
 
 def parse_fps(rate_str: str) -> float:
     if "/" in rate_str:
@@ -135,22 +138,25 @@ def measure_audio(video_path: Path, duration: float) -> Dict[str, Any]:
         samples = samples[:-1]
     stereo = samples.reshape(-1, 2)
 
-    tail_rms: List[Dict[str, Any]] = []
-    for start_s in (12.0, 12.5, 13.0, 13.5, 14.0, 14.5):
-        end_s = min(start_s + 0.5, duration if duration > 0 else 15.0)
-        i0 = int(round(start_s * sr))
-        i1 = int(round(end_s * sr))
+    def _seg_rms(s0: float, s1: float) -> float:
+        i0 = int(round(s0 * sr))
+        i1 = int(round(s1 * sr))
         if i0 >= len(stereo) or i1 <= i0:
-            rms_db = -120.0
-        else:
-            seg = stereo[i0:i1]
-            rms = float(np.sqrt(np.mean(seg * seg)))
-            rms_db = 20.0 * math.log10(max(rms, 1e-6))
-        tail_rms.append({"window": f"{start_s:.1f}-{end_s:.1f}s", "rms_dbfs": round(rms_db, 1)})
+            return -120.0
+        seg = stereo[i0:i1]
+        rms = float(np.sqrt(np.mean(seg * seg)))
+        return round(20.0 * math.log10(max(rms, 1e-6)), 1)
+
+    head_rms = {"window": "0.0-0.5s", "rms_dbfs": _seg_rms(0.0, 0.5)}
+    tail_rms: List[Dict[str, Any]] = []
+    for start_s in (12.5, 13.0, 13.5, 14.0, 14.5, 15.0, 15.5):
+        end_s = min(start_s + 0.5, duration if duration > 0 else 16.0)
+        tail_rms.append({"window": f"{start_s:.1f}-{end_s:.1f}s", "rms_dbfs": _seg_rms(start_s, end_s)})
 
     return {
         "integrated_lufs": round(lufs, 2) if lufs is not None else None,
         "true_peak_dbfs": round(true_peak, 2) if true_peak is not None else None,
+        "head_rms": head_rms,
         "tail_rms": tail_rms,
     }
 
@@ -175,8 +181,13 @@ def analyze_video(video_path: Path, check_audio: bool = False) -> Dict[str, Any]
         info["width"] > 0
         and info["height"] > 0
         and info["fps"] > 0
-        and info["duration"] <= 15.05
+        and info["duration"] <= TOTAL_LIMIT_SEC
     )
+
+    # 1.5 前後 0.5s フェード余白チェック（先頭・最終フレームが純黒近傍）
+    head_mean = float(means[0])
+    tail_mean = float(means[-1])
+    edge_pass = (head_mean < 5.0) and (tail_mean < 5.0)
 
     # 2. グレー曇り膜検出
     veil_mask = (means > 150.0) & (spread < 70.0) & (means < 245.0)
@@ -193,25 +204,25 @@ def analyze_video(video_path: Path, check_audio: bool = False) -> Dict[str, Any]
     ]
     veil_pass = len(veil_frames) <= 2
 
-    gold_mask = (times >= 3.70) & (times <= 4.20)
+    gold_mask = (times >= 3.70 + PREROLL_SEC) & (times <= 4.20 + PREROLL_SEC)
     gold_max_p5 = round(float(p5[gold_mask].max()), 1) if gold_mask.any() else None
 
-    wo_clear_mask = (times >= 7.05) & (times <= 7.50) & (p5 < 30.0)
+    wo_clear_mask = (times >= 7.05 + PREROLL_SEC) & (times <= 7.50 + PREROLL_SEC) & (p5 < 30.0)
     wo_clear_idx = np.where(wo_clear_mask)[0]
     wo_clear_sec = round(float(times[wo_clear_idx[0]]), 2) if len(wo_clear_idx) > 0 else None
 
-    # 3. 真空の間 (5.10s〜5.18s) の輝度低下
-    base_mask = (times >= 4.75) & (times <= 4.85)
-    vac_mask = (times >= 5.10) & (times <= 5.18)
+    # 3. 真空の間 (5.10s〜5.18s + PREROLL_SEC) の輝度低下
+    base_mask = (times >= 4.75 + PREROLL_SEC) & (times <= 4.85 + PREROLL_SEC)
+    vac_mask = (times >= 5.10 + PREROLL_SEC) & (times <= 5.18 + PREROLL_SEC)
     baseline_mean = float(means[base_mask].mean()) if base_mask.any() else 1.0
     vacuum_min_mean = float(means[vac_mask].min()) if vac_mask.any() else baseline_mean
     vacuum_ratio_pct = (vacuum_min_mean / max(1e-6, baseline_mean)) * 100.0
     vacuum_pass = vacuum_ratio_pct < 50.0
 
-    # 4. 着地直前ダレ区間 (8.33s〜8.68s)
+    # 4. 着地直前ダレ区間 (8.33s〜8.68s + PREROLL_SEC)
     diffs = np.abs(frames[1:].astype(np.float32) - frames[:-1].astype(np.float32)).mean(axis=(1, 2))
     diff_times = times[1:]
-    pre_land_mask = (diff_times >= 8.33) & (diff_times <= 8.68)
+    pre_land_mask = (diff_times >= 8.33 + PREROLL_SEC) & (diff_times <= 8.68 + PREROLL_SEC)
     pre_land_diffs = diffs[pre_land_mask]
     max_run = 0
     cur_run = 0
@@ -226,18 +237,18 @@ def analyze_video(video_path: Path, check_audio: bool = False) -> Dict[str, Any]
     stall_pass = max_stall_sec <= 0.20
 
     motion_summary: List[Dict[str, Any]] = []
-    for sec in np.arange(7.5, 9.31, 0.1):
+    for sec in np.arange(7.5 + PREROLL_SEC, 9.31 + PREROLL_SEC, 0.1):
         idx = int(round(sec * fps)) - 1
         if 0 <= idx < len(diffs):
             motion_summary.append({"sec": round(float(diff_times[idx]), 2), "diff": round(float(diffs[idx]), 2)})
 
-    # 5. 終盤 (12.2s〜14.8s) レイアウト固定＆微動確認
-    tail_mask = (diff_times >= 12.20) & (diff_times <= 14.80)
+    # 5. 終盤 (12.2s〜14.8s + PREROLL_SEC = 12.7s〜15.3s) レイアウト固定＆微動確認
+    tail_mask = (diff_times >= 12.20 + PREROLL_SEC) & (diff_times <= 14.80 + PREROLL_SEC)
     tail_max_diff = float(diffs[tail_mask].max()) if tail_mask.any() else 0.0
     tail_layout_pass = tail_max_diff < 2.5
 
-    idx_13 = min(n_frames - 1, max(0, int(round(13.0 * fps))))
-    idx_14 = min(n_frames - 1, max(0, int(round(14.0 * fps))))
+    idx_13 = min(n_frames - 1, max(0, int(round((13.0 + PREROLL_SEC) * fps))))
+    idx_14 = min(n_frames - 1, max(0, int(round((14.0 + PREROLL_SEC) * fps))))
     changed_pixels = np.abs(frames[idx_14].astype(np.int16) - frames[idx_13].astype(np.int16)) >= 2
     shimmer_pct = float(changed_pixels.mean() * 100.0)
     shimmer_ok = shimmer_pct > 0.1
@@ -249,12 +260,19 @@ def analyze_video(video_path: Path, check_audio: bool = False) -> Dict[str, Any]
         audio_info = measure_audio(video_path, info["duration"])
         if check_audio:
             lufs = audio_info["integrated_lufs"]
-            rms_14 = next((x["rms_dbfs"] for x in audio_info["tail_rms"] if x["window"].startswith("14.0")), -120.0)
-            audio_pass = (lufs is not None and -15.5 <= lufs <= -12.5) and (rms_14 > -65.0)
+            rms_head = audio_info["head_rms"]["rms_dbfs"]
+            rms_145 = next((x["rms_dbfs"] for x in audio_info["tail_rms"] if x["window"].startswith("14.5")), -120.0)
+            rms_155 = next((x["rms_dbfs"] for x in audio_info["tail_rms"] if x["window"].startswith("15.5")), -120.0)
+            audio_pass = (
+                (lufs is not None and -15.5 <= lufs <= -12.5)
+                and (rms_head < -60.0)
+                and (rms_145 > -65.0)
+                and (rms_155 < -60.0)
+            )
     elif check_audio:
         audio_pass = False
 
-    overall_pass = stream_pass and veil_pass and vacuum_pass and stall_pass and tail_layout_pass and audio_pass
+    overall_pass = stream_pass and edge_pass and veil_pass and vacuum_pass and stall_pass and tail_layout_pass and audio_pass
 
     return {
         "video_path": str(video_path),
@@ -267,6 +285,12 @@ def analyze_video(video_path: Path, check_audio: bool = False) -> Dict[str, Any]
             "duration": round(info["duration"], 3),
             "frames": n_frames,
             "has_audio": info["has_audio"],
+        },
+        "edge_padding": {
+            "pass": edge_pass,
+            "head_mean": round(head_mean, 2),
+            "tail_mean": round(tail_mean, 2),
+            "limit_mean": 5.0,
         },
         "gray_veil": {
             "pass": veil_pass,
@@ -305,6 +329,7 @@ def analyze_video(video_path: Path, check_audio: bool = False) -> Dict[str, Any]
 
 def print_report(res: Dict[str, Any]) -> None:
     st = res["stream"]
+    ep = res["edge_padding"]
     gv = res["gray_veil"]
     vp = res["vacuum_pause"]
     ls = res["landing_stall"]
@@ -316,31 +341,34 @@ def print_report(res: Dict[str, Any]) -> None:
 
     print(f"=== SSRGenerate Video QA Report: {res['video_path']} ===")
     print(f"{tag(st['pass'])} Stream: {st['width']}x{st['height']} @ {st['fps']}fps, duration={st['duration']}s ({st['frames']} frames)")
+    print(f"{tag(ep['pass'])} Edge Padding (0s / end): head_mean={ep['head_mean']}, tail_mean={ep['tail_mean']} (< {ep['limit_mean']})")
     print(
         f"{tag(gv['pass'])} Gray Veil Frames: {gv['count']} <= {gv['limit']} "
-        f"(gold 3.7-4.2s max p5={gv['gold_max_p5']}, whiteout clear p5<30 at {gv['whiteout_clear_sec']}s)"
+        f"(gold 4.2-4.7s max p5={gv['gold_max_p5']}, whiteout clear p5<30 at {gv['whiteout_clear_sec']}s)"
     )
     if gv["frames"]:
         print(f"       Details: {gv['frames']}")
     print(
-        f"{tag(vp['pass'])} Vacuum Pause (5.10-5.18s): min={vp['min_mean_510_518']} vs base(4.75-4.85s)={vp['baseline_mean_475_485']} "
+        f"{tag(vp['pass'])} Vacuum Pause (5.60-5.68s): min={vp['min_mean_510_518']} vs base(5.25-5.35s)={vp['baseline_mean_475_485']} "
         f"({vp['ratio_pct']}% < {vp['limit_pct']}%)"
     )
     print(
-        f"{tag(ls['pass'])} Pre-Landing Stall (8.33-8.68s): max stall={ls['max_stall_sec_833_868']}s <= {ls['limit_sec']}s"
+        f"{tag(ls['pass'])} Pre-Landing Stall (8.83-9.18s): max stall={ls['max_stall_sec_833_868']}s <= {ls['limit_sec']}s"
     )
     motion_line = ", ".join(f"{m['sec']:.1f}s:{m['diff']:.1f}" for m in ls["motion_75_93"])
-    print(f"       Motion (7.5-9.3s): {motion_line}")
+    print(f"       Motion (8.0-9.8s): {motion_line}")
     print(
-        f"{tag(tr['layout_fixed_pass'])} Tail Fixed (12.2-14.8s): max_diff={tr['max_diff_122_148']} < 2.5 | "
-        f"[{tr['shimmer_status']}] Shimmer (13s vs 14s): {tr['changed_pixel_pct_13_vs_14']}% > 0.1%"
+        f"{tag(tr['layout_fixed_pass'])} Tail Fixed (12.7-15.3s): max_diff={tr['max_diff_122_148']} < 2.5 | "
+        f"[{tr['shimmer_status']}] Shimmer (13.5s vs 14.5s): {tr['changed_pixel_pct_13_vs_14']}% > 0.1%"
     )
     if au["details"] is not None:
         det = au["details"]
         au_tag = tag(au["pass"]) if au["checked"] else "[INFO]"
+        hr = det["head_rms"]
         tail_str = ", ".join(f"{w['window']}:{w['rms_dbfs']}dB" for w in det["tail_rms"])
         print(
-            f"{au_tag} Audio: LUFS={det['integrated_lufs']}, TruePeak={det['true_peak_dbfs']}dBFS | Tail RMS: {tail_str}"
+            f"{au_tag} Audio: LUFS={det['integrated_lufs']}, TruePeak={det['true_peak_dbfs']}dBFS | "
+            f"Head({hr['window']}):{hr['rms_dbfs']}dB | Tail RMS: {tail_str}"
         )
     else:
         au_tag = "[FAIL]" if au["checked"] else "[INFO]"
