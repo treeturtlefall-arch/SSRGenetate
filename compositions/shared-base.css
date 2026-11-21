@@ -13,6 +13,48 @@
   src: url("../assets/fonts/cinecaption.ttf") format("truetype");
   font-display: block;
 }
+@font-face {
+  font-family: "ShipporiMincho";
+  src: url("../assets/fonts/ShipporiMincho-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: block;
+}
+@font-face {
+  font-family: "ShipporiMincho";
+  src: url("../assets/fonts/ShipporiMincho-ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-display: block;
+}
+@font-face {
+  font-family: "Cinzel";
+  src: url("../assets/fonts/Cinzel-VF.ttf") format("truetype");
+  font-weight: 400 900;
+  font-display: block;
+}
+@font-face {
+  font-family: "ZenMaruGothic";
+  src: url("../assets/fonts/ZenMaruGothic-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: block;
+}
+@font-face {
+  font-family: "ZenMaruGothic";
+  src: url("../assets/fonts/ZenMaruGothic-Black.ttf") format("truetype");
+  font-weight: 900;
+  font-display: block;
+}
+@font-face {
+  font-family: "Outfit";
+  src: url("../assets/fonts/Outfit-VF.ttf") format("truetype");
+  font-weight: 100 900;
+  font-display: block;
+}
+@font-face {
+  font-family: "JetBrainsMono";
+  src: url("../assets/fonts/JetBrainsMono-VF.ttf") format("truetype");
+  font-weight: 100 800;
+  font-display: block;
+}
 
 :root {
   --in-oklab: ;
@@ -24,6 +66,7 @@
   --font-jp: "KleeOne", "Noto Sans JP", sans-serif;
   --font-display: "YujiSyuku", "Playfair Display", serif;
   --font-ui: "CineCaption", "Montserrat", "Noto Sans JP", sans-serif;
+  --font-mono: "JetBrainsMono", monospace;
   /* scripts/_utils.py の CARD_* と同期 */
   --card-w: 900px;
   --card-h: 1590px;

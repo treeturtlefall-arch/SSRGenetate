@@ -99,6 +99,9 @@
                 </div>
                 <div id="card-overlay-layer">
                   <div id="stars-row"></div>
+                  <div id="royal-rule-wrap" class="typo-slot" data-layout-ignore>
+                    <div id="royal-rule-img" class="typo-img"></div>
+                  </div>
                   <div id="card-subtitle-wrap" class="typo-slot">
                     <div id="card-subtitle-img" class="typo-img"></div>
                     <div id="card-subtitle" data-layout-allow-safe-zone>【覚醒の眼光】</div>
@@ -110,7 +113,7 @@
                   </div>
                   <div id="card-flavor-wrap" class="typo-slot">
                     <div id="card-flavor-img" class="typo-img"></div>
-                    <div id="card-flavor" data-layout-allow-safe-zone>溢れ出す鼻水は強者の証。その鋭き流し目に平伏せよ。</div>
+                    <div id="card-flavor" data-layout-allow-safe-zone></div>
                   </div>
                   <div id="card-stats"></div>
                 </div>
@@ -199,7 +202,7 @@
         tl.fromTo("#holo-static-sheen", { opacity: 0 }, { opacity: 0.72, duration: 0.85, ease: "power2.out" }, at(11.00));
         tl.fromTo("#frame-holo-glint", { opacity: 0, backgroundPosition: "0% 0%, 0 0" }, { opacity: 0.78, backgroundPosition: "60% 60%, 0 0", duration: 2.00, ease: "power2.out" }, at(9.90));
 
-        // Crest, Attribute Plate, Stars & Foil Typography Light-Wipe Stamping
+        // Crest, Attribute Plate, Stars, Royal Rule & Foil Typography Light-Wipe Stamping
         tl.fromTo("#ssr-emblem", { opacity: 0, scale: 2.05, rotation: -10 }, { opacity: 1, scale: 1.0, rotation: 0, duration: 0.44, ease: "back.out(2.1)" }, at(8.76));
         if (cfg.attribute) {
           tl.fromTo("#attr-badge", { opacity: 0, x: 34, scale: 0.92 }, { opacity: 1, x: 0, scale: 1.0, duration: 0.40, ease: "back.out(1.6)" }, at(8.98));
@@ -213,22 +216,28 @@
             tl.to(flare, { opacity: 0, scale: 0.55, duration: 0.18, ease: "power2.in" }, +(tStar + 0.09).toFixed(4));
           }
         });
+        if (st.hasRoyalRule) {
+          tl.fromTo("#royal-rule-wrap", { opacity: 0, scaleX: 0 }, { opacity: 1, scaleX: 1, duration: 0.42, ease: "power3.out" }, at(9.26));
+        }
         tl.fromTo("#card-subtitle-wrap", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.18, ease: "power2.out" }, at(9.38));
-        tl.fromTo("#card-subtitle-img, #card-subtitle", { clipPath: "inset(-10px 100% -10px -10px)" }, { clipPath: "inset(-10px -4% -10px -10px)", duration: 0.38, ease: "power2.inOut" }, at(9.38));
+        tl.fromTo("#card-subtitle-img, #card-subtitle", { clipPath: "inset(-28px 100% -28px -28px)" }, { clipPath: "inset(-28px -6% -28px -28px)", duration: 0.38, ease: "power2.inOut" }, at(9.38));
 
+        const wipeHalf = st.titleWipeHalf || 235;
         tl.fromTo("#card-title-wrap", { opacity: 0, scale: 1.07 }, { opacity: 1, scale: 1.0, duration: 0.46, ease: "back.out(1.6)" }, at(9.60));
-        tl.fromTo("#card-title-img, #card-title", { clipPath: "inset(-14px 100% -14px -14px)" }, { clipPath: "inset(-14px -4% -14px -14px)", duration: 0.42, ease: "power2.inOut" }, at(9.60));
-        tl.fromTo("#title-wipe-glint", { x: -235, opacity: 0 }, { x: 235, duration: 0.42, ease: "power2.inOut" }, at(9.60));
+        tl.fromTo("#card-title-img, #card-title", { clipPath: "inset(-28px 100% -28px -28px)" }, { clipPath: "inset(-28px -6% -28px -28px)", duration: 0.42, ease: "power2.inOut" }, at(9.60));
+        tl.fromTo("#title-wipe-glint", { x: -wipeHalf, opacity: 0 }, { x: wipeHalf, duration: 0.42, ease: "power2.inOut" }, at(9.60));
         tl.to("#title-wipe-glint", { opacity: 1, duration: 0.08, ease: "power2.out" }, at(9.60));
         tl.to("#title-wipe-glint", { opacity: 0, duration: 0.12, ease: "power2.in" }, at(9.92));
 
-        tl.fromTo("#card-flavor-wrap", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.18, ease: "power2.out" }, at(9.96));
-        tl.fromTo("#card-flavor-img, #card-flavor", { clipPath: "inset(-10px 100% -10px -10px)" }, { clipPath: "inset(-10px -4% -10px -10px)", duration: 0.44, ease: "power2.inOut" }, at(9.96));
+        if (cfg.flavor) {
+          tl.fromTo("#card-flavor-wrap", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.18, ease: "power2.out" }, at(9.96));
+          tl.fromTo("#card-flavor-img, #card-flavor", { clipPath: "inset(-28px 100% -28px -28px)" }, { clipPath: "inset(-28px -6% -28px -28px)", duration: 0.44, ease: "power2.inOut" }, at(9.96));
+        }
         if (cfg.stats.length > 0) {
           tl.fromTo("#card-stats", { opacity: 0, x: -14, clipPath: "inset(-10px 100% -10px -10px)" }, { opacity: 1, x: 0, clipPath: "inset(-10px -4% -10px -10px)", duration: 0.44, ease: "power2.out" }, at(10.22));
         }
-        tl.fromTo("#card-no-corner", { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.18, ease: "power2.out" }, at(10.36));
-        tl.fromTo("#card-no-img, #card-no-text", { clipPath: "inset(-10px 100% -10px -10px)" }, { clipPath: "inset(-10px -4% -10px -10px)", duration: 0.34, ease: "power2.inOut" }, at(10.36));
+        tl.fromTo("#card-no-corner", { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.18, ease: "power2.out" }, at(10.30));
+        tl.fromTo("#card-no-img, #card-no-text", { clipPath: "inset(-10px 100% -10px -10px)" }, { clipPath: "inset(-10px -4% -10px -10px)", duration: 0.34, ease: "power2.inOut" }, at(10.30));
 
         // Clustered Sparkles, 3D Foil Flakes & Bokeh Orbs
         sparkleData.forEach(function (sp) {

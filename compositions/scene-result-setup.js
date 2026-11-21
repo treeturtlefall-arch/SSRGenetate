@@ -22,16 +22,32 @@
     photoPosition: baseCfg.photoPosition || "50% 35%",
     photoZoom: typeof baseCfg.photoZoom === "number" ? baseCfg.photoZoom : 1.05,
     rarity: pick(hfVars.rarity, baseCfg.rarity, "SSR"),
-    stars: typeof baseCfg.stars === "number" ? baseCfg.stars : 5,
+    stars: typeof baseCfg.stars === "number" ? baseCfg.stars : 0,
     attribute: typeof baseCfg.attribute === "string" ? baseCfg.attribute.trim() : "",
     subtitle: pick(hfVars.subtitle, baseCfg.subtitle, "【覚醒の眼光】"),
     title: pick(hfVars.title, baseCfg.title, "ちいさな覇王"),
-    flavor: pick(hfVars.flavor, baseCfg.flavor, "溢れ出す鼻水は強者の証。その鋭き流し目に平伏せよ。"),
+    flavor:
+      typeof hfVars.flavor === "string" && hfVars.flavor.trim()
+        ? hfVars.flavor.trim()
+        : typeof baseCfg.flavor === "string"
+          ? baseCfg.flavor.trim()
+          : "",
     stats: Array.isArray(baseCfg.stats) && baseCfg.stats.length > 0 ? baseCfg.stats.slice(0, 3) : [],
     cardNo: baseCfg.cardNo || "NO.077-SSR",
     material: baseCfg.material || {},
     seed: typeof baseCfg.seed === "number" ? baseCfg.seed : 20261120,
   };
+
+  const typoManifestRoot = window.SSR_TYPO_MANIFEST || {};
+  const typoLayout = typoManifestRoot.layout || "classic-center";
+  const typoMirror = Boolean(typoManifestRoot.mirror);
+  const cardFrontInner = document.querySelector(".card-front-inner");
+  if (cardFrontInner) {
+    cardFrontInner.setAttribute("data-typo-layout", typoLayout);
+    if (typoMirror) {
+      cardFrontInner.setAttribute("data-typo-mirror", "true");
+    }
+  }
 
   const matCfg = cfg.material;
   const depthEl = document.getElementById("mat-window-depth");
@@ -78,28 +94,54 @@
     }
   }
 
-  bindTypoSlot("ssr", cfg.rarity, "ssr-emblem-img", "ssr-emblem-text", "ssr-emblem", 94);
-  bindTypoSlot("attribute", cfg.attribute, "attr-badge-img", "attr-badge-text", "attr-badge", 70);
+  const isModernLayout = typoLayout !== "classic-center";
+  bindTypoSlot("ssr", cfg.rarity, "ssr-emblem-img", "ssr-emblem-text", "ssr-emblem", isModernLayout ? 0 : 94);
+  bindTypoSlot("attribute", cfg.attribute, "attr-badge-img", "attr-badge-text", "attr-badge", isModernLayout ? 0 : 70);
   bindTypoSlot("subtitle", cfg.subtitle, "card-subtitle-img", "card-subtitle", "card-subtitle-wrap", 0);
   bindTypoSlot("title", cfg.title, "card-title-img", "card-title", "card-title-wrap", 0);
   bindTypoSlot("flavor", cfg.flavor, "card-flavor-img", "card-flavor", "card-flavor-wrap", 0);
   bindTypoSlot("cardNo", cfg.cardNo, "card-no-img", "card-no-text", "card-no-corner", 0);
 
+  // Royal 細二重罫線スロット（royal-fantasy 時のみ表示）
+  const royalRuleWrap = document.getElementById("royal-rule-wrap");
+  const royalRuleImg = document.getElementById("royal-rule-img");
+  const ruleEntry = typoManifest.royalRule;
+  const hasRoyalRule = Boolean(typoLayout === "royal-fantasy" && ruleEntry && ruleEntry.src);
+  if (royalRuleWrap && royalRuleImg) {
+    if (hasRoyalRule) {
+      royalRuleImg.style.backgroundImage = 'url("' + resolveAssetPath(ruleEntry.src) + '")';
+      royalRuleImg.style.width = ruleEntry.width + "px";
+      royalRuleImg.style.height = ruleEntry.height + "px";
+      royalRuleImg.style.display = "block";
+      royalRuleWrap.style.display = "flex";
+    } else {
+      royalRuleWrap.style.display = "none";
+    }
+  }
+
+  // タイトル実幅に連動した光走査ラインの半幅を計算
+  const titleEntry = typoManifest.title;
+  const titleWipeHalf = titleEntry && titleEntry.width ? Math.max(160, Math.round(titleEntry.width * 0.56)) : 235;
+
   const starsRow = document.getElementById("stars-row");
-  const starCount = Math.max(1, Math.min(6, cfg.stars));
+  const starCount = Math.max(0, Math.min(6, cfg.stars));
   const starEls = [];
   const starFlareEls = [];
-  for (let i = 0; i < starCount; i++) {
-    const star = document.createElement("div");
-    star.className = "star-item";
-    const flare = document.createElement("span");
-    flare.className = "star-flare";
-    flare.setAttribute("data-layout-allow-overflow", "");
-    flare.setAttribute("data-layout-ignore", "");
-    star.appendChild(flare);
-    starsRow.appendChild(star);
-    starEls.push(star);
-    starFlareEls.push(flare);
+  if (starCount <= 0) {
+    starsRow.style.display = "none";
+  } else {
+    for (let i = 0; i < starCount; i++) {
+      const star = document.createElement("div");
+      star.className = "star-item";
+      const flare = document.createElement("span");
+      flare.className = "star-flare";
+      flare.setAttribute("data-layout-allow-overflow", "");
+      flare.setAttribute("data-layout-ignore", "");
+      star.appendChild(flare);
+      starsRow.appendChild(star);
+      starEls.push(star);
+      starFlareEls.push(flare);
+    }
   }
 
   const statsEl = document.getElementById("card-stats");
@@ -300,6 +342,9 @@
   window.SSR_RESULT_STATE = {
     at: at,
     cfg: cfg,
+    typoLayout: typoLayout,
+    hasRoyalRule: hasRoyalRule,
+    titleWipeHalf: titleWipeHalf,
     chromaShockPx: chromaShockPx,
     starEls: starEls,
     starFlareEls: starFlareEls,

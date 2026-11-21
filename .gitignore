@@ -18,3 +18,7 @@ assets/*.heic
 # Local custom SE library (commercial / personal samples - never commit)
 assets/se_custom/*
 !assets/se_custom/README.md
+
+# Local custom font library (commercial / non-redistributable fonts - never commit)
+assets/fonts_custom/*
+!assets/fonts_custom/README.md

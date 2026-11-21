@@ -123,6 +123,88 @@ def _corner_filigree_mask(size: int, border: int, ss: int = 3) -> np.ndarray:
     return np.asarray(im.resize((size, size), Image.Resampling.LANCZOS), dtype=np.float32) / 255.0
 
 
+def _make_center_stud_stamp(orientation: str = "top", ss: int = 3) -> Tuple[np.ndarray, int, int]:
+    """
+    900x1590 カードの4辺中央（フレーム幅 20px 上＋内周へ最大12px）に収まる
+    微小金属ノッチ＆菱形ジュエル鋲のマスクを 3x SSAA で生成する。
+    """
+    w, h = 92, 36
+    Sw, Sh = w * ss, h * ss
+    im = Image.new("L", (Sw, Sh), 0)
+    d = ImageDraw.Draw(im)
+
+    cx = Sw * 0.5
+    bar_pts = [
+        (cx - 38 * ss, 9 * ss),
+        (cx - 26 * ss, 6 * ss),
+        (cx + 26 * ss, 6 * ss),
+        (cx + 38 * ss, 9 * ss),
+        (cx + 32 * ss, 18 * ss),
+        (cx - 32 * ss, 18 * ss),
+    ]
+    d.polygon(bar_pts, fill=235)
+
+    for dx in (-25, 25):
+        r = 2.2 * ss
+        rx, ry = cx + dx * ss, 12 * ss
+        d.ellipse([rx - r, ry - r, rx + r, ry + r], fill=255)
+
+    cy_j = 17.5 * ss
+    jw, jh = 11.5 * ss, 13.5 * ss
+    diamond_pts = [
+        (cx, cy_j - jh),
+        (cx + jw, cy_j),
+        (cx, cy_j + jh),
+        (cx - jw, cy_j),
+    ]
+    d.polygon(diamond_pts, fill=255)
+
+    d.line([(cx - 34 * ss, 12 * ss), (cx - 14 * ss, 12 * ss)], fill=120, width=max(1, int(1.4 * ss)))
+    d.line([(cx + 14 * ss, 12 * ss), (cx + 34 * ss, 12 * ss)], fill=120, width=max(1, int(1.4 * ss)))
+
+    mask = np.asarray(im.resize((w, h), Image.Resampling.LANCZOS), dtype=np.float32) / 255.0
+    if orientation == "bottom":
+        mask = mask[::-1, :]
+    elif orientation == "left":
+        mask = np.transpose(mask, (1, 0))
+    elif orientation == "right":
+        mask = np.transpose(mask[::-1, :], (1, 0))
+    return mask, mask.shape[1], mask.shape[0]
+
+
+def _compose_center_studs(
+    base_rgb: np.ndarray,
+    base_alpha: np.ndarray,
+    w: int,
+    h: int,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """4辺中央の金属ノッチ＆菱形鋲（落ち影付き）をフレーム上へ合成する"""
+    stud_mask = np.zeros((h, w), dtype=np.float32)
+
+    m_top, mw, mh = _make_center_stud_stamp("top")
+    stud_mask[0:mh, w // 2 - mw // 2 : w // 2 - mw // 2 + mw] = np.maximum(
+        stud_mask[0:mh, w // 2 - mw // 2 : w // 2 - mw // 2 + mw], m_top
+    )
+    m_bot, mw, mh = _make_center_stud_stamp("bottom")
+    stud_mask[h - mh : h, w // 2 - mw // 2 : w // 2 - mw // 2 + mw] = np.maximum(
+        stud_mask[h - mh : h, w // 2 - mw // 2 : w // 2 - mw // 2 + mw], m_bot
+    )
+    m_left, mw, mh = _make_center_stud_stamp("left")
+    stud_mask[h // 2 - mh // 2 : h // 2 - mh // 2 + mh, 0:mw] = np.maximum(
+        stud_mask[h // 2 - mh // 2 : h // 2 - mh // 2 + mh, 0:mw], m_left
+    )
+    m_right, mw, mh = _make_center_stud_stamp("right")
+    stud_mask[h // 2 - mh // 2 : h // 2 - mh // 2 + mh, w - mw : w] = np.maximum(
+        stud_mask[h // 2 - mh // 2 : h // 2 - mh // 2 + mh, w - mw : w], m_right
+    )
+
+    stud_rgb = shade_metal_relief(stud_mask, GOLD_RAMP, bevel_px=1.2, depth=5.5, tone=0.66, shininess=38.0)
+    shadow = np.roll(np.roll(gaussian_blur_f(stud_mask, 2.0), 2, axis=0), 2, axis=1) * 0.72
+    shadow_rgb = np.broadcast_to(np.array([0.016, 0.024, 0.066], dtype=np.float32), (h, w, 3))
+    out_rgb, out_a = porter_duff_over(shadow_rgb, shadow, base_rgb, base_alpha)
+    return porter_duff_over(stud_rgb, stud_mask, out_rgb, out_a)
+
+
 def generate_rainbow_foil_frame(
     w: int = CARD_W,
     h: int = CARD_H,
@@ -133,6 +215,7 @@ def generate_rainbow_foil_frame(
     brush_strength: float = 0.85,
     seed: int = 20261120,
     with_filigree: bool = False,
+    with_center_studs: bool = True,
 ) -> Image.Image:
     """
     デジタル感のない「物理金属箔・ホログラム虹フレーム」を生成する（内窓は透過）。
@@ -205,6 +288,8 @@ def generate_rainbow_foil_frame(
         rgb = np.clip(rgb + sparkle[:, :, None], 0.0, 1.0)
 
     if not with_filigree:
+        if with_center_studs:
+            rgb, frame_alpha = _compose_center_studs(rgb, frame_alpha, w, h)
         return rgba_from_float(rgb, frame_alpha)
 
     # --- 四隅の金属フィリグリー ---
@@ -220,10 +305,12 @@ def generate_rainbow_foil_frame(
     fil_rgb = shade_metal_relief(fil, GOLD_RAMP, bevel_px=1.3, depth=5.0, tone=0.66, shininess=36.0)
     shadow = np.roll(np.roll(gaussian_blur_f(fil, 2.2), 2, axis=0), 2, axis=1) * 0.78 * inner_mask
 
-    # 合成順: 写真 ← 落ち影 ← フィリグリー ← フレーム帯
+    # 合成順: 写真 ← 落ち影 ← フィリグリー ← フレーム帯 ← 中央鋲
     shadow_rgb = np.broadcast_to(np.array([0.016, 0.024, 0.066], dtype=np.float32), (h, w, 3))
     out_rgb, out_a = porter_duff_over(fil_rgb, fil, shadow_rgb, shadow)
     final_rgb, final_a = porter_duff_over(rgb, frame_alpha, out_rgb, out_a)
+    if with_center_studs:
+        final_rgb, final_a = _compose_center_studs(final_rgb, final_a, w, h)
     return rgba_from_float(final_rgb, final_a)
 
 

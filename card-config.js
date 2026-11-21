@@ -17,28 +17,32 @@ window.SSR_CARD_CONFIG = {
   photoPosition: "50% 35%",
   photoZoom: 1.05,
 
-  // レアリティ・星の数
+  // レアリティ・星の数（stars: 0 で非表示、1..5 で柔軟に表示可能）
   rarity: "SSR",
-  stars: 5,
+  stars: 0,
 
   // カード情報（空文字・空配列にすると非表示になります）
   attribute: "光属性 / BABY", // 例: "光属性 / SMILE"
   subtitle: "【覚醒の眼光】",
   title: "ちいさな覇王",
-  flavor: "溢れ出す鼻水は強者の証。その鋭き流し目に平伏せよ。",
+  flavor: "", // デフォルト非表示（subtitle + title の 2 段構成）。文言を入れると表示されます。
 
   // カード下部ステータス（デフォルトは写真主役のため非表示。最大3項目まで任意表示可）
   stats: [],
 
-  // シリアル番号風フッター表記（カード右下隅へ控えめに刻印）
+  // シリアル番号風フッター表記（カード右下隅へ控えめに極小刻印）
   cardNo: "NO.077-SSR",
 
-  // 文字ヒューマナイズ＆箔物理設定（scripts/render_typography.py が参照）
+  // タイポグラフィ設定（scripts/render_typography.py が参照）
+  //   preset: "royal-foil"  (男の子・王道ロイヤル / A-1)
+  //         | "cute-pastel" (女の子・可愛いポップ / B-2 水平 + 2x SSAA ローズプラム外縁)
+  //         | "foil-brush" | "handwritten-sign" | "crisp-emboss" (レガシー互換)
+  //   ※ 昇格カットイン文字 (5.6s付近) はカード側設定とは完全分離され、王道金箔のまま固定されます。
   typography: {
-    preset: "foil-brush", // "foil-brush" | "handwritten-sign" | "crisp-emboss"
-    wobble: 28,           // 0..100（0=完全整列, 28=品のある人間味, 50=手書き感）
-    foilGlitter: 0.42,    // 0.0..1.0（金箔・銀箔の微細ラメ反射強度）
-    paperGrain: 0.35,     // 0.0..1.0（下地シボによるインク/箔の乗り変調）
+    preset: "royal-foil",
+    wobble: 28,           // 0..100（レガシー互換プリセット用）
+    foilGlitter: 0.42,    // 0.0..1.0（レガシー互換プリセット用）
+    paperGrain: 0.35,     // 0.0..1.0（レガシー互換プリセット用）
     seed: 20261120,
   },
 

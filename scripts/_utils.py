@@ -28,6 +28,7 @@ from scipy.ndimage import gaussian_filter
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ASSETS_DIR = PROJECT_ROOT / "assets"
 FONTS_DIR = ASSETS_DIR / "fonts"
+CUSTOM_FONTS_DIR = ASSETS_DIR / "fonts_custom"
 OUT_DIR = ASSETS_DIR / "generated"
 CONFIG_PATH = PROJECT_ROOT / "card-config.js"
 DEFAULT_SEED = 20261120

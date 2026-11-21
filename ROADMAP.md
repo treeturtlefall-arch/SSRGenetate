@@ -49,7 +49,7 @@
 | **Phase 2B** | 召喚〜昇格の「脱CSS ＆ 3D空間光学アセット化」＋ 天蓋・空域演出 | カットイン脱ベタ帯・冒頭点火・3D床魔法陣・クリスタルオーブ・不規則ゴッドレイ・天蓋アストロラーベ・流体ウィスプ・星屑 | `scripts/render_optics.py`, `scripts/render_typography.py`, `compositions/scene-summon.*`, `compositions/scene-summon-setup.js`, `compositions/scene-result.*` | ★★★ 完了 |
 | **Phase 2.5** | フロントエンド共通化 ＆ アセット生成高速化・ストレージ最適化 | `shared-base.css`/`shared-utils.js`集約、`_optics_core.py`新設・EDT高速化・並列ビルド（41s→7.5s）、ストレージ整理・新方式定量QA検証 | `compositions/shared-*`, `scripts/_optics_core.py`, `scripts/_utils.py`, `scripts/build_all.py`, `scripts/render_*`, `package.json` | ★★★ 完了 |
 | **Phase 3** | 音響の「現代ソシャゲ音像化」＆ 映像マイクロポリッシュ（レビュー反映完遂） | 現代ソシャゲ音像刷新・`fftconvolve`残響・真空ダッキング・14.8s余韻・`-14 LUFS`統一・ローカルカスタムSEスロット基盤（`assets/se_custom/`）＋ 映像面7大改善を完了 | `scripts/_audio_dsp.py`, `scripts/_audio_slots.py`, `scripts/generate_se.py`, `assets/se_custom/README.md`, `.gitignore`, `compositions/scene-*`, `scripts/render_*` | ★★☆ 完了 |
-| **Phase 3.5** | カードタイポグラフィ点検・刷新（可変フォント・縁取り＆カラー・非対称レイアウト） | 昇格カットインは現行維持しつつ、カード側文字を可愛い・アート・2Dアニメ等の画像ジャンル別に最適化（書体・二重縁取り/ヴィヴィッド配色・スラント帯など脱中央揃えレイアウト＋表面フレーム中央鋲） | `assets/fonts/*`, `card-config.js`, `scripts/render_typography.py`, `scripts/render_material.py`, `compositions/shared-base.css`, `compositions/scene-result.*`, `compositions/scene-result-setup.js` | ★★☆ 次着手 |
+| **Phase 3.5** | カードタイポグラフィ点検・刷新（可変フォント・縁取り＆カラー・非対称レイアウト） | 昇格カットイン完全分離のうえ、2大標準プリセット（`royal-foil` / `cute-pastel`）・4軸直交スキーマ・2x SSAA ローズプラム外縁・3x SSAA 表面フレーム中央鋲・星/フレーバー任意化を完遂 | `assets/fonts/*`, `assets/fonts_custom/`, `card-config.js`, `scripts/_font_slots.py`, `scripts/_typo_modern.py`, `scripts/render_typography.py`, `scripts/render_material.py`, `compositions/shared-base.css`, `compositions/scene-result.*` | ★★☆ 完了 |
 | **Phase 4** | 運用性・量産性強化 ＆ 5軸/複数素材検証 | 任意テキスト箔同期・オートレイアウト ＋ 5品質評価軸・不要要素削減・多様な素材検証 | `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js` | ★☆☆ 仕上げ |
 | **Phase 5** | 横動画（16:9）× 横型カード対応 | 風景・周辺情報込みの横写真向け 1920×1080 ワイド演出モード追加（詳細設計: [`LANDSCAPE_PLAN.md`](./LANDSCAPE_PLAN.md)） | `card-config.js`, `index.html`, `compositions/*`, `scripts/_utils.py`, `scripts/render_material.py`, `scripts/render_typography.py`, `package.json` | ★☆☆ 拡張 |
 
@@ -266,7 +266,7 @@ Phase 4（量産・運用性の仕上げ）に入る前に、カードリザル�
 - **参考デザイン方針（SRカードリファレンス分析）**:
   - 左上の斜め帯＋スターバースト付きレアリティバッジと、右下のスラントしたカラーストライプ帯＋太字タイトル（縦ツートングラデ＋白インライン＋濃色太縁の二重縁取り）＋直下の英字/サブタイトル＋帯周りスパークルという「対角コーナー非対称構成」を主要リファレンスの 1 つとして取り込む。
 
-- [ ] **3.5-0. フォント周りの事前点検（棚卸し・課題監査チェックリスト）**
+- [x] **3.5-0. フォント周りの事前点検（棚卸し・課題監査チェックリスト）**
   - **対象**: `assets/fonts/*`, `scripts/render_typography.py`, `compositions/shared-base.css`, `compositions/scene-result.*`
   - **点検項目**:
     1. **現行フォント資産と不足ジャンルの棚卸し**: `assets/fonts/` の既存 7 書体（`YujiSyuku-Regular.ttf`, `KleeOne-Regular.ttf`, `SetoFont.ttf`, `TekitouPoem.ttf`, `TekitouPoem_Bold.ttf`, `ZenKurenaido-Regular.ttf`, `cinecaption.ttf`）は筆文字・手書き・細身字幕に偏っており、「2Dアニメ／ゲーム見出し用の太角ゴシック・ポップ体」「可愛い系の太丸ゴシック」「アート／写真集用の洗練明朝・欧文ディスプレイ」が欠落している点を点検し、商用利用可能なオープンライセンス（OFL / Apache 2.0 等）の候補書体と `assets/fonts/LICENSE-OFL.txt` のライセンス表記を確定する。
@@ -274,7 +274,7 @@ Phase 4（量産・運用性の仕上げ）に入る前に、カードリザル�
     3. **可読性・縁取り・配色の境界条件チェック**: 現行 `apply_foil_and_grain_material` はソフト暗色ハローのみで硬質縁取り・二重縁取り・縦グラデ・ヴィヴィッド配色に未対応。明背景／高彩度アニメ背景／暗背景のそれぞれで文字が沈まず、かつ被写体の顔を邪魔しないコントラスト・縁幅基準を点検する。
     4. **レイアウト＆演出同期の制約チェック**: 現行 `compositions/scene-result.css` の `#card-overlay-layer` は中央下揃え固定、出現アニメも単一方向の光走査ワイプ前提。非対称配置・スラント帯導入時に `#card-no-corner`・`#stars-row`・`#attr-badge`・ホロ保護マスク・着地後ワイプ演出と干渉しないか、および被写体の位置（左寄り／右寄り／中央）に応じた退避余地を点検する。
 
-- [ ] **3.5-1. 昇格カットインとの設定分離 ＆ ジャンル別ヴァリアブルフォント基盤**
+- [x] **3.5-1. 昇格カットインとの設定分離 ＆ ジャンル別ヴァリアブルフォント基盤**
   - **対象**: `assets/fonts/*`, `assets/fonts/LICENSE-OFL.txt`, `card-config.js`, `scripts/render_typography.py`, `compositions/shared-base.css`
   - **課題**: プリセット切替がカットイン側まで波及し、また同梱フォントが手書き・筆文字寄りなため、可愛い写真・アート写真・2Dアニメ画像で書体の世界観が噛み合わない。
   - **対策**:
@@ -282,7 +282,7 @@ Phase 4（量産・運用性の仕上げ）に入る前に、カードリザル�
     - ジャンル別フォントを追加選定・同梱し、`FONT_NORM_FACTORS`・`FONT_KINEMATICS`（太ゴシックやモダン明朝ではデフォルト `wobble` を抑えて精密整列させる制御を含む）・`compositions/shared-base.css` のフォールバック定義を整備する。
     - `card-config.js` にジャンル別プリセット（例：`royal-foil` / `anime-pop` / `cute-pastel` / `editorial-art` / `handwritten-sign`）を用意しつつ、スロット単位（`title`, `subtitle`, `flavor`, `rarity` 等）でフォントを個別上書きできるヴァリアブル構造にする。
 
-- [ ] **3.5-2. 縁取り（単縁・二重縁・3Dベベル）＆ カラー／マテリアル体系・表面中央鋲の拡充**
+- [x] **3.5-2. 縁取り（単縁・二重縁・3Dベベル）＆ カラー／マテリアル体系・表面中央鋲の拡充**
   - **対象**: `scripts/render_typography.py`, `scripts/render_material.py`, `card-config.js`, `compositions/scene-result.css`
   - **課題**: 現行 `MATERIALS` は金・銀・白の 5 種＋ソフト暗色ハローのみで、アニメ調のくっきり二重縁取りやヴィヴィッド／パステル配色が表現できない。また表面フレームは四隅フィリグリー撤去後に均一な角丸枠となり、豪華な裏面との質感落差がある。
   - **対策**:
@@ -291,7 +291,7 @@ Phase 4（量産・運用性の仕上げ）に入る前に、カードリザル�
     - レアリティクレスト（`render_rarity_crest`）および属性プレート（`render_attribute_plate`）にもテーマカラー連動（金箔／ヴィヴィッド帯＋スターバースト等）のバリエーションを用意し、カード全体の色調を統一する。
     - `scripts/render_material.py` の表面虹フレーム（`mat_rainbow_frame.png`）について、四隅バッジ（`#ssr-emblem` / `#attr-badge` / `#card-no-corner`）と干渉しない「上辺・下辺・左右辺の中央」のみに微小な金属ノッチ／菱形鋲を追加し、特注トレカとしての格を補強する。
 
-- [ ] **3.5-3. 脱・中央揃え：非対称・スラント帯など複数レイアウトプリセットの実装**
+- [x] **3.5-3. 脱・中央揃え：非対称・スラント帯など複数レイアウトプリセットの実装**
   - **対象**: `card-config.js`, `scripts/render_typography.py`, `compositions/scene-result.html`, `compositions/scene-result.css`, `compositions/scene-result-setup.js`
   - **課題**: 中央下揃えの一本調子な縦積みレイアウトだけでは視覚的リズムに欠け、2Dアニメ調の躍動感やアート写真的な余白美を活かしきれない。また `#title-wipe-glint` の走査範囲が固定座標（`x: -235 -> 235`）にハードコードされており、星（★×5）も下部テキスト上部に小さく孤立して視線が分散しやすい。
   - **対策**:
@@ -302,7 +302,7 @@ Phase 4（量産・運用性の仕上げ）に入る前に、カードリザル�
       - `pop-sticker`：軽やかな傾き・星併置の可愛い／カジュアル向けレイアウト（必要に応じて左右反転オプションや縦書き `vertical-jp` も検討）
     - レイアウトに合わせて文字出現アニメ（帯スライドイン・光走査ワイプ方向・`#title-wipe-glint` の固定座標脱却と文字マスク連動スペキュラ統合・星 `★×5` の SSR ロゴ直下または帯上縁への UI グルーピング再設計）および下部ビネットの強弱を最適化し、`12.0s〜15.0s` のレイアウト完全固定仕様を厳守する。
 
-- [ ] **3.5-4. ジャンル別プリセット組み合わせ検証 ＆ スナップショット比較**
+- [x] **3.5-4. ジャンル別プリセット組み合わせ検証 ＆ スナップショット比較**
   - **対象**: 代表 3〜4 ジャンル（王道ポートレート／可愛い写真／アーティスティック写真／2Dアニメ画像）での出力比較
   - **対策**: 各ジャンルに対応プリセットを適用して `npm run check` および重点フレーム（`5.6s` カットイン、`10.5s` テキスト出現、`13.5s` 固定リザルト）を抽出し、カットインの不変性・文字可読性・顔保護・世界観の一致を目視および `npm run qa` で確認する。
 

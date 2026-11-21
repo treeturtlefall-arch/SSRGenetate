@@ -23,6 +23,13 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
+from _typo_modern import (
+    MODERN_PRESETS,
+    render_modern_attribute_plate,
+    render_modern_text,
+    render_royal_diamond_rule,
+    resolve_modern_plan,
+)
 from _utils import (
     FONTS_DIR,
     GOLD_RAMP,
@@ -40,6 +47,15 @@ from _utils import (
     shade_metal_relief,
     tight_crop_rgba,
 )
+
+# 昇格カットイン専用固定スタイル（カード側プリセットやレイアウト切替の影響を一切受けない）
+CUTIN_STYLE: Dict[str, Dict[str, Any]] = {
+    "cutinSub":  {"font": "cinecaption.ttf",       "material": "foil-champagne", "stamp": True,  "wobble_mul": 0.30},
+    "cutinMain": {"font": "YujiSyuku-Regular.ttf", "material": "foil-gold",      "stamp": False, "wobble_mul": 0.65},
+}
+CUTIN_WOBBLE_NORM = 0.28
+CUTIN_FOIL_GLITTER = 0.42
+CUTIN_PAPER_GRAIN = 0.35
 
 FALLBACK_FONT_FILE = "TekitouPoem.ttf"
 
@@ -851,19 +867,19 @@ def render_attribute_plate(
 
 
 def main() -> None:
+    all_presets = list(MODERN_PRESETS.keys()) + list(TYPO_PRESETS.keys())
     parser = argparse.ArgumentParser(description="SSRGenerate 文字ヒューマナイズ＆箔物理タイポグラフィ生成")
-    parser.add_argument("--preset", type=str, default=None, choices=list(TYPO_PRESETS.keys()))
-    parser.add_argument("--wobble", type=float, default=None, help="0..100")
+    parser.add_argument("--preset", type=str, default=None, choices=all_presets)
+    parser.add_argument("--wobble", type=float, default=None, help="0..100 (legacy presets)")
     parser.add_argument("--seed", type=int, default=None)
     args = parser.parse_args()
 
     cfg = load_card_config()
     typo_cfg = cfg.get("typography", {})
 
-    preset_name = args.preset or typo_cfg.get("preset", "foil-brush")
-    if preset_name not in TYPO_PRESETS:
-        preset_name = "foil-brush"
-    preset = TYPO_PRESETS[preset_name]
+    preset_name = args.preset or typo_cfg.get("preset", "royal-foil")
+    if preset_name not in MODERN_PRESETS and preset_name not in TYPO_PRESETS:
+        preset_name = "royal-foil"
 
     wobble_val = args.wobble if args.wobble is not None else typo_cfg.get("wobble", 28)
     wobble_norm = max(0.0, min(1.0, float(wobble_val) / 100.0))
@@ -873,60 +889,108 @@ def main() -> None:
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    specs = [
+    is_modern = preset_name in MODERN_PRESETS
+    plan = resolve_modern_plan(preset_name, typo_cfg) if is_modern else None
+
+    card_specs = [
         ("ssr",       str(cfg.get("rarity", "SSR")),     94, 320, 1, "typo_ssr.png"),
         ("attribute", str(cfg.get("attribute", "")),     26, 300, 1, "typo_attr.png"),
         ("subtitle",  str(cfg.get("subtitle", "")),      34, 780, 1, "typo_subtitle.png"),
         ("title",     str(cfg.get("title", "")),         74, 800, 1, "typo_title.png"),
         ("flavor",    str(cfg.get("flavor", "")),        29, 780, 2, "typo_flavor.png"),
         ("cardNo",    str(cfg.get("cardNo", "")),        24, 340, 1, "typo_cardno.png"),
+    ]
+    cutin_specs = [
         ("cutinSub",  "RAINBOW ASCENSION",               34, 820, 1, "typo_cutin_sub.png"),
         ("cutinMain", "昇格  SSR 確定",                  112, 980, 1, "typo_cutin_main.png"),
     ]
 
     manifest: Dict[str, Any] = {
         "preset": preset_name,
+        "layout": plan["layout"] if plan else "classic-center",
+        "mirror": bool(plan["mirror"]) if plan else False,
+        "palette": plan["palette_id"] if plan else "legacy",
         "wobble": wobble_val,
         "seed": seed,
         "items": {},
     }
 
-    for idx, (key, text, fsize, max_w, max_lines, filename) in enumerate(specs):
+    # --- 1. カード側 6 スロット ---
+    for idx, (key, text, legacy_fsize, legacy_max_w, legacy_max_lines, filename) in enumerate(card_specs):
         clean_text = text.strip()
         if not clean_text:
             continue
-        style = preset[key]
         item_seed = seed + idx * 1009
-        if key == "ssr":
-            img = render_rarity_crest(
-                text=clean_text,
-                font_file=style["font"],
-                foil_glitter=foil_glitter,
-                paper_grain=paper_grain,
-                seed=item_seed,
-            )
-        elif key == "attribute":
-            img = render_attribute_plate(
-                text=clean_text,
-                font_file=style["font"],
-                foil_glitter=foil_glitter,
-                paper_grain=paper_grain,
-                seed=item_seed,
-            )
+
+        if is_modern and plan is not None:
+            sdef = plan["slots"][key]
+            pal = plan["palette"]
+            nf = plan["norm_factors"]
+            align = "right" if (plan["layout"] == "pop-horizontal" and key in ("subtitle", "title", "flavor")) else "center"
+            if plan["mirror"] and align == "right":
+                align = "left"
+
+            if key == "attribute":
+                img = render_modern_attribute_plate(
+                    clean_text,
+                    font_name=sdef["font"],
+                    font_size=int(sdef["size"]),
+                    style_id=str(sdef["style"]),
+                    palette=pal,
+                    tracking_em=float(sdef["trackingEm"]),
+                    vf_weight=int(sdef["vfWeight"]),
+                    norm_factors=nf,
+                )
+            else:
+                img = render_modern_text(
+                    clean_text,
+                    font_name=sdef["font"],
+                    font_size=int(sdef["size"]),
+                    max_w=float(sdef["maxW"]),
+                    max_lines=int(sdef["maxLines"]),
+                    style_id=str(sdef["style"]),
+                    palette=pal,
+                    tracking_em=float(sdef["trackingEm"]),
+                    compress_x=float(sdef["compressX"]),
+                    vf_weight=int(sdef["vfWeight"]),
+                    opacity=float(sdef["opacity"]),
+                    align=align,
+                    norm_factors=nf,
+                )
         else:
-            img = render_multiline_block(
-                text=clean_text,
-                font_file=style["font"],
-                font_size=fsize,
-                max_w=float(max_w),
-                max_lines=max_lines,
-                material_name=style["material"],
-                wobble_strength=wobble_norm * float(style["wobble_mul"]),
-                foil_glitter=foil_glitter,
-                paper_grain=paper_grain,
-                is_stamp=bool(style["stamp"]),
-                seed=item_seed,
-            )
+            preset = TYPO_PRESETS[preset_name]
+            style = preset[key]
+            if key == "ssr":
+                img = render_rarity_crest(
+                    text=clean_text,
+                    font_file=style["font"],
+                    foil_glitter=foil_glitter,
+                    paper_grain=paper_grain,
+                    seed=item_seed,
+                )
+            elif key == "attribute":
+                img = render_attribute_plate(
+                    text=clean_text,
+                    font_file=style["font"],
+                    foil_glitter=foil_glitter,
+                    paper_grain=paper_grain,
+                    seed=item_seed,
+                )
+            else:
+                img = render_multiline_block(
+                    text=clean_text,
+                    font_file=style["font"],
+                    font_size=legacy_fsize,
+                    max_w=float(legacy_max_w),
+                    max_lines=legacy_max_lines,
+                    material_name=style["material"],
+                    wobble_strength=wobble_norm * float(style["wobble_mul"]),
+                    foil_glitter=foil_glitter,
+                    paper_grain=paper_grain,
+                    is_stamp=bool(style["stamp"]),
+                    seed=item_seed,
+                )
+
         if img is None:
             continue
         out_path = OUT_DIR / filename
@@ -938,6 +1002,49 @@ def main() -> None:
             "text": clean_text,
         }
         print(f"[OK] {key}: {filename} ({img.width}x{img.height}) -> '{clean_text}'")
+
+    # --- 1b. Royal 細二重罫線アセット（royal-fantasy 時） ---
+    if is_modern and plan is not None and plan["layout"] == "royal-fantasy":
+        rule_img = render_royal_diamond_rule(width=760, palette=plan["palette"], ss=3)
+        rule_path = OUT_DIR / "typo_royal_rule.png"
+        save_png(rule_img, rule_path)
+        manifest["items"]["royalRule"] = {
+            "src": "assets/generated/typo_royal_rule.png",
+            "width": rule_img.width,
+            "height": rule_img.height,
+            "text": "__rule__",
+        }
+        print(f"[OK] royalRule: typo_royal_rule.png ({rule_img.width}x{rule_img.height})")
+
+    # --- 2. 昇格カットイン 2 スロット（完全分離・不変王道スタイル） ---
+    for c_idx, (key, text, fsize, max_w, max_lines, filename) in enumerate(cutin_specs):
+        c_style = CUTIN_STYLE[key]
+        # 従来と同じシードオフセット (idx=6, 7) を維持してピクセル完全一致を保つ
+        item_seed = seed + (6 + c_idx) * 1009
+        img = render_multiline_block(
+            text=text,
+            font_file=c_style["font"],
+            font_size=fsize,
+            max_w=float(max_w),
+            max_lines=max_lines,
+            material_name=c_style["material"],
+            wobble_strength=CUTIN_WOBBLE_NORM * float(c_style["wobble_mul"]),
+            foil_glitter=CUTIN_FOIL_GLITTER,
+            paper_grain=CUTIN_PAPER_GRAIN,
+            is_stamp=bool(c_style["stamp"]),
+            seed=item_seed,
+        )
+        if img is None:
+            continue
+        out_path = OUT_DIR / filename
+        save_png(img, out_path)
+        manifest["items"][key] = {
+            "src": f"assets/generated/{filename}",
+            "width": img.width,
+            "height": img.height,
+            "text": text,
+        }
+        print(f"[OK] {key}: {filename} ({img.width}x{img.height}) -> '{text}' [CUTIN_FIXED]")
 
     manifest_path = OUT_DIR / "typo-manifest.js"
     manifest_js = (

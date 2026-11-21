@@ -1,4 +1,15 @@
 Copyright 2020 The Klee Project Authors (https://github.com/fontworks-fonts/Klee)
+Copyright 2021 The Yuji Project Authors (https://github.com/Kinutafontfactory/Yuji)
+Copyright 2021 The Zen Kurenaido Project Authors (https://github.com/googlefonts/zen-kurenaido)
+Copyright 2021 The Zen Maru Gothic Project Authors (https://github.com/googlefonts/zen-marugothic)
+Copyright 2020 The Shippori Mincho Project Authors (https://github.com/fontdasu/ShipporiMincho)
+Copyright 2012-2020 The Cinzel Project Authors (https://github.com/NDISCOVER/Cinzel)
+Copyright 2021 The Outfit Project Authors (https://github.com/Outfitio/Outfit-Fonts)
+Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+Copyright SetoFont (Nozomi Seto, SIL OFL 1.1)
+Copyright TekitouPoem / TekitouPoem_Bold (Cockatrice Digital, SIL OFL 1.1)
+
+Note: cinecaption.ttf is licensed separately under LICENSE-cinecaption.txt.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
