@@ -2,7 +2,7 @@
 
 #scene-summon-stage {
   z-index: 10;
-  background: radial-gradient(circle at 50% 47% var(--in-oklab), #101b3f 0%, #060a1b 58%, #020309 100%);
+  background: var(--bg-void-gradient);
 }
 
 #summon-grain {

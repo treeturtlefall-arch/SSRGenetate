@@ -779,15 +779,44 @@ def measure_lufs(stereo: np.ndarray, sr: int = SR) -> float:
 
 
 def measure_true_peak_db(buf: np.ndarray, oversample: int = 4) -> float:
-    """オーバーサンプリングによる True Peak (dBFS) を算出する"""
+    """オーバーサンプリングによる True Peak (dBFS) を算出する（ピーク近傍ウィンドウ抽出による高速・厳密計測）"""
     if len(buf) == 0:
         return -120.0
-    if oversample <= 1:
-        pk = float(np.max(np.abs(buf)))
+    abs_buf = np.abs(buf)
+    raw_pk = float(np.max(abs_buf))
+    if oversample <= 1 or raw_pk < 1e-9:
+        return 20.0 * math.log10(max(raw_pk, 1e-9))
+
+    # 全長70万サンプルの一括リサンプリングを避け、ピーク近傍（>= 0.55 * raw_pk）の前後64サンプル窓のみ評価
+    ch_max = np.max(abs_buf, axis=1)
+    hot = np.where(ch_max >= raw_pk * 0.55)[0]
+    if len(hot) == 0 or len(buf) <= 4096:
+        up_l = resample_poly(buf[:, 0], oversample, 1)
+        up_r = resample_poly(buf[:, 1], oversample, 1)
+        pk = max(float(np.max(np.abs(up_l))), float(np.max(np.abs(up_r))))
         return 20.0 * math.log10(max(pk, 1e-9))
-    up_l = resample_poly(buf[:, 0], oversample, 1)
-    up_r = resample_poly(buf[:, 1], oversample, 1)
-    pk = max(float(np.max(np.abs(up_l))), float(np.max(np.abs(up_r))))
+
+    pad = 64
+    n = len(buf)
+    pk = raw_pk
+    # 近接するホットインデックスを連続区間にマージ
+    seg_start = max(0, int(hot[0]) - pad)
+    seg_end = min(n, int(hot[0]) + pad + 1)
+    windows = []
+    for idx in hot[1:]:
+        s = max(0, int(idx) - pad)
+        e = min(n, int(idx) + pad + 1)
+        if s <= seg_end:
+            seg_end = max(seg_end, e)
+        else:
+            windows.append((seg_start, seg_end))
+            seg_start, seg_end = s, e
+    windows.append((seg_start, seg_end))
+
+    for s, e in windows:
+        up_l = resample_poly(buf[s:e, 0], oversample, 1)
+        up_r = resample_poly(buf[s:e, 1], oversample, 1)
+        pk = max(pk, float(np.max(np.abs(up_l))), float(np.max(np.abs(up_r))))
     return 20.0 * math.log10(max(pk, 1e-9))
 
 

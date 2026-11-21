@@ -82,18 +82,20 @@
 - `meta.json` — プロジェクトメタデータ
 
 ### `compositions/`（シーン別サブコンポジション ＆ 共通モジュール）
-- `compositions/shared-base.css` — フォント定義（`YujiSyuku`, `KleeOne`, `CineCaption`）・カード寸法変数・パレット・フィルムグレイン定義
-- `compositions/shared-utils.js` — Mulberry32 PRNG (`createRng`)・相対パス解決 (`resolveAssetPath`)・設定優先解決 (`pickConfigValue`)・瞬間RGB色収差 (`addChromaShock`)
+- `compositions/shared-base.css` — バンドル済みフォント定義（`YujiSyuku`, `KleeOne`, `CineCaption`, `ShipporiMincho`, `Cinzel`, `ZenMaruGothic`, `Outfit`, `JetBrainsMono`）・カード寸法変数・背景/パレットトークン・フィルムグレイン定義
+- `compositions/shared-utils.js` — Mulberry32 PRNG (`createRng`)・相対パス解決 (`resolveAssetPath`)・設定優先解決 (`pickConfigValue`)・SVG色収差フィルタ自動注入＆瞬間RGB色収差 (`ensureChromaShockSvg` / `addChromaShock`)
 - `compositions/scene-summon.html` / `scene-summon.css` / `scene-summon-setup.js` — 召喚〜昇格シーンの DOM・GSAP タイムライン・決定論的パーティクル/螺旋軌道セットアップ
 - `compositions/scene-result.html` / `scene-result.css` / `scene-result-setup.js` — 3D カード・リザルトシーンの DOM・GSAP タイムライン・タイポマニフェスト適用・星/スパークル/金箔/玉ボケ生成
 
 ### `scripts/`（決定論的アセット生成 ＆ QA スクリプト）
 - `scripts/_utils.py` — `card-config.js` 読み込み、シード解決、色変換、Porter-Duff Over 合成、微細シボ、金属レリーフ陰影、カード寸法定数
 - `scripts/_optics_core.py` — H&D 分光スペクトル、FFT 異方性 PSF ぼかし、EDT 距離変換、FBM ノイズ、6段階物理光学発光パイプライン
+- `scripts/_font_slots.py` — `assets/fonts_custom/` 優先解決・TTF `cmap` パーサー・書体別視覚サイズ正規化係数一元管理
+- `scripts/_typo_modern.py` — 4軸直交スキーマ (`font × style × palette × layout`) ＆ 2x/3x SSAA・EDT 縁取りモダンタイポ生成エンジン
 - `scripts/_audio_dsp.py` — 現代ソシャゲ音像シンセ、`fftconvolve` ホール残響、BS.1770-4 LUFS / TruePeak 計測、ソフトリミッター
 - `scripts/_audio_slots.py` — `assets/se_custom/`（11 スロット＋`slots.json`）の WAV デコード・44.1kHz ステレオ変換・フォールバック管理
 - `scripts/build_all.py` — 下位 4 スクリプトを並列実行する一括ビルダー（`npm run build:assets`）
-- `scripts/render_typography.py` — 書字キネマティクス＆金属箔タイポ透過 PNG＋`typo-manifest.js` 生成（`npm run build:typo`）
+- `scripts/render_typography.py` — 書字キネマティクス＆箔/モダンタイポ透過 PNG＋`typo-manifest.js` 生成（`npm run build:typo`）
 - `scripts/render_optics.py` — 物理光学発光アセット透過 PNG 並列生成（`npm run build:optics`）
 - `scripts/render_material.py` — 虹金属箔フレーム・裏面・ホロプリズム・金箔結晶片・内窓深度・フィルムグレイン生成（`npm run build:material`）
 - `scripts/generate_se.py` — 16.0 秒仮想マスター基準のステレオ WAV 効果音 3 本生成（`npm run build:se`）
@@ -101,9 +103,10 @@
 
 ### `assets/` ＆ `renders/`（素材・生成物）
 - `assets/photo.jpg` — 入力写真（`.gitignore` で画像類は除外）
-- `assets/fonts/` — バンドル済み日本語/欧文フォント群
+- `assets/fonts/` — バンドル済み日本語/欧文フォント群（OFL / `cinecaption` 個別ライセンス）
+- `assets/fonts_custom/` — ローカル専用カスタムフォントスロット（`.gitignore` 隔離、`README.md` のみ追跡）
 - `assets/generated/` — 生成画像群と `typo-manifest.js`
-  - タイポ: `typo_ssr.png`, `typo_attr.png`, `typo_subtitle.png`, `typo_title.png`, `typo_flavor.png`, `typo_cardno.png`, `typo_cutin_sub.png`, `typo_cutin_main.png`, `typo-manifest.js`
+  - タイポ: `typo_ssr.png`, `typo_attr.png`, `typo_subtitle.png`, `typo_title.png`, `typo_flavor.png`, `typo_cardno.png`, `typo_royal_rule.png`, `typo_cutin_sub.png`, `typo_cutin_main.png`, `typo-manifest.js`
   - 光学: `opt_mc_{blue,gold,rainbow}_{outer,mid,inner}.png`, `opt_gate_{blue,gold,rainbow}_{outer,inner}.png`, `opt_orb_{blue,gold,rainbow}_{shell,facet}.png`, `opt_orb_core_bleach.png`, `opt_orb_cracks.png`, `opt_godrays_{prism,gold}_{a,b}.png`, `opt_pillar_{gold,rainbow}.png`, `opt_shock_{gold,rainbow}.png`, `opt_cutin_{flare,speedlines}.png`, `opt_result_ring.png`, `opt_meteor_{blue,red,green}.png`, `opt_wisp_head_{blue,red,green}.png`, `opt_bolt_{gold,prism}.png`, `opt_shard_{far,near}_{0,1,2}.png`, `opt_star_gold.png`, `opt_sparkle_{gold,white,pink,cyan}.png`, `opt_bokeh_{gold,rose,aqua,white}_{far,near}.png`
   - マテリアル: `mat_rainbow_frame.png`, `mat_window_depth.png`, `mat_card_back.png`, `mat_holo_prism.png`, `mat_flake_{0..5}.png`, `mat_film_grain.png`
 - `assets/se_summon.wav`, `assets/se_upgrade.wav`, `assets/se_fanfare.wav` — 生成済み効果音
@@ -119,10 +122,10 @@
 | キー | 既定値 / 選択肢 | 参照元 | 用途 |
 | :--- | :--- | :--- | :--- |
 | `photo`, `photoFit`, `photoPosition`, `photoZoom` | `"assets/photo.jpg"`, `"cover"`, `"50% 35%"`, `1.05` | `scene-result-setup.js` | 写真パス・トリミング・ズーム |
-| `rarity`, `stars` | `"SSR"`, `5`（`1..6` クランプ） | `scene-result-setup.js`, `render_typography.py` | レアリティ表記と星の数 |
+| `rarity`, `stars` | `"SSR"`, `0`（`0` で非表示、`1..6` クランプ） | `scene-result-setup.js`, `render_typography.py` | レアリティ表記と星の数 |
 | `attribute`, `subtitle`, `title`, `flavor`, `cardNo` | 文字列（空文字で非表示） | `scene-result-setup.js`, `render_typography.py` | カード表示テキスト |
 | `stats` | `[]`（最大3項目 `{label, value}`） | `scene-result-setup.js` | 下部ステータス枠 |
-| `typography` | `preset` (`"foil-brush"` / `"handwritten-sign"` / `"crisp-emboss"`), `wobble` (`0..100`), `foilGlitter`, `paperGrain`, `seed` | `render_typography.py` | 書字キネマティクス・箔質感 |
+| `typography` | `preset` (`"royal-foil"` / `"cute-pastel"`、レガシー `"foil-brush"` / `"handwritten-sign"` / `"crisp-emboss"`), 4軸上書き (`layout`, `palette`, `font`, `style`), `wobble` (`0..100`), `foilGlitter`, `paperGrain`, `seed` | `render_typography.py`, `_typo_modern.py` | モダン/箔タイポグラフィ・レイアウト（カットインは分離固定） |
 | `optics` | `halation`, `coreGlow`, `irregularity`, `seed` | `render_optics.py` | 6段階物理光学発光パラメータ |
 | `material` | `frameFoilGlitter`, `frameBrushStrength`, `windowDepthOpacity`, `chromaShockPx`, `seed` | `render_material.py`, `scene-summon.html`, `scene-result-setup.js` | 虹フレーム・内窓深度・瞬間色収差量 |
 | `summon` | `magicCircleSpeed` (`1.0`), `magicCircleCurve` (`"dramatic"` / `"steady"` / `"overdrive"`), `magicCircleRingRatios` (`[1.0, -1.3, 1.7]`) | `scene-summon-setup.js` | 召喚魔法陣の回転速度・加減速カーブ |

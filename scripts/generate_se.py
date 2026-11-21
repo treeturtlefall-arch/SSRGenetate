@@ -13,6 +13,7 @@ SSRGenerate — 現代ソシャゲ音像プロシージャル＆カスタムス�
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import time
 import numpy as np
@@ -373,10 +374,14 @@ def main() -> None:
     slots = CustomSlotBank()
     print(slots.used_summary())
 
-    # 各トラックを独立シードで生成（1トラックの変更が他トラックの位相へ波及しないようにする）
-    b_summon = build_se_summon(np.random.default_rng(seed + 101), slots)
-    b_upgrade = build_se_upgrade(np.random.default_rng(seed + 202), slots)
-    b_fanfare = build_se_fanfare(np.random.default_rng(seed + 303), slots)
+    # 各トラックを独立シードで並列生成（1トラックの変更が他トラックの位相へ波及しない）
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        fut_summon = ex.submit(build_se_summon, np.random.default_rng(seed + 101), slots)
+        fut_upgrade = ex.submit(build_se_upgrade, np.random.default_rng(seed + 202), slots)
+        fut_fanfare = ex.submit(build_se_fanfare, np.random.default_rng(seed + 303), slots)
+        b_summon = fut_summon.result()
+        b_upgrade = fut_upgrade.result()
+        b_fanfare = fut_fanfare.result()
 
     # index.html と同一オフセット（0.5s プリロール含む）＆トラック音量で 16.0s 仮想マスターを組み立てて統合 LUFS を計測
     tracks = [

@@ -206,15 +206,26 @@
     );
 }
 
-#card-back-rim-burst {
+/* カード外枠リング領域（ボーダー幅分）のみを中抜き透過マスクで切り出す共通定義 */
+#card-back-rim-burst,
+#frame-holo-glint,
+#frame-rim-glare {
   position: absolute;
   inset: 0;
   border-radius: var(--card-outer-r);
   padding: var(--card-border);
-  z-index: 24;
-  opacity: 0;
-  mix-blend-mode: screen;
   pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+#card-back-rim-burst {
+  z-index: 24;
   background: linear-gradient(
     132deg var(--in-oklch),
     rgba(118, 212, 238, 0.88) 0%,
@@ -223,11 +234,6 @@
     rgba(232, 141, 180, 0.88) 76%,
     rgba(118, 212, 238, 0.92) 100%
   );
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
 }
 
 #spin-spec-front-clip {
@@ -278,14 +284,7 @@
 
 /* 枠上だけを走る高輝度リムシマー（12〜15s の微動呼吸でも活躍） */
 #frame-holo-glint {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--card-outer-r);
-  padding: var(--card-border);
   z-index: 42;
-  pointer-events: none;
-  mix-blend-mode: screen;
-  opacity: 0;
   background-image:
     linear-gradient(
       118deg var(--in-oklch),
@@ -298,23 +297,11 @@
     url("../assets/generated/mat_holo_prism.png");
   background-size: 240% 240%, 360px 360px;
   background-position: 0% 0%, 0 0;
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
 }
 
 /* 13.2s 付近で外枠リム上を1回だけ鋭く走る高輝度グレア */
 #frame-rim-glare {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--card-outer-r);
-  padding: var(--card-border);
   z-index: 43;
-  pointer-events: none;
-  mix-blend-mode: screen;
-  opacity: 0;
   background-image: linear-gradient(
     118deg var(--in-oklch),
     transparent 34%,
@@ -325,11 +312,6 @@
   );
   background-size: 320% 320%;
   background-position: 0% 0%;
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
 }
 
 .card-front-inner {

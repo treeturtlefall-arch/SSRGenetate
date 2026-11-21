@@ -17,12 +17,16 @@ import functools
 import json
 import math
 import random
-import struct
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
+from _font_slots import (
+    FONT_NORM_FACTORS as SHARED_NORM_FACTORS,
+    get_cmap_chars,
+    resolve_font_path,
+)
 from _typo_modern import (
     MODERN_PRESETS,
     render_modern_attribute_plate,
@@ -59,16 +63,9 @@ CUTIN_PAPER_GRAIN = 0.35
 
 FALLBACK_FONT_FILE = "TekitouPoem.ttf"
 
-# 書体別・視覚サイズ正規化係数（異なるEM枠のフォントを切り替えても視覚サイズを揃える）
-FONT_NORM_FACTORS: Dict[str, float] = {
-    "YujiSyuku-Regular.ttf": 1.04,
-    "KleeOne-Regular.ttf": 1.05,
-    "TekitouPoem.ttf": 1.05,
-    "TekitouPoem_Bold.ttf": 1.05,
-    "SetoFont.ttf": 1.00,
-    "ZenKurenaido-Regular.ttf": 1.06,
-    "cinecaption.ttf": 1.04,
-}
+# 書体別・視覚サイズ正規化係数（_font_slots.py の実測値と同期。カットインのみ従来互換係数を使用）
+FONT_NORM_FACTORS: Dict[str, float] = SHARED_NORM_FACTORS
+CUTIN_NORM_FACTORS: Dict[str, float] = {**SHARED_NORM_FACTORS, "cinecaption.ttf": 1.04}
 
 # 書体別キネマティクスプロファイル
 FONT_KINEMATICS: Dict[str, Dict[str, float]] = {
@@ -173,80 +170,18 @@ MATERIALS: Dict[str, Dict[str, Any]] = {
 }
 
 
-@functools.lru_cache(maxsize=32)
 def get_font_supported_chars(font_file: str) -> Set[int]:
-    """TTF/OTF の cmap テーブルを直接パースし、収録 Unicode コードポイント集合を返す"""
-    font_path = FONTS_DIR / font_file
-    if not font_path.is_file():
+    """fonts_custom/ → fonts/ → Windows/Fonts の順で解決したフォントの収録 Unicode コードポイント集合を返す"""
+    font_path = resolve_font_path(font_file)
+    if font_path is None:
         return set()
-
-    chars: Set[int] = set()
-    try:
-        with open(font_path, "rb") as f:
-            f.read(4)
-            num_tables, = struct.unpack(">H", f.read(2))
-            f.seek(12)
-            cmap_offset = None
-            for _ in range(num_tables):
-                tag = f.read(4)
-                _, offset, _ = struct.unpack(">III", f.read(12))
-                if tag == b"cmap":
-                    cmap_offset = offset
-                    break
-            if not cmap_offset:
-                return chars
-
-            f.seek(cmap_offset)
-            _, num_subtables = struct.unpack(">HH", f.read(4))
-            subtables = []
-            for _ in range(num_subtables):
-                pid, eid, offset = struct.unpack(">HHI", f.read(8))
-                subtables.append((pid, eid, cmap_offset + offset))
-
-            for _, _, sub_offset in subtables:
-                f.seek(sub_offset)
-                format_num, = struct.unpack(">H", f.read(2))
-                if format_num == 4:
-                    _, _, seg_count_x2 = struct.unpack(">HHH", f.read(6))
-                    seg_count = seg_count_x2 // 2
-                    f.seek(sub_offset + 14)
-                    end_codes = struct.unpack(f">{seg_count}H", f.read(seg_count * 2))
-                    f.seek(sub_offset + 14 + seg_count * 2 + 2)
-                    start_codes = struct.unpack(f">{seg_count}H", f.read(seg_count * 2))
-                    id_deltas = struct.unpack(f">{seg_count}h", f.read(seg_count * 2))
-                    id_range_offsets_pos = f.tell()
-                    id_range_offsets = struct.unpack(f">{seg_count}H", f.read(seg_count * 2))
-                    for i in range(seg_count):
-                        s, e = start_codes[i], end_codes[i]
-                        if s == 0xFFFF:
-                            break
-                        if id_range_offsets[i] == 0:
-                            for c in range(s, e + 1):
-                                if (c + id_deltas[i]) & 0xFFFF != 0:
-                                    chars.add(c)
-                        else:
-                            for c in range(s, e + 1):
-                                off = id_range_offsets_pos + i * 2 + id_range_offsets[i] + (c - s) * 2
-                                f.seek(off)
-                                glyph_index, = struct.unpack(">H", f.read(2))
-                                if glyph_index != 0 and (glyph_index + id_deltas[i]) & 0xFFFF != 0:
-                                    chars.add(c)
-                elif format_num == 12:
-                    f.seek(sub_offset + 12)
-                    num_groups, = struct.unpack(">I", f.read(4))
-                    for _ in range(num_groups):
-                        start_char, end_char, _ = struct.unpack(">III", f.read(12))
-                        for c in range(start_char, end_char + 1):
-                            chars.add(c)
-    except Exception:
-        pass
-    return chars
+    return get_cmap_chars(str(font_path))
 
 
 @functools.lru_cache(maxsize=64)
 def get_font(font_file: str, size: int) -> ImageFont.FreeTypeFont:
-    p = FONTS_DIR / font_file
-    if p.is_file():
+    p = resolve_font_path(font_file)
+    if p is not None:
         try:
             return ImageFont.truetype(str(p), size)
         except Exception:
@@ -332,6 +267,7 @@ def render_humanized_line(
     wobble_strength: float,
     is_stamp: bool,
     seed: int,
+    norm_factors: Optional[Dict[str, float]] = None,
 ) -> Optional[Image.Image]:
     """
     1行分の文字をヒューマナイズ運動モデル（手首曲線 + AR(1)慣性 + 文字種別リズム + 充填率ダンピング）
@@ -341,6 +277,7 @@ def render_humanized_line(
     if not clean:
         return None
 
+    nf = norm_factors or FONT_NORM_FACTORS
     w = max(0.0, min(1.0, float(wobble_strength)))
     rng = random.Random(seed & 0xFFFFFFFF)
 
@@ -359,8 +296,8 @@ def render_humanized_line(
     if w_raw + pad_est > max_w and w_raw > 1.0:
         cur_size = max(14, int(cur_size * ((max_w - pad_est) / w_raw)))
 
-    p_norm = FONT_NORM_FACTORS.get(font_file, 1.0)
-    f_norm = FONT_NORM_FACTORS.get(FALLBACK_FONT_FILE, 1.05)
+    p_norm = nf.get(font_file, 1.0)
+    f_norm = nf.get(FALLBACK_FONT_FILE, 1.05)
     eff_size = max(12, int(round(cur_size * p_norm)))
     fb_size = max(10, int(round(eff_size * (f_norm / max(0.5, p_norm)))))
 
@@ -483,10 +420,10 @@ def render_humanized_line(
         tmp = Image.new("L", (cw, ch_h), 0)
         d = ImageDraw.Draw(tmp)
         draw_x = pad_x - bbox[0]
-        d.text((draw_x, base_y_offset), ch, fill=255, font=cur_font)
-
         glyph_cx = draw_x + (bbox[0] + bbox[2]) * 0.5
         glyph_base_y = base_y_offset + ascent
+        # 異なる ascent を持つフォント同士の混植時に約30px浮くのを防ぐためベースライン基準 (anchor="ls") で描画
+        d.text((draw_x, glyph_base_y), ch, fill=255, font=cur_font, anchor="ls")
 
         if abs(char_rot) > 0.08:
             tmp = tmp.rotate(char_rot, resample=Image.Resampling.BICUBIC, expand=False, center=(glyph_cx, glyph_base_y))
@@ -624,6 +561,7 @@ def render_multiline_block(
     paper_grain: float,
     is_stamp: bool,
     seed: int,
+    norm_factors: Optional[Dict[str, float]] = None,
 ) -> Optional[Image.Image]:
     """単一行または複数行テキストを描画・縦結合し、マテリアル物理を適用して RGBA を返す"""
     lines = wrap_text_lines(text, font_file, font_size, max_w=max_w, max_lines=max_lines)
@@ -640,6 +578,7 @@ def render_multiline_block(
             wobble_strength=wobble_strength,
             is_stamp=is_stamp,
             seed=seed + idx * 131,
+            norm_factors=norm_factors,
         )
         if m is not None:
             line_masks.append(m)
@@ -1033,6 +972,7 @@ def main() -> None:
             paper_grain=CUTIN_PAPER_GRAIN,
             is_stamp=bool(c_style["stamp"]),
             seed=item_seed,
+            norm_factors=CUTIN_NORM_FACTORS,
         )
         if img is None:
             continue

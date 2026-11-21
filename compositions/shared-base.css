@@ -60,6 +60,7 @@
   --in-oklab: ;
   --in-oklch: ;
   --bg-void: #040611;
+  --bg-void-gradient: radial-gradient(circle at 50% 47% var(--in-oklab), #101b3f 0%, #060a1b 58%, #020309 100%);
   --ink-ivory: #f8f4ea;
   --ink-gold-light: #f2dfb3;
   --ink-gold: #d4a24c;

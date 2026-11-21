@@ -173,6 +173,25 @@ def bilinear_warp(field: np.ndarray, dx: np.ndarray, dy: np.ndarray) -> np.ndarr
     return (a * (1 - fx) * (1 - fy) + b * fx * (1 - fy) + c * (1 - fx) * fy + d * fx * fy).astype(np.float32)
 
 
+def prepare_optical_mask(
+    mask_l: Image.Image,
+    ref_scale: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Step 1（距離変換尾根 ridge ＆ スリットぼかし slit）を事前計算する。
+    同一マスクを複数色（blue/gold/rainbow）で使い回す際の重複計算を回避する。
+    """
+    raw = np.asarray(mask_l, dtype=np.float32) / 255.0
+    fs = float(ref_scale)
+    inside = raw > 0.28
+    dist = approx_inner_distance(inside, max_iter=36)
+    dist = fft_gaussian_blur(dist, max(0.4, fs * 0.014)) * inside
+    dmax = max(1.0, float(np.percentile(dist[inside], 92))) if inside.any() else 1.0
+    ridge = np.power(np.clip(dist / dmax, 0.0, 1.25), 1.10)
+    slit = fft_gaussian_blur(raw, max(0.35, fs * 0.022))
+    return raw, ridge, slit
+
+
 def render_optical_glow(
     mask_l: Image.Image,
     spectrum_name: str,
@@ -183,13 +202,12 @@ def render_optical_glow(
     irregularity: float = 0.85,
     prism_mode: bool = False,
     seed: int = 0,
+    prepared: Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]] = None,
 ) -> Image.Image:
     """
     任意のグレースケール発光マスクに対し、FilmDateStamp の6段階物理光学モデルを適用して
     透過 RGBA 画像を生成する。
     """
-    raw = np.asarray(mask_l, dtype=np.float32) / 255.0
-    H, W = raw.shape
     fs = float(ref_scale)
     irr = max(0.0, float(irregularity))
     hal = max(0.05, float(halation))
@@ -199,11 +217,11 @@ def render_optical_glow(
     rng_micro = np.random.default_rng([seed & 0xFFFFFFFF, 33])
 
     # Step 1: 距離変換尾根（発光芯）
-    inside = raw > 0.28
-    dist = approx_inner_distance(inside, max_iter=36)
-    dist = fft_gaussian_blur(dist, max(0.4, fs * 0.014)) * inside
-    dmax = max(1.0, float(np.percentile(dist[inside], 92))) if inside.any() else 1.0
-    ridge = np.power(np.clip(dist / dmax, 0.0, 1.25), 1.10)
+    if prepared is not None:
+        raw, ridge, slit = prepared
+    else:
+        raw, ridge, slit = prepare_optical_mask(mask_l, fs)
+    H, W = raw.shape
 
     # Step 2: ① Macro ゆらぎ（素子個体差＋微光量勾配）
     if irr > 0:
@@ -215,7 +233,6 @@ def render_optical_glow(
     else:
         gain = np.ones((H, W), dtype=np.float32)
 
-    slit = fft_gaussian_blur(raw, max(0.35, fs * 0.022))
     hot = ridge * gain
     source = (0.48 * slit * gain + 1.15 * hot * core_glow) * exposure
 

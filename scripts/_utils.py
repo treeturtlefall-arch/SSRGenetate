@@ -149,12 +149,17 @@ def porter_duff_over(
     return np.clip(rgb, 0.0, 1.0), np.clip(a, 0.0, 1.0)
 
 
-def tight_crop_rgba(rgb: np.ndarray, a: np.ndarray, alpha_threshold: float = 0.012) -> Image.Image:
+def tight_crop_rgba(
+    rgb: np.ndarray,
+    a: np.ndarray,
+    alpha_threshold: float = 0.012,
+    pad: int = 1,
+) -> Image.Image:
     """アルファ値閾値を超える実インク領域の外接矩形でタイトクロップした RGBA Image を返す"""
     ys, xs = np.where(a > alpha_threshold)
     if len(ys) > 0:
-        y0, y1 = max(0, int(ys.min()) - 1), min(a.shape[0], int(ys.max()) + 2)
-        x0, x1 = max(0, int(xs.min()) - 1), min(a.shape[1], int(xs.max()) + 2)
+        y0, y1 = max(0, int(ys.min()) - pad), min(a.shape[0], int(ys.max()) + pad + 1)
+        x0, x1 = max(0, int(xs.min()) - pad), min(a.shape[1], int(xs.max()) + pad + 1)
         rgb, a = rgb[y0:y1, x0:x1], a[y0:y1, x0:x1]
     return rgba_from_float(rgb, a)
 

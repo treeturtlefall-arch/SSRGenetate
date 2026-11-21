@@ -3,12 +3,13 @@ SSRGenerate — 虹金属箔フレーム・カード裏面・ホロ質感アセ�
 
 写真は100%クリアなまま一切汚さず、カードを取り囲む「虹フレーム」自体に
 物理的な金属ヘアライン研磨・微細エンボス法線勾配・立体ベベル面取り・
-ホログラム箔ラメ・圧着反射ムラ・四隅の金属フィリグリーを焼き込み、デジタルCSS枠感を払拭する。
+ホログラム箔ラメ・圧着反射ムラ・4辺中央の金属ノッチ＆菱形鋲（裏面は四隅フィリグリー）を焼き込み、
+デジタルCSS枠感を払拭する。
 
 生成ファイル（寸法は scripts/_utils.py の CARD_* 定数に追従）:
-  - assets/generated/mat_rainbow_frame.png (CARD_W x CARD_H RGBA, 内窓透過＋四隅金属フィリグリー)
+  - assets/generated/mat_rainbow_frame.png (CARD_W x CARD_H RGBA, 内窓透過＋4辺中央金属鋲)
   - assets/generated/mat_window_depth.png  (CARD_INNER_W x CARD_INNER_H RGBA, 内窓エッジ落ち影＋断面ハイライト)
-  - assets/generated/mat_card_back.png     (CARD_W x CARD_H RGBA, ギョーシェ彫り＋金属レリーフ紋章の裏面)
+  - assets/generated/mat_card_back.png     (CARD_W x CARD_H RGBA, ギョーシェ彫り＋金属レリーフ紋章＋四隅フィリグリーの裏面)
   - assets/generated/mat_holo_prism.png    (360x360 RGB タイル, ダイヤ格子×薄膜干渉プリズム。screen 合成用)
   - assets/generated/mat_flake_{0..5}.png  (72x72 RGBA, 金箔・プリズム結晶片)
   - assets/generated/mat_film_grain.png    (540x960 L, 暗部バンディング解消グレイン)
@@ -18,6 +19,7 @@ SSRGenerate — 虹金属箔フレーム・カード裏面・ホロ質感アセ�
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import math
 from typing import List, Tuple
 
@@ -576,29 +578,43 @@ def main() -> None:
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    frame_img = generate_rainbow_foil_frame(glitter_strength=glitter, brush_strength=brush, seed=seed)
-    save_png(frame_img, OUT_DIR / "mat_rainbow_frame.png")
-    print(f"[OK] mat_rainbow_frame.png ({frame_img.width}x{frame_img.height})")
+    def _job_frame() -> str:
+        frame_img = generate_rainbow_foil_frame(glitter_strength=glitter, brush_strength=brush, seed=seed)
+        save_png(frame_img, OUT_DIR / "mat_rainbow_frame.png")
+        return f"[OK] mat_rainbow_frame.png ({frame_img.width}x{frame_img.height})"
 
-    depth_img = generate_window_depth(CARD_INNER_W, CARD_INNER_H)
-    save_png(depth_img, OUT_DIR / "mat_window_depth.png")
-    print(f"[OK] mat_window_depth.png ({depth_img.width}x{depth_img.height})")
+    def _job_depth() -> str:
+        depth_img = generate_window_depth(CARD_INNER_W, CARD_INNER_H)
+        save_png(depth_img, OUT_DIR / "mat_window_depth.png")
+        return f"[OK] mat_window_depth.png ({depth_img.width}x{depth_img.height})"
 
-    back_img = generate_card_back(seed=seed)
-    save_png(back_img, OUT_DIR / "mat_card_back.png")
-    print(f"[OK] mat_card_back.png ({back_img.width}x{back_img.height})")
+    def _job_back() -> str:
+        back_img = generate_card_back(seed=seed)
+        save_png(back_img, OUT_DIR / "mat_card_back.png")
+        return f"[OK] mat_card_back.png ({back_img.width}x{back_img.height})"
 
-    prism_img = generate_holo_prism_tile(seed=seed)
-    save_png(prism_img, OUT_DIR / "mat_holo_prism.png")
-    print(f"[OK] mat_holo_prism.png ({prism_img.width}x{prism_img.height})")
+    def _job_prism() -> str:
+        prism_img = generate_holo_prism_tile(seed=seed)
+        save_png(prism_img, OUT_DIR / "mat_holo_prism.png")
+        return f"[OK] mat_holo_prism.png ({prism_img.width}x{prism_img.height})"
 
-    for i, fl in enumerate(generate_foil_flakes(seed=seed)):
-        save_png(fl, OUT_DIR / f"mat_flake_{i}.png")
-    print("[OK] mat_flake_0..5.png (72x72)")
+    def _job_flakes() -> str:
+        for i, fl in enumerate(generate_foil_flakes(seed=seed)):
+            save_png(fl, OUT_DIR / f"mat_flake_{i}.png")
+        return "[OK] mat_flake_0..5.png (72x72)"
 
-    grain_img = generate_film_grain_overlay(540, 960, sigma=14.0, seed=seed + 101)
-    save_png(grain_img, OUT_DIR / "mat_film_grain.png")
-    print(f"[OK] mat_film_grain.png ({grain_img.width}x{grain_img.height})")
+    def _job_grain() -> str:
+        grain_img = generate_film_grain_overlay(540, 960, sigma=14.0, seed=seed + 101)
+        save_png(grain_img, OUT_DIR / "mat_film_grain.png")
+        return f"[OK] mat_film_grain.png ({grain_img.width}x{grain_img.height})"
+
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        futures = [
+            ex.submit(fn)
+            for fn in (_job_frame, _job_depth, _job_back, _job_prism, _job_flakes, _job_grain)
+        ]
+        for fut in futures:
+            print(fut.result())
 
 
 if __name__ == "__main__":

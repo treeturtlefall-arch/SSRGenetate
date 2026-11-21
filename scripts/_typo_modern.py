@@ -10,34 +10,21 @@ from __future__ import annotations
 
 import functools
 import math
-import struct
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from scipy.ndimage import binary_fill_holes, distance_transform_edt, gaussian_filter
 
-from _font_slots import load_custom_fonts_manifest, resolve_font_path, resolve_slot_font
-from _utils import GOLD_RAMP, SILVER_RAMP, porter_duff_over, smoothstep
-
-# 視覚サイズ補正係数（Phase A/D 実測値）
-MODERN_NORM_FACTORS: Dict[str, float] = {
-    "YujiSyuku-Regular.ttf": 1.04,
-    "KleeOne-Regular.ttf": 1.05,
-    "SetoFont.ttf": 1.02,
-    "TekitouPoem.ttf": 1.20,
-    "TekitouPoem_Bold.ttf": 1.15,
-    "ZenKurenaido-Regular.ttf": 0.99,
-    "cinecaption.ttf": 0.97,
-    "ShipporiMincho-Bold.ttf": 0.94,
-    "ShipporiMincho-ExtraBold.ttf": 0.94,
-    "Cinzel-VF.ttf": 1.03,
-    "ZenMaruGothic-Bold.ttf": 0.95,
-    "ZenMaruGothic-Black.ttf": 0.94,
-    "Outfit-VF.ttf": 1.00,
-    "JetBrainsMono-VF.ttf": 0.99,
-}
+from _font_slots import (
+    FONT_NORM_FACTORS as MODERN_NORM_FACTORS,
+    build_norm_factors,
+    get_cmap_chars,
+    load_custom_fonts_manifest,
+    resolve_font_path,
+    resolve_slot_font,
+)
+from _utils import GOLD_RAMP, SILVER_RAMP, porter_duff_over, ramp_lookup, smoothstep, tight_crop_rgba
 
 # カテゴリ別フォールバックチェーン
 FALLBACK_CHAINS: Dict[str, Tuple[str, ...]] = {
@@ -142,82 +129,6 @@ def hex_to_rgb255(h: str) -> Tuple[int, int, int]:
     return (int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16))
 
 
-def _ramp_lookup(t: np.ndarray, ramp: List[Tuple[int, int, int]]) -> np.ndarray:
-    t_c = np.clip(t, 0.0, 1.0)
-    n = len(ramp) - 1
-    pos = t_c * n
-    idx = np.minimum(pos.astype(np.int32), n - 1)
-    frac = (pos - idx)[..., None]
-    arr = np.asarray(ramp, dtype=np.float32) / 255.0
-    return arr[idx] * (1.0 - frac) + arr[idx + 1] * frac
-
-
-@functools.lru_cache(maxsize=64)
-def _get_cmap_chars(font_path_str: str) -> Set[int]:
-    chars: Set[int] = set()
-    p = Path(font_path_str)
-    if not p.is_file():
-        return chars
-    try:
-        with open(p, "rb") as f:
-            f.read(4)
-            num_tables, = struct.unpack(">H", f.read(2))
-            f.seek(12)
-            cmap_offset = None
-            for _ in range(num_tables):
-                tag = f.read(4)
-                _, offset, _ = struct.unpack(">III", f.read(12))
-                if tag == b"cmap":
-                    cmap_offset = offset
-                    break
-            if not cmap_offset:
-                return chars
-            f.seek(cmap_offset)
-            _, num_subtables = struct.unpack(">HH", f.read(4))
-            subtables = []
-            for _ in range(num_subtables):
-                _, _, offset = struct.unpack(">HHI", f.read(8))
-                subtables.append(cmap_offset + offset)
-            for sub_off in subtables:
-                f.seek(sub_off)
-                fmt, = struct.unpack(">H", f.read(2))
-                if fmt == 4:
-                    _, _, seg_x2 = struct.unpack(">HHH", f.read(6))
-                    seg_count = seg_x2 // 2
-                    f.seek(sub_off + 14)
-                    end_codes = struct.unpack(f">{seg_count}H", f.read(seg_count * 2))
-                    f.seek(sub_off + 14 + seg_count * 2 + 2)
-                    start_codes = struct.unpack(f">{seg_count}H", f.read(seg_count * 2))
-                    id_deltas = struct.unpack(f">{seg_count}h", f.read(seg_count * 2))
-                    iro_pos = f.tell()
-                    id_range_offsets = struct.unpack(f">{seg_count}H", f.read(seg_count * 2))
-                    for i in range(seg_count):
-                        s, e = start_codes[i], end_codes[i]
-                        if s == 0xFFFF:
-                            break
-                        if id_range_offsets[i] == 0:
-                            for c in range(s, e + 1):
-                                if (c + id_deltas[i]) & 0xFFFF != 0:
-                                    chars.add(c)
-                        else:
-                            for c in range(s, e + 1):
-                                off = iro_pos + i * 2 + id_range_offsets[i] + (c - s) * 2
-                                f.seek(off)
-                                gidx, = struct.unpack(">H", f.read(2))
-                                if gidx != 0 and (gidx + id_deltas[i]) & 0xFFFF != 0:
-                                    chars.add(c)
-                elif fmt == 12:
-                    f.seek(sub_off + 12)
-                    num_groups, = struct.unpack(">I", f.read(4))
-                    for _ in range(num_groups):
-                        sc, ec, _ = struct.unpack(">III", f.read(12))
-                        for c in range(sc, ec + 1):
-                            chars.add(c)
-    except Exception:
-        pass
-    return chars
-
-
 @functools.lru_cache(maxsize=128)
 def _load_vf_font(font_path_str: str, size: int, vf_weight: int = 700) -> ImageFont.FreeTypeFont:
     """可変フォント (VF) の Weight 軸をキャッシュキーに含めて安全にロード"""
@@ -263,7 +174,7 @@ def _pick_char_font(
         p = resolve_font_path(fname)
         if p is None:
             continue
-        cset = _get_cmap_chars(str(p))
+        cset = get_cmap_chars(str(p))
         if (not cset) or (code in cset) or fname == chain[-1]:
             f_norm = norm_factors.get(fname, 1.0)
             eff = max(8, int(round(size * f_norm)))
@@ -501,7 +412,7 @@ def render_modern_text(
         is_silver = palette.get("fillBottom", "").upper() == "#9AA8BE"
         ramp = SILVER_RAMP if is_silver else GOLD_RAMP
         base_t = np.clip(0.84 - yn * 0.34 + delta * 0.95, 0.0, 1.0)
-        fill_rgb = np.clip(_ramp_lookup(base_t, ramp) + spec[..., None] * 0.48, 0.0, 1.0)
+        fill_rgb = np.clip(ramp_lookup(base_t, ramp) + spec[..., None] * 0.48, 0.0, 1.0)
 
         w_i = max(1.2, 1.6 * sc)
         base_sil = _stroke_mask(d_out, alpha, w_i)
@@ -562,17 +473,7 @@ def render_modern_text(
     if opacity < 0.999:
         a = a * float(opacity)
 
-    # タイトクロップ
-    ys, xs = np.where(a > 0.006)
-    if len(ys) > 0:
-        cy0, cy1 = max(0, int(ys.min()) - 3 * ss), min(h, int(ys.max()) + 4 * ss)
-        cx0, cx1 = max(0, int(xs.min()) - 3 * ss), min(w, int(xs.max()) + 4 * ss)
-        rgb, a = rgb[cy0:cy1, cx0:cx1], a[cy0:cy1, cx0:cx1]
-
-    out = np.zeros((a.shape[0], a.shape[1], 4), dtype=np.uint8)
-    out[..., :3] = (np.clip(rgb, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
-    out[..., 3] = (np.clip(a, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
-    im = Image.fromarray(out, mode="RGBA")
+    im = tight_crop_rgba(rgb, a, alpha_threshold=0.006, pad=3 * ss)
 
     if ss > 1:
         im = im.resize((max(1, im.width // ss), max(1, im.height // ss)), Image.Resampling.LANCZOS)
@@ -698,10 +599,7 @@ def resolve_modern_plan(preset_name: str, typo_cfg: Dict[str, Any]) -> Dict[str,
                 palette[k] = v
 
     # 3. norm_factors + custom_mf
-    norm_factors = dict(MODERN_NORM_FACTORS)
-    if isinstance(custom_mf.get("norm_factors"), dict):
-        for k, v in custom_mf["norm_factors"].items():
-            norm_factors[str(k)] = float(v)
+    norm_factors = build_norm_factors(custom_mf)
 
     # 4. font / style スロット解決
     font_cfg = typo_cfg.get("font", {}) if isinstance(typo_cfg.get("font"), dict) else {}

@@ -30,21 +30,6 @@
       data-width="1080"
       data-height="1920"
     >
-      <!-- Shared SVG Definitions (Chromatic Aberration Filter) -->
-      <svg id="shared-svg-defs" width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
-        <defs>
-          <filter id="chroma-shock" x="-4%" y="-2%" width="108%" height="104%" color-interpolation-filters="sRGB">
-            <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r-only" />
-            <feOffset id="chroma-r-off" in="r-only" dx="0" dy="0" result="r-shift" />
-            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g-only" />
-            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b-only" />
-            <feOffset id="chroma-b-off" in="b-only" dx="0" dy="0" result="b-shift" />
-            <feBlend in="r-shift" in2="g-only" mode="screen" result="rg" />
-            <feBlend in="rg" in2="b-shift" mode="screen" />
-          </filter>
-        </defs>
-      </svg>
-
       <div id="scene-result-stage" class="clip" data-start="0" data-duration="8.6" data-track-index="0">
         <div id="result-rays-a" class="result-rays-layer" data-layout-allow-overflow></div>
         <div id="result-rays-b" class="result-rays-layer" data-layout-allow-overflow></div>
@@ -216,11 +201,21 @@
             tl.to(flare, { opacity: 0, scale: 0.55, duration: 0.18, ease: "power2.in" }, +(tStar + 0.09).toFixed(4));
           }
         });
+        function addLightWipe(wrapSel, contentSel, startSec, xOffset, wipeDur, padY, padX, rightOut) {
+          const t = at(startSec);
+          tl.fromTo(wrapSel, { opacity: 0, x: xOffset }, { opacity: 1, x: 0, duration: 0.18, ease: "power2.out" }, t);
+          tl.fromTo(
+            contentSel,
+            { clipPath: "inset(" + -padY + "px 100% " + -padY + "px " + -padX + "px)" },
+            { clipPath: "inset(" + -padY + "px " + rightOut + "% " + -padY + "px " + -padX + "px)", duration: wipeDur, ease: "power2.inOut" },
+            t
+          );
+        }
+
         if (st.hasRoyalRule) {
           tl.fromTo("#royal-rule-wrap", { opacity: 0, scaleX: 0 }, { opacity: 1, scaleX: 1, duration: 0.42, ease: "power3.out" }, at(9.26));
         }
-        tl.fromTo("#card-subtitle-wrap", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.18, ease: "power2.out" }, at(9.38));
-        tl.fromTo("#card-subtitle-img, #card-subtitle", { clipPath: "inset(-28px 100% -28px -28px)" }, { clipPath: "inset(-28px -6% -28px -28px)", duration: 0.38, ease: "power2.inOut" }, at(9.38));
+        addLightWipe("#card-subtitle-wrap", "#card-subtitle-img, #card-subtitle", 9.38, -14, 0.38, 28, 28, -6);
 
         const wipeHalf = st.titleWipeHalf || 235;
         tl.fromTo("#card-title-wrap", { opacity: 0, scale: 1.07 }, { opacity: 1, scale: 1.0, duration: 0.46, ease: "back.out(1.6)" }, at(9.60));
@@ -230,14 +225,12 @@
         tl.to("#title-wipe-glint", { opacity: 0, duration: 0.12, ease: "power2.in" }, at(9.92));
 
         if (cfg.flavor) {
-          tl.fromTo("#card-flavor-wrap", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.18, ease: "power2.out" }, at(9.96));
-          tl.fromTo("#card-flavor-img, #card-flavor", { clipPath: "inset(-28px 100% -28px -28px)" }, { clipPath: "inset(-28px -6% -28px -28px)", duration: 0.44, ease: "power2.inOut" }, at(9.96));
+          addLightWipe("#card-flavor-wrap", "#card-flavor-img, #card-flavor", 9.96, -14, 0.44, 28, 28, -6);
         }
         if (cfg.stats.length > 0) {
           tl.fromTo("#card-stats", { opacity: 0, x: -14, clipPath: "inset(-10px 100% -10px -10px)" }, { opacity: 1, x: 0, clipPath: "inset(-10px -4% -10px -10px)", duration: 0.44, ease: "power2.out" }, at(10.22));
         }
-        tl.fromTo("#card-no-corner", { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.18, ease: "power2.out" }, at(10.30));
-        tl.fromTo("#card-no-img, #card-no-text", { clipPath: "inset(-10px 100% -10px -10px)" }, { clipPath: "inset(-10px -4% -10px -10px)", duration: 0.34, ease: "power2.inOut" }, at(10.30));
+        addLightWipe("#card-no-corner", "#card-no-img, #card-no-text", 10.30, -10, 0.34, 10, 10, -4);
 
         // Clustered Sparkles, 3D Foil Flakes & Bokeh Orbs
         sparkleData.forEach(function (sp) {

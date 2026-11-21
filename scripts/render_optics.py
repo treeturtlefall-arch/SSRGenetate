@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 import math
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -25,6 +25,7 @@ from _optics_core import (
     bilinear_warp,
     fbm_noise,
     fft_gaussian_blur,
+    prepare_optical_mask,
     render_optical_glow,
     value_noise,
 )
@@ -1039,58 +1040,77 @@ def main() -> None:
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 独立したマスク群を事前構築
+    # 独立したマスク群を事前構築＆距離変換キャッシュ（並列実行後に3色で共有）
     m_outer, m_mid, m_inner = build_magic_circle_masks(1024, seed=seed + 77)
-    rings = [("outer", m_outer), ("mid", m_mid), ("inner", m_inner)]
+    g_outer, g_inner = build_celestial_gate_masks(1024, seed=seed + 3101)
     mc_styles = [
         ("blue",    "summon_blue", False, 1.02, hal * 0.95),
         ("gold",    "summon_gold", False, 1.12, hal * 1.10),
         ("rainbow", "summon_gold", True,  1.22, hal * 1.25),
     ]
-    g_outer, g_inner = build_celestial_gate_masks(1024, seed=seed + 3101)
-    gate_rings = [("outer", g_outer), ("inner", g_inner)]
     cracks_mask = build_orb_cracks_mask(512, seed=seed + 501)
     star_mask = build_star_mask(144)
     sp_mask = build_sparkle_mask(128)
     ring_mask = build_result_ring_mask(1400, seed=seed + 1201)
 
-    # マルチスレッド並列レンダリング＆保存タスクの構築（NumPy/SciPy/Pillow の GIL 解放を活用）
-    tasks = []
-
-    def submit_glow(
-        ex: ThreadPoolExecutor,
-        fname: str,
-        mask: Image.Image,
-        spec: str,
-        ref_scale: float,
-        exp: float,
-        core_g: float,
-        hal_v: float,
-        irr_v: float,
-        is_prism: bool,
-        s_val: int,
-    ) -> None:
-        def _job() -> str:
-            img = render_optical_glow(
-                mask_l=mask,
-                spectrum_name=spec,
-                ref_scale=ref_scale,
-                exposure=exp,
-                core_glow=core_g,
-                halation=hal_v,
-                irregularity=irr_v,
-                prism_mode=is_prism,
-                seed=s_val,
-            )
-            save_png(img, OUT_DIR / fname)
-            return f"[OK] {fname} ({img.width}x{img.height})"
-
-        tasks.append(ex.submit(_job))
-
     with ThreadPoolExecutor(max_workers=8) as ex:
+        prep_mc = {
+            "outer": ex.submit(prepare_optical_mask, m_outer, 20.0),
+            "mid":   ex.submit(prepare_optical_mask, m_mid, 20.0),
+            "inner": ex.submit(prepare_optical_mask, m_inner, 20.0),
+        }
+        prep_gate = {
+            "outer": ex.submit(prepare_optical_mask, g_outer, 20.0),
+            "inner": ex.submit(prepare_optical_mask, g_inner, 20.0),
+        }
+        rings = [
+            ("outer", m_outer, prep_mc["outer"].result()),
+            ("mid",   m_mid,   prep_mc["mid"].result()),
+            ("inner", m_inner, prep_mc["inner"].result()),
+        ]
+        gate_rings = [
+            ("outer", g_outer, prep_gate["outer"].result()),
+            ("inner", g_inner, prep_gate["inner"].result()),
+        ]
+
+        # マルチスレッド並列レンダリング＆保存タスクの構築（NumPy/SciPy/Pillow の GIL 解放を活用）
+        tasks = []
+
+        def submit_glow(
+            ex_pool: ThreadPoolExecutor,
+            fname: str,
+            mask: Image.Image,
+            spec: str,
+            ref_scale: float,
+            exp: float,
+            core_g: float,
+            hal_v: float,
+            irr_v: float,
+            is_prism: bool,
+            s_val: int,
+            prepared: Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]] = None,
+        ) -> None:
+            def _job() -> str:
+                img = render_optical_glow(
+                    mask_l=mask,
+                    spectrum_name=spec,
+                    ref_scale=ref_scale,
+                    exposure=exp,
+                    core_glow=core_g,
+                    halation=hal_v,
+                    irregularity=irr_v,
+                    prism_mode=is_prism,
+                    seed=s_val,
+                    prepared=prepared,
+                )
+                save_png(img, OUT_DIR / fname)
+                return f"[OK] {fname} ({img.width}x{img.height})"
+
+            tasks.append(ex_pool.submit(_job))
+
         # 1. 魔法陣 3色 × 3層
         for s_idx, (cname, spec, is_prism, exp, h_val) in enumerate(mc_styles):
-            for r_idx, (rname, mask) in enumerate(rings):
+            for r_idx, (rname, mask, prep) in enumerate(rings):
                 submit_glow(
                     ex,
                     f"opt_mc_{cname}_{rname}.png",
@@ -1103,6 +1123,7 @@ def main() -> None:
                     irr,
                     is_prism,
                     seed + s_idx * 100 + r_idx * 17,
+                    prepared=prep,
                 )
 
         # 2. オーブ臨界亀裂
@@ -1200,7 +1221,7 @@ def main() -> None:
 
         # 10. 上空の天蓋・逆さ天球ゲート（3色 × 2層）
         for s_idx, (cname, spec, is_prism, exp, h_val) in enumerate(mc_styles):
-            for r_idx, (rname, mask) in enumerate(gate_rings):
+            for r_idx, (rname, mask, prep) in enumerate(gate_rings):
                 submit_glow(
                     ex,
                     f"opt_gate_{cname}_{rname}.png",
@@ -1213,6 +1234,7 @@ def main() -> None:
                     irr,
                     is_prism,
                     seed + 3100 + s_idx * 97 + r_idx * 19,
+                    prepared=prep,
                 )
 
         # 11. 冒頭降臨光の三原色ウィスプ（尾＋星核ヘッド） & 金/虹昇格の天啓光撃
