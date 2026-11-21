@@ -56,7 +56,7 @@
 | `4.50s 〜 5.05s` | `5.00s 〜 5.55s` | 加速鼓動 (`4.50s`) → 臨界オーブ亀裂 (`4.84s`) → 吸い込み収縮 (`4.90s`) |
 | `5.06s 〜 5.18s` | `5.56s 〜 5.68s` | **真空の間**：`#vacuum-dimmer` 暗転・周辺光減衰・魔法陣急停止（`dramatic` カーブ） |
 | `5.185s 〜 5.60s` | `5.685s 〜 6.10s` | プリズム雷撃 (`5.185s`) → 虹昇格爆発・瞬間RGB色収差・ゴッドレイ・虹光柱 (`5.20s`)・HUD (`OVERDRIVE`) |
-| `5.62s 〜 6.60s` | `6.12s 〜 7.10s` | ボーダーレス虹カットイン（`RAINBOW ASCENSION` / `昇格 SSR 確定`・スピードライン・斜め光沢 `#cutin-glint`・横ドリフト＆拡大横飛び退場） |
+| `5.62s 〜 6.60s` | `6.12s 〜 7.10s` | ボーダーレス虹カットイン（`昇格 SSR 確定`・スピードライン・斜め光沢 `#cutin-glint`・横ドリフト＆拡大横飛び退場） |
 | `6.48s 〜 7.06s` | `6.98s 〜 7.56s` | 臨界ズームバースト → ホワイトアウトへ遷移（`7.02s` でステージフェードアウト） |
 
 ### 2-4. シーン 3-5：`scene-result`（`T0 = 6.9s` / 本編 `6.9s 〜 15.0s` ＋ 余白 `0.5s`）
@@ -106,7 +106,7 @@
 - `assets/fonts/` — バンドル済み日本語/欧文フォント群（OFL / `cinecaption` 個別ライセンス）
 - `assets/fonts_custom/` — ローカル専用カスタムフォントスロット（`.gitignore` 隔離、`README.md` のみ追跡）
 - `assets/generated/` — 生成画像群と `typo-manifest.js`
-  - タイポ: `typo_ssr.png`, `typo_attr.png`, `typo_subtitle.png`, `typo_title.png`, `typo_flavor.png`, `typo_cardno.png`, `typo_royal_rule.png`, `typo_cutin_sub.png`, `typo_cutin_main.png`, `typo-manifest.js`
+  - タイポ: `typo_ssr.png`, `typo_attr.png`, `typo_subtitle.png`, `typo_title.png`, `typo_flavor.png`, `typo_cardno.png`, `typo_royal_rule.png`, `typo_cutin_main.png`, `typo-manifest.js`
   - 光学: `opt_mc_{blue,gold,rainbow}_{outer,mid,inner}.png`, `opt_gate_{blue,gold,rainbow}_{outer,inner}.png`, `opt_orb_{blue,gold,rainbow}_{shell,facet}.png`, `opt_orb_core_bleach.png`, `opt_orb_cracks.png`, `opt_godrays_{prism,gold}_{a,b}.png`, `opt_pillar_{gold,rainbow}.png`, `opt_shock_{gold,rainbow}.png`, `opt_cutin_{flare,speedlines}.png`, `opt_result_ring.png`, `opt_meteor_{blue,red,green}.png`, `opt_wisp_head_{blue,red,green}.png`, `opt_bolt_{gold,prism}.png`, `opt_shard_{far,near}_{0,1,2}.png`, `opt_star_gold.png`, `opt_sparkle_{gold,white,pink,cyan}.png`, `opt_bokeh_{gold,rose,aqua,white}_{far,near}.png`
   - マテリアル: `mat_rainbow_frame.png`, `mat_window_depth.png`, `mat_card_back.png`, `mat_holo_prism.png`, `mat_flake_{0..5}.png`, `mat_film_grain.png`
 - `assets/se_summon.wav`, `assets/se_upgrade.wav`, `assets/se_fanfare.wav` — 生成済み効果音
@@ -133,7 +133,7 @@
 | `seed` | `20261120` | 全生成スクリプト・セットアップ JS | 全体の決定論ルートシード |
 
 ### 4-2. CLI 変数オーバーライド（`--variables`）
-- `index.html` および `compositions/scene-result.html` は `photo`, `title`, `subtitle`, `rarity`, `flavor` の 5 変数を `data-composition-variables` として公開している。
+- `index.html` および `compositions/scene-result.html` は `photo`, `title`, `subtitle`, `rarity`, `attributeBadge`, `attributeLabel`, `flavor`, `resultRingMode` の 8 変数を `data-composition-variables` として公開している。
 - `--variables` で指定されたテキストが `assets/generated/typo-manifest.js` 内の事前レンダリング文字列と一致しない場合、自動的に HTML テキスト描画へフォールバックする。箔 PNG としてレンダリングしたい場合は `card-config.js` を更新して `npm run build:typo` を実行する。
 
 ---

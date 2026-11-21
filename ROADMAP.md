@@ -64,9 +64,9 @@
 任意の写真・テキストを流し込んで運用する際の品質一貫性を仕上げます。
 
 - [ ] **4-1. 任意テキスト変更時の箔タイポ自動同期 ＆ オートレイアウト・ビネット自動適応強化**
-  - **対象**: `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js`
-  - **課題**: `compositions/scene-result-setup.js` の `bindTypoSlot` は `typo-manifest.js` 内の文字列と完全一致する場合のみ箔 PNG を使い、`--variables` 等でテキストを変更すると素の HTML テキストへフォールバックしてしまう。また明るい背景写真では下部ビネット濃度が不足する場合がある。
-  - **対策**: テキスト変更時に `render_typography.py` を自動連動させて物理箔 PNG を再生成するワンコマンド実行導線（またはレンダリング前フック）を整備する。Phase 3.5 で導入した可変フォント・縁取り・非対称レイアウトプリセットを含め、長文タイトル・フレーバーや多行折り返し時の文字サイズ・配置自動調整（オートレイアウト）を強化し、あわせて入力写真（CLI `--variables photo=...` 差し替え含む）の下部 30% 平均輝度に応じた `.photo-vignette` 濃度の自動適応も実装する。
+  - **対象**: `package.json`, `scripts/render_video.mjs`, `scripts/render_typography.py`, `compositions/scene-result-setup.js`
+  - **課題**: `compositions/scene-result-setup.js` の `bindTypoSlot` は `typo-manifest.js` 内の文字列と完全一致する場合のみ箔 PNG を使い、`--variables` 等でテキストを変更すると素の HTML テキストへフォールバックしてしまう。また `render_video.mjs` の `readPresetName()` も CLI `--variables` 上書きを認識しない。さらに明るい背景写真では下部ビネット濃度が不足する場合がある。
+  - **対策**: `scripts/render_video.mjs` 側でコマンドライン引数（`--variables '{...}'`）をパースし、テキスト・プリセット等の変更があれば **`render_typography.py` を先に自動実行（上書き変数を渡して物理箔 PNG と `typo-manifest.js` を再生成）してから `hyperframes render` を呼び、出力ファイル名（`SSR_{preset}_{YYYYMMDD}.mp4`）も上書き値に同期させる**。あわせて、可変フォント・縁取り・非対称レイアウトプリセットを含めた長文タイトル・フレーバー・多行折り返し時のオートレイアウト強化と、入力写真（CLI `--variables photo=...` 差し替え含む）の下部 30% 平均輝度に応じた `.photo-vignette` 濃度の自動適応も実装する。
 - [ ] **4-2. 5品質評価軸 ＆ 複数入力素材による汎用性検証（＋任意音響アタック強化）**
   - **対象**: 検証チェックリスト、多様な入力画像（顔写真・人物以外の物体写真・風景・イラスト）、`scripts/generate_se.py`, `scripts/_audio_dsp.py`
   - **対策**: 以下の 5 品質評価軸で「足し算だけでなく不要要素を削るレビュー」を実施し、どの種類の画像（および Phase 3.5 のジャンル別タイポプリセットとの組み合わせ）を入れても品質と視認性が破綻しないことを確認する：

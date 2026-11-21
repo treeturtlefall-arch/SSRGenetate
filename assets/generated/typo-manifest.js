@@ -34,7 +34,7 @@ window.SSR_TYPO_MANIFEST = {
     "cardNo": {
       "src": "assets/generated/typo_cardno.png",
       "width": 127,
-      "height": 28,
+      "height": 29,
       "text": "NO.777-SSR"
     },
     "cutinMain": {

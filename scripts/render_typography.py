@@ -56,7 +56,6 @@ from _utils import (
 
 # 昇格カットイン専用固定スタイル（カード側プリセットやレイアウト切替の影響を一切受けない）
 CUTIN_STYLE: Dict[str, Dict[str, Any]] = {
-    "cutinSub":  {"font": "cinecaption.ttf",       "material": "foil-champagne", "stamp": True,  "wobble_mul": 0.30},
     "cutinMain": {"font": "YujiSyuku-Regular.ttf", "material": "foil-gold",      "stamp": False, "wobble_mul": 0.65},
 }
 CUTIN_WOBBLE_NORM = 0.28

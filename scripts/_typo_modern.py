@@ -111,7 +111,7 @@ MODERN_PRESETS: Dict[str, Dict[str, Any]] = {
             "subtitle":  {"font": "ShipporiMincho-Bold.ttf",     "size": 35, "maxW": 740, "maxLines": 1, "style": "clean-sub",        "trackingEm": 0.16, "compressX": 1.0,  "vfWeight": 700, "opacity": 1.0},
             "title":     {"font": "ShipporiMincho-ExtraBold.ttf","size": 90, "maxW": 780, "maxLines": 1, "style": "royal-gold-clean", "trackingEm": 0.05, "compressX": 1.0,  "vfWeight": 800, "opacity": 1.0},
             "flavor":    {"font": "ShipporiMincho-Bold.ttf",     "size": 26, "maxW": 720, "maxLines": 2, "style": "clean-sub",        "trackingEm": 0.04, "compressX": 1.0,  "vfWeight": 700, "opacity": 0.94},
-            "cardNo":    {"font": "JetBrainsMono-VF.ttf",        "size": 16, "maxW": 220, "maxLines": 1, "style": "clean-sub",        "trackingEm": 0.10, "compressX": 1.0,  "vfWeight": 600, "opacity": 0.72},
+            "cardNo":    {"font": "JetBrainsMono-VF.ttf",        "size": 16, "maxW": 220, "maxLines": 1, "style": "clean-sub",        "trackingEm": 0.10, "compressX": 1.0,  "vfWeight": 600, "opacity": 0.85},
         },
     },
     "cute-pastel": {
@@ -123,7 +123,7 @@ MODERN_PRESETS: Dict[str, Dict[str, Any]] = {
             "subtitle":  {"font": "ZenMaruGothic-Bold.ttf",  "size": 36, "maxW": 620, "maxLines": 1, "style": "pop-sticker-rose", "trackingEm": 0.06,  "compressX": 1.0,  "vfWeight": 700, "opacity": 1.0},
             "title":     {"font": "ZenMaruGothic-Black.ttf", "size": 90, "maxW": 770, "maxLines": 1, "style": "pop-sticker-rose", "trackingEm": 0.02,  "compressX": 1.0,  "vfWeight": 900, "opacity": 1.0},
             "flavor":    {"font": "ZenMaruGothic-Bold.ttf",  "size": 25, "maxW": 680, "maxLines": 2, "style": "pop-sticker-rose", "trackingEm": 0.03,  "compressX": 1.0,  "vfWeight": 700, "opacity": 0.96},
-            "cardNo":    {"font": "JetBrainsMono-VF.ttf",    "size": 16, "maxW": 220, "maxLines": 1, "style": "clean-sub",        "trackingEm": 0.10,  "compressX": 1.0,  "vfWeight": 600, "opacity": 0.72},
+            "cardNo":    {"font": "JetBrainsMono-VF.ttf",    "size": 16, "maxW": 220, "maxLines": 1, "style": "clean-sub",        "trackingEm": 0.10,  "compressX": 1.0,  "vfWeight": 600, "opacity": 0.94},
         },
     },
 }

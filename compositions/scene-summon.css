@@ -634,16 +634,6 @@
   transform: rotate(-2.2deg);
 }
 
-.cutin-sub-img {
-  width: 322px;
-  height: 50px;
-  background-image: url("../assets/generated/typo_cutin_sub.png");
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  filter: drop-shadow(0 3px 12px rgba(0, 0, 0, 0.90));
-}
-
 .cutin-main-img {
   margin: 0;
   width: 667px;
