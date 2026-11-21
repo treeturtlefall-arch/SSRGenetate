@@ -195,6 +195,17 @@
     };
   }
 
+  function evalHelixTangentDeg(sd, p, spread) {
+    const p1 = Math.max(0, p - 0.004);
+    const p2 = Math.min(1, p + 0.004);
+    const pt1 = evalHelixPoint(sd, p1, spread);
+    const pt2 = evalHelixPoint(sd, p2, spread);
+    const dx = pt2.x - pt1.x;
+    const dy = pt2.y - pt1.y;
+    if (dx * dx + dy * dy < 1e-6) return 0;
+    return (Math.atan2(dy, dx) * 180) / Math.PI;
+  }
+
   if (wispContainer) {
     const streamDefs = [
       {
@@ -642,17 +653,19 @@
       tl.to(introMeteorStreak, { keyframes: streakFrames, duration: mDur, ease: "power1.inOut" }, 0);
 
       introMeteorNodes.forEach(function (mn) {
-        tl.set(mn.el, { x: p0.x, y: p0.y, scale: 0.5, rotation: p0.deg, opacity: 0 }, 0);
+        tl.set(mn.el, { x: p0.x, y: p0.y, scaleX: 1.0, scaleY: 0.35, rotation: p0.deg, opacity: 0 }, 0);
         const nFrames = [];
         for (let i = 1; i <= M_STEPS; i++) {
           const p = i / M_STEPS;
           const pt = evalIntroMeteor(p);
           const envIn = p < 0.14 ? p / 0.14 : 1.0;
           const envOut = p > 0.70 ? Math.max(0, (1 - p) / 0.30) : 1.0;
+          const baseSc = 0.75 + 0.35 * Math.sin(Math.PI * p);
           nFrames.push({
             x: pt.x,
             y: pt.y,
-            scale: +(0.75 + 0.35 * Math.sin(Math.PI * p)).toFixed(3),
+            scaleX: +(baseSc * 2.15).toFixed(3),
+            scaleY: +(baseSc * 0.46).toFixed(3),
             rotation: pt.deg,
             opacity: i === M_STEPS ? 0 : +(mn.peakAlpha * envIn * envOut).toFixed(3),
           });
@@ -719,7 +732,18 @@
       const sd = wn.sd;
       const t0 = wn.startAt;
       const p0 = evalHelixPoint(sd, 0, wn.spread);
-      tl.set(wn.el, { x: p0.x, y: p0.y, scale: +(0.65 * p0.depthScale).toFixed(3), opacity: 0 }, 0);
+      let prevDeg = evalHelixTangentDeg(sd, 0, wn.spread);
+      let unwrappedDeg = prevDeg;
+      const initSc = +(0.65 * p0.depthScale).toFixed(3);
+      if (wn.isVeil) {
+        tl.set(wn.el, { x: p0.x, y: p0.y, scaleX: initSc, scaleY: initSc, rotation: 0, opacity: 0 }, 0);
+      } else {
+        tl.set(
+          wn.el,
+          { x: p0.x, y: p0.y, scaleX: +(initSc * 2.05).toFixed(3), scaleY: +(initSc * 0.46).toFixed(3), rotation: +unwrappedDeg.toFixed(2), opacity: 0 },
+          0
+        );
+      }
       const frames = [];
       for (let i = 1; i <= STEPS; i++) {
         const p = i / STEPS;
@@ -729,12 +753,33 @@
         const scaleBoost = 1 + (wn.isVeil ? 0.35 : 0.18) * (1 - outEnv);
         const sc = (0.65 + 0.35 * Math.min(1, inEnv)) * scaleBoost * pt.depthScale;
         const op = wn.peakAlpha * Math.min(1, inEnv) * outEnv * pt.depthAlpha;
-        frames.push({
-          x: pt.x,
-          y: pt.y,
-          scale: +sc.toFixed(3),
-          opacity: i === STEPS ? 0 : +op.toFixed(3),
-        });
+        if (wn.isVeil) {
+          frames.push({
+            x: pt.x,
+            y: pt.y,
+            scaleX: +sc.toFixed(3),
+            scaleY: +sc.toFixed(3),
+            rotation: 0,
+            opacity: i === STEPS ? 0 : +op.toFixed(3),
+          });
+        } else {
+          const curDeg = evalHelixTangentDeg(sd, p, wn.spread);
+          let delta = curDeg - prevDeg;
+          while (delta > 180) delta -= 360;
+          while (delta < -180) delta += 360;
+          unwrappedDeg += delta;
+          prevDeg = curDeg;
+          const stretch = 2.05 - 0.55 * Math.pow(p, 2.2);
+          const squash = 0.46 + 0.16 * Math.pow(p, 2.2);
+          frames.push({
+            x: pt.x,
+            y: pt.y,
+            scaleX: +(sc * stretch).toFixed(3),
+            scaleY: +(sc * squash).toFixed(3),
+            rotation: +unwrappedDeg.toFixed(2),
+            opacity: i === STEPS ? 0 : +op.toFixed(3),
+          });
+        }
       }
       tl.to(wn.el, { keyframes: frames, duration: wn.dur, ease: "none" }, t0);
     });

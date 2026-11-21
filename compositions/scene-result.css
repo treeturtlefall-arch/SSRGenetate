@@ -103,13 +103,37 @@
 }
 
 .card-back {
-  transform: rotateY(180deg) translateZ(1px);
+  transform: rotateY(180deg) translateZ(5px);
   overflow: hidden;
   background: #070b1a;
   box-shadow:
     0 28px 80px rgba(0, 0, 0, 0.85),
     0 0 65px rgba(212, 162, 76, 0.58);
 }
+
+/* 3D回転中の金属カード側面厚みレイヤー */
+.card-edge-slice {
+  position: absolute;
+  inset: 1px;
+  border-radius: var(--card-outer-r);
+  pointer-events: none;
+  backface-visibility: visible;
+  background: linear-gradient(
+    135deg var(--in-oklch),
+    rgba(242, 223, 179, 0.88) 0%,
+    rgba(138, 96, 36, 0.94) 32%,
+    rgba(255, 252, 245, 0.92) 50%,
+    rgba(118, 212, 238, 0.65) 68%,
+    rgba(156, 112, 42, 0.92) 100%
+  );
+  box-shadow: inset 0 0 0 3px rgba(242, 223, 179, 0.92);
+}
+
+.card-edge-s1 { transform: translateZ(-4px); }
+.card-edge-s2 { transform: translateZ(-2px); }
+.card-edge-s3 { transform: translateZ(0px); }
+.card-edge-s4 { transform: translateZ(2px); }
+.card-edge-s5 { transform: translateZ(4px); }
 
 .card-back-art {
   position: absolute;
@@ -158,6 +182,54 @@
   z-index: 10;
 }
 
+/* 裏面タメ時の紋章チャージ光＆外枠プリズム漏れ光 */
+#card-back-emblem-glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 680px;
+  height: 680px;
+  margin-left: -340px;
+  margin-top: -340px;
+  z-index: 16;
+  opacity: 0;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  background:
+    url("../assets/generated/opt_sparkle_gold.png") center/62% 62% no-repeat,
+    radial-gradient(
+      circle closest-side var(--in-oklab),
+      rgba(255, 254, 248, 0.95) 0%,
+      rgba(242, 223, 179, 0.72) 24%,
+      rgba(212, 162, 76, 0.28) 54%,
+      transparent 100%
+    );
+}
+
+#card-back-rim-burst {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-outer-r);
+  padding: var(--card-border);
+  z-index: 24;
+  opacity: 0;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  background: linear-gradient(
+    132deg var(--in-oklch),
+    rgba(118, 212, 238, 0.88) 0%,
+    rgba(255, 254, 248, 0.98) 28%,
+    rgba(242, 213, 143, 0.92) 52%,
+    rgba(232, 141, 180, 0.88) 76%,
+    rgba(118, 212, 238, 0.92) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
 #spin-spec-front-clip {
   position: absolute;
   inset: 0;
@@ -185,7 +257,7 @@
 }
 
 .card-front {
-  transform: translateZ(1px);
+  transform: translateZ(5px);
   padding: var(--card-border);
   background: #090d1f;
   box-shadow:

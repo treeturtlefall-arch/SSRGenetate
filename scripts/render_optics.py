@@ -424,10 +424,11 @@ def render_crystal_orb_layers(style: str, size: int = 512, seed: int = 0) -> Tup
     facet_tone = np.clip(0.08 + 0.82 * np.power(np.clip(diff_total, 0.0, 1.5), 1.55) + 0.22 * phase_map, 0.05, 1.32)
 
     if style == "blue":
+        ft_b = np.clip(np.power(np.clip(facet_tone, 0.0, 1.4), 1.38), 0.0, 1.45)
         base_col = np.stack([
-            0.05 + 0.26 * facet_tone,
-            0.22 + 0.48 * facet_tone,
-            0.52 + 0.46 * facet_tone,
+            0.015 + 0.22 * ft_b,
+            0.085 + 0.46 * ft_b,
+            0.28 + 0.66 * ft_b,
         ], axis=-1)
         rim_col = np.array([0.62, 0.88, 1.00], dtype=np.float32)
         edge_col = np.array([0.82, 0.96, 1.00], dtype=np.float32)
@@ -455,10 +456,13 @@ def render_crystal_orb_layers(style: str, size: int = 512, seed: int = 0) -> Tup
         edge_col = np.array([1.00, 0.98, 1.00], dtype=np.float32)
 
     shell_body = base_col * inside_soft[..., None] * (0.46 + 0.44 * (1.0 - nz * 0.55))[..., None]
+    if style == "blue":
+        shell_body = shell_body * (1.0 - edge[..., None] * 0.22)
     edge_mask = np.clip(0.14 + 0.95 * fresnel + 0.85 * np.clip(spec_total, 0.0, 1.0), 0.0, 1.0)
     shell_edge = edge_col * (edge * edge_mask)[..., None] * 0.65
     shell_rim = rim_col * (fresnel[..., None] * 1.42)
-    shell_spec = np.array([1.0, 0.99, 0.96], dtype=np.float32)[None, None, :] * (spec_total * inside_soft)[..., None] * 1.18
+    spec_mult = 1.32 if style == "blue" else 1.18
+    shell_spec = np.array([1.0, 0.99, 0.96], dtype=np.float32)[None, None, :] * (spec_total * inside_soft)[..., None] * spec_mult
 
     shell_lin = shell_body + shell_edge + shell_rim + shell_spec
     outer_fade = 1.0 - smoothstep(1.16, 1.44, r)
@@ -479,7 +483,7 @@ def render_crystal_orb_layers(style: str, size: int = 512, seed: int = 0) -> Tup
     energy = (0.55 * swirl * plasma + 0.50 * rays) * inner_m
 
     if style == "blue":
-        f_col = np.stack([0.38 * energy, 0.78 * energy, 1.25 * energy], axis=-1)
+        f_col = np.stack([0.22 * energy, 0.58 * energy, 1.05 * energy], axis=-1)
     elif style == "gold":
         f_col = np.stack([1.25 * energy, 0.92 * energy, 0.42 * energy], axis=-1)
     else:

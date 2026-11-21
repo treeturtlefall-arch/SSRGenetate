@@ -1,13 +1,13 @@
 """
 SSRGenerate — 出力MP4の自動定量QAスクリプト
 
-ffmpeg + ffprobe + numpy を用いて以下を定量計測・判定する:
-  1. ストリーム仕様（解像度 / FPS / 総尺 <= 15.05s）
+ffmpeg + ffprobe + numpy を用いて以下を定量計測・判定する（`PREROLL_SEC = 0.5` を加算した全体時刻基準）:
+  1. ストリーム仕様（解像度 / FPS / 総尺 <= 16.05s）＆前後 0.5s 黒フェード余白（先頭・末尾 mean < 5.0）
   2. グレー曇り膜フレーム検出（mean > 150 & p95-p5 < 70 & mean < 245 <= 2 frames）
-  3. 真空の間 (5.10s〜5.18s) の輝度低下率（4.75s〜4.85s比 < 50.0%）
-  4. 着地直前 (8.33s〜8.68s) の低動き連続ダレ（diff < 2.5 <= 0.20s）
-  5. 終盤 (12.2s〜14.8s) のレイアウト固定（max diff < 2.5）＆微動確認
-  6. 音響（ebur128 Integrated LUFS / True Peak / 12.0s〜15.0s 0.5s毎 RMS dBFS）
+  3. 真空の間 (全体 5.60s〜5.68s / 本編 5.10s〜5.18s) の輝度低下率（全体 5.25s〜5.35s 比 < 50.0%）
+  4. 着地直前 (全体 8.83s〜9.18s / 本編 8.33s〜8.68s) の低動き連続ダレ（diff < 2.5 <= 0.20s）
+  5. 終盤 (全体 12.7s〜15.3s / 本編 12.2s〜14.8s) のレイアウト固定（max diff < 2.5）＆微動確認
+  6. 音響（ebur128 Integrated LUFS / True Peak / 0.0-0.5s 無音余白 / 12.5s〜16.0s 0.5s毎 RMS dBFS）
 
 使い方:
   python scripts/qa_video.py [renders/ssr_gacha.mp4] [--check-audio] [--json]

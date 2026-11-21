@@ -1,15 +1,15 @@
 """
 SSRGenerate — 現代ソシャゲ音像プロシージャル＆カスタムスロット SE 生成スクリプト
 
-外部素材ゼロ（numpy + scipy のみ）で 15.0 秒タイムラインに完全同期した
-ステレオ 44.1kHz 16-bit WAV ファイルを `assets/` に決定論的に生成します。
+外部素材ゼロ（numpy + scipy のみ）で 16.0 秒構成（前後 0.5 秒無音余白＋本編 15.0 秒）に
+完全同期したステレオ 44.1kHz 16-bit WAV ファイルを `assets/` に決定論的に生成します。
 `assets/se_custom/` にユーザー所有 WAV を配置した場合は自動で検出し、
 コンボリューションリバーブ・真空ダッキング・統合 -14.0 LUFS マスタリングを一体適用します。
 
 生成ファイル:
-  - assets/se_summon.wav   (data-start="0.0",  duration=3.5s)
-  - assets/se_upgrade.wav  (data-start="2.5",  duration=4.8s)
-  - assets/se_fanfare.wav  (data-start="6.8",  duration=8.0s)
+  - assets/se_summon.wav   (data-start="0.5",  duration=3.5s)
+  - assets/se_upgrade.wav  (data-start="3.0",  duration=4.8s)
+  - assets/se_fanfare.wav  (data-start="7.3",  duration=8.0s)
 """
 from __future__ import annotations
 

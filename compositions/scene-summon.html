@@ -135,6 +135,7 @@
           <div id="cutin-typo-wrap" data-layout-allow-safe-zone>
             <div id="cutin-sub-img" class="cutin-sub-img" data-layout-allow-safe-zone></div>
             <div id="cutin-main-img" class="cutin-main-img" data-layout-allow-safe-zone></div>
+            <div id="cutin-glint" data-layout-allow-overflow data-layout-ignore></div>
           </div>
         </div>
       </div>
@@ -150,6 +151,8 @@
         tl.set("#summon-camera", { scale: 1, rotation: 0, opacity: 1 }, 0);
         tl.set("#vacuum-dimmer, #flash-gold, #flash-rainbow-core, #flash-rainbow-streak, #light-pillar-rainbow, #bolt-gold, #bolt-prism", { opacity: 0 }, 0);
         tl.set("#sky-shards-far, #sky-shards-near", { opacity: 1 }, 0);
+        tl.set("#orb-core", { opacity: 0.42 }, 0);
+        tl.set("#cutin-glint", { x: -420, opacity: 0 }, 0);
 
         // --- PHASE 1: SHOOTING STAR INTRO, CELESTIAL GATE & WISP CONVERGENCE (0.0s - 1.55s) ---
         tl.set("#ignition-spark", { opacity: 0 }, 0);
@@ -168,6 +171,9 @@
         tl.fromTo("#orb-wrap", { opacity: 0, scale: 0.12 }, { opacity: 1, scale: 1.0, duration: 0.95, ease: "back.out(1.6)" }, 1.45);
         tl.to(".orb-shell", { rotation: 75, duration: 5.60, ease: "power1.in" }, 1.45);
         tl.to(".orb-facet", { rotation: -290, duration: 5.60, ease: "power1.in" }, 1.45);
+        tl.to("#summon-camera", { scale: 1.065, duration: 2.16, ease: "sine.inOut" }, 1.50);
+        tl.to("#magic-circle-wrap", { rotationX: 58.5, scale: 1.20, duration: 2.22, ease: "sine.inOut" }, 1.50);
+        tl.to("#celestial-gate-wrap", { rotationX: -58.5, scale: 1.11, duration: 2.22, ease: "sine.inOut" }, 1.50);
         tl.to("#orb-wrap", { scale: 1.14, duration: 0.16, ease: "power2.out" }, 2.68);
         tl.to("#orb-wrap", { scale: 0.97, duration: 0.24, ease: "power2.inOut" }, 2.84);
         tl.to("#mc-blue", { opacity: 0.55, duration: 0.10, ease: "power2.out" }, 2.68);
@@ -178,13 +184,14 @@
         // --- GOLD PROMOTION & GOLDEN LANCE STRIKE (3.66s - 4.45s) ---
         tl.fromTo("#bolt-gold", { opacity: 0.95, scaleY: 0.22, scaleX: 0.72 }, { opacity: 1, scaleY: 1.02, scaleX: 1.08, duration: 0.08, ease: "power2.in", immediateRender: false }, 3.66);
         tl.to("#bolt-gold", { opacity: 0, scaleX: 1.48, duration: 0.22, ease: "expo.out" }, 3.80);
-        tl.to("#summon-camera", { scale: 1.048, rotation: -0.65, duration: 0.05, ease: "power2.out" }, 3.78);
+        tl.to("#summon-camera", { scale: 1.10, rotation: -0.65, duration: 0.05, ease: "power2.out" }, 3.78);
         tl.to("#summon-camera", { scale: 1.0, rotation: 0, duration: 0.30, ease: "expo.out" }, 3.83);
         tl.to("#magic-circle-wrap", { rotationX: 54, scale: 1.26, duration: 0.45, ease: "power2.out" }, 3.78);
         tl.to("#celestial-gate-wrap", { rotationX: -54, scale: 1.16, opacity: 0.72, duration: 0.45, ease: "power2.out" }, 3.78);
         tl.fromTo("#flash-gold", { opacity: 0, scale: 0.42 }, { opacity: 1, scale: 1.05, duration: 0.05, ease: "power2.out", immediateRender: false }, 3.78);
         tl.to("#flash-gold", { opacity: 0, scale: 1.32, duration: 0.24, ease: "expo.out" }, 3.83);
         tl.to("#orb-gold, #mc-gold, #gate-gold", { opacity: 1, duration: 0.18 }, 3.78);
+        tl.to("#orb-core", { opacity: 0.78, duration: 0.18 }, 3.78);
         tl.to("#orb-blue, #mc-blue, #gate-blue", { opacity: 0, duration: 0.22 }, 3.78);
         tl.to("#aura-gold", { opacity: 0.95, scale: 1.12, duration: 0.38, ease: "power2.out" }, 3.78);
         tl.to("#aura-blue", { opacity: 0, duration: 0.28 }, 3.78);
@@ -255,9 +262,12 @@
         tl.to("#cutin-flare", { scaleX: 1.0, scaleY: 0.85, opacity: 0.42, duration: 0.20, ease: "power2.out" }, 5.78);
         tl.fromTo("#cutin-speedlines", { x: -180, opacity: 0 }, { x: 0, opacity: 0.66, duration: 0.20, ease: "power3.out", immediateRender: false }, 5.62);
         tl.to("#cutin-speedlines", { x: 160, duration: 0.78, ease: "none" }, 5.82);
-        tl.fromTo("#cutin-typo-wrap", { x: -180, scale: 1.14, opacity: 0 }, { x: 0, scale: 1.0, opacity: 1, duration: 0.22, ease: "power4.out", immediateRender: false }, 5.64);
-        tl.to("#cutin-typo-wrap", { x: 24, duration: 0.54, ease: "none" }, 5.86);
-        tl.to("#cutin-typo-wrap", { x: 280, opacity: 0, duration: 0.20, ease: "power3.in" }, 6.40);
+        tl.fromTo("#cutin-typo-wrap", { x: -220, scale: 1.16, opacity: 0 }, { x: -24, scale: 1.0, opacity: 1, duration: 0.20, ease: "power4.out", immediateRender: false }, 5.64);
+        tl.to("#cutin-typo-wrap", { x: 34, scale: 1.02, duration: 0.54, ease: "none" }, 5.84);
+        tl.to("#cutin-typo-wrap", { x: 340, scale: 1.12, opacity: 0, duration: 0.20, ease: "power3.in" }, 6.38);
+        tl.fromTo("#cutin-glint", { x: -420 }, { x: 420, duration: 0.40, ease: "power2.inOut" }, 5.86);
+        tl.to("#cutin-glint", { opacity: 0.92, duration: 0.08, ease: "power2.out" }, 5.86);
+        tl.to("#cutin-glint", { opacity: 0, duration: 0.12, ease: "power2.in" }, 6.14);
         tl.to("#orb-wrap", { scale: 3.1, duration: 0.48, ease: "power3.in" }, 6.48);
         tl.to("#magic-circle-wrap", { scale: 1.85, duration: 0.48, ease: "power3.in" }, 6.48);
         tl.to("#celestial-gate-wrap", { scale: 1.68, duration: 0.48, ease: "power3.in" }, 6.48);

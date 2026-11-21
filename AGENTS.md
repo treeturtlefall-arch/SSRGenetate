@@ -1,154 +1,64 @@
-# SSRGenerate — 写真1枚からSSRガチャ演出MP4を生成するプロジェクト
+# SSRGenerate — エージェント作業規約
 
-1枚の写真を、ソーシャルゲームの「SSRガチャ当選演出」のようにアニメーションさせ、**16.0秒のMP4**（本編15.0秒＋再生環境向け前後0.5秒無音・フェード余白）として出力する仕組み（HyperFrames ベース）です。
+写真 1 枚から **16.0 秒（1080×1920）の SSR ガチャ当選演出 MP4** を生成する HyperFrames プロジェクト。
+詳細仕様は [`SPEC.md`](./SPEC.md) を参照してください。
 
-## プロジェクト仕様（絶対ルール）
+## 絶対ルール
 
-- **総尺**: **16.0秒**（冒頭 `0.5s` 無音フェードイン ＋ 本編 `15.0s` ＋ 末尾 `0.5s` 無音フェードアウト）
-- **タイムライン構成**:
-  - **0.0s 〜 0.5s（冒頭プリロール余白）**: 完全無音のまま純黒（`#000000`）から深淵の宇宙背景へじわっとフェードインする（再生開始直後の音声バッファ欠落防止）。
-  - **0.5s 〜 12.5s（本編 0.0s〜12.0s：抽選〜SSR確定演出）**: 召喚陣・オーブ収束・フェイク昇格（青→金→虹）・ホワイトアウト・3Dカード回転・SSR確定エフェクトを **12.0秒で完結** させる。
-  - **12.5s 〜 15.5s（本編 12.0s〜15.0s：レイアウト固定・光のみ微動）**: 本編12.0秒時点で完成したリザルト画面（写真入りSSRカード＋レアリティ・タイトル・星・スパークル等の配置・サイズ）を **3.0秒間完全固定** しつつ、ホロ光沢の微細なシマー・スパークルの位相差瞬き・背景ハローの静かな呼吸のみを維持して見せる。
-  - **15.5s 〜 16.0s（末尾アウトロ余白）**: 完全無音（音声は `15.3s` で無音着地）のまま純黒（`#000000`）へ滑らかにフェードアウトする。
-- **決定論的レンダリング**: `Math.random()` や `Date.now()` は使わず、シード付き疑似乱数と GSAP タイムライン（`window.__timelines["main"]` / 各サブコンポジション）のみで描画すること（フレーム精度の保証のため）。
-- **ディレクトリ・ファイル構成**:
-  - `card-config.js` — 写真パス・タイトル・レアリティ・物理質感（タイポグラフィ・光学・マテリアル・乱数シード）の一元設定ファイル
-  - `index.html` — ルートコンポジション（音声3トラック・ホワイトアウト閃光・サブコンポジション統合）
-  - `compositions/` — シーン別サブコンポジション＆共通スタイル/ユーティリティ
-    - `compositions/shared-base.css` — 共通フォント定義・CSSカスタムプロパティ（カード寸法・パレット）・リセット・フィルムグレイン定義
-    - `compositions/shared-utils.js` — 決定論的PRNG（Mulberry32）・相対パス解決・設定値優先選択・瞬間RGB色収差（`addChromaShock`）の共通モジュール
-    - `compositions/scene-summon.html` — Phase 1-2: 召喚陣・オーブ収束・青→金→虹フェイク昇格（本編 0.0s 〜 7.4s / 全体 0.5s 〜 7.9s）
-    - `compositions/scene-result.html` — Phase 3-5: 3Dカード回転着地・SSR確定エフェクト・3秒リザルト（本編 6.9s 〜 15.0s / 全体 7.4s 〜 16.0s）
-  - `assets/` — 入力写真（例: `photo.jpg`）、プロシージャル効果音（`.wav`）、フォント（`assets/fonts/`）、物理レンダリング生成画像（`assets/generated/`）、およびローカル専用カスタムSEスロット（`assets/se_custom/`、`.gitignore` 隔離）
-  - `scripts/` — 物理アセット＆効果音の決定論的生成スクリプト群（Python `numpy` / `scipy` / `Pillow`）
-    - `scripts/_utils.py` — 設定読み込み・シード解決・色空間変換・Porter-Duff Over合成・グラデーション・微細シボ・金属レリーフ陰影の共通モジュール
-    - `scripts/_optics_core.py` — H&D分光モデル・FFT異方性PSFガウスぼかし・ユークリッド距離変換・FBMノイズ・6段階物理光学発光コアモジュール
-    - `scripts/_audio_dsp.py` — 現代ソシャゲ音像シンセ・`fftconvolve` ホール残響・BS.1770-4 LUFS計測・透明ソフトリミッターの音響DSPコアモジュール
-    - `scripts/_audio_slots.py` — `assets/se_custom/`（11スロット＋`slots.json`）のマルチフォーマットWAVデコード・44.1kHzステレオ変換・自動フォールバックローダー
-    - `scripts/build_all.py` — 4つの生成スクリプトをマルチプロセス並列実行する一括ビルダー（`npm run build:assets`）
-    - `scripts/render_typography.py` — 書字キネマティクス＆金属箔タイポ・SSRクレスト・属性刻印プレート透過PNG＋マニフェスト生成（`npm run build:typo`）
-    - `scripts/render_optics.py` — 魔法陣・天蓋ゲート・オーブ・亀裂・ゴッドレイ・光柱・星・スパークル・玉ボケ発光PNG並列生成（`npm run build:optics`）
-    - `scripts/render_material.py` — 虹金属箔フレーム（四隅フィリグリー一体）・カード裏面・ホロプリズム・金箔結晶片・内窓立体深度PNG生成（`npm run build:material`）
-    - `scripts/generate_se.py` — 15秒タイムライン完全同期のステレオWAV効果音生成（`npm run build:se`）
-  - `renders/` — 出力された `.mp4` ファイル（`renders/ssr_gacha.mp4`）
+1. **総尺と余白**: 全体 **16.0 秒**（冒頭 `0.5s` 無音・黒フェードイン ＋ 本編 `15.0s` ＋ 末尾 `0.5s` 無音・黒フェードアウト、音声は `15.3s` で無音着地）。
+2. **終盤の固定ルール**: 本編 `12.0s 〜 15.0s`（全体 `12.5s 〜 15.5s`）はカード・文字・星・粒子の位置とサイズを完全固定し、光の微動（ホロシマー・リムグレア・背景ハロー・スパークル/玉ボケ明滅）のみ動かす。
+3. **写真保護**: 入力写真（`assets/photo.jpg` 等）は 100% クリアなまま無加工で維持する。顔被りは Z 順・軌道・中央減衰マスクで回避する。
+4. **決定論的レンダリング**: `Math.random()`・`Date.now()`・実行時ネットワーク `fetch()` を禁止する。Mulberry32 疑似乱数と登録済み GSAP タイムラインのみで描画する。
+5. **物理寸法の同期**: カード寸法（`900×1590`, border `20`, radius `40/24`）を変更する場合は `scripts/_utils.py` と `compositions/shared-base.css` を必ず同時に揃える。
 
----
+## プロジェクト地図 ＆ ドキュメント
 
-# HyperFrames Composition Project
+- `card-config.js` / `index.html` — カード設定（`--variables` 上書き対応）と 16.0s ルートコンポジション
+- `compositions/` — サブコンポジション（`scene-summon.*`, `scene-result.*`）および共通基盤（`shared-base.css`, `shared-utils.js`）
+- `scripts/` — Python 決定論的アセット生成（`build_all.py`, `render_*.py`, `generate_se.py`）と自動定量 QA（`qa_video.py`）
+- `assets/` — 入力写真・フォント・生成アセット（`generated/`）・ローカル専用カスタム SE（`se_custom/`）
+- `renders/` — 出力 MP4（`renders/ssr_gacha.mp4`）
 
-This folder is a [HyperFrames](https://hyperframes.heygen.com) video: HTML, CSS and seekable
-animations (GSAP by default) that the `hyperframes` CLI previews in the browser and renders to
-MP4.
+**詳細ドキュメント**:
+- [`SPEC.md`](./SPEC.md) — 確定仕様（詳細タイムライン・全ファイル一覧・設定スキーマ・音響/QA 基準）※仕様確認や構造変更時は必ず参照
+- [`ROADMAP.md`](./ROADMAP.md) — 開発フェーズ計画・進捗（Phase 0〜5）
+- [`LANDSCAPE_PLAN.md`](./LANDSCAPE_PLAN.md) — Phase 5 横動画（16:9）拡張設計
+- [`assets/se_custom/README.md`](./assets/se_custom/README.md) — ローカル専用カスタム SE スロット運用ガイド
 
-## Skills — read these first
-
-**Invoke the relevant skill before writing or modifying compositions.** Skills encode framework-specific patterns (e.g., `window.__timelines` registration, `data-*` attribute semantics, shader-compatible CSS rules) that generic web docs don't cover, so compositions written without them break.
-
-**Doing anything with HyperFrames?** Start at `/hyperframes`. Make any video by asking for it; the `/hyperframes` skill carries the contract and the references (each kind of film, story, motion, look, sound, review, captions, overlays). Read it first, especially when there's no project context to orient you.
-
-- `/hyperframes` — read first for any request to make, edit, animate or render a video, motion graphic, captions or overlays. Holds the render contract and the work loop.
-- `/hyperframes-cli` — the CLI by job: scaffold, check, look at frames, edit the timeline, preview, render, publish, project history.
-- `/hyperframes-registry` — ready-made blocks and components installed as editable source. Search it before hand-building any named visual.
-- `/media-use` — get or make any media (music, sound effects, images, voiceover, avatar and generated video, transcripts, cutouts, colour grades) and mix placed audio.
-- `/reverse-any-video` — rebuild any video file as an editable HyperFrames project and check it against the original frame by frame (HyperFrames Pro).
-- `/style-sampling` — make a new episode on your topic in one of five proven styles (HyperFrames Pro).
-- `/figma` — bring a Figma design, frame, logo or brand into a video.
-- `/slideshow` — a presentation or pitch deck. Output is a navigable deck, not a rendered MP4.
-- `/remotion-to-hyperframes` — bring existing video code or footage into HyperFrames (Remotion first; also Motion Canvas, Lottie, Three.js, canvas, or renders from other tools) and verify it frame by frame against the original.
-
-**Changing how real footage or images look or reveal?** Load `/media-use` and read its `references/media-treatments.md` before editing, even when the request only says dark, flat, boring, retro, private, or “make the reveal cooler.” It governs how footage is treated, never whether media may be used. Use canonical media treatments and seek-safe motion; do not improvise equivalent CSS/SVG filters or overlays.
-
-> **Tailwind v4 projects** (`hyperframes init --tailwind`): see `hyperframes-cli/references/init-and-scaffold.md` (Tailwind).
-
-> Follow the loaded skill’s launcher instructions for every CLI command below.
->
-> **Using a HyperFrames plugin?** Load skills from that installed bundle and follow
-> its `hyperframes/references/plugin-installation.md` execution rules. The person updates
-> the plugin through its plugin manager; the standalone commands below do not apply.
->
-> **Standalone skill missing or stale?** Installing and updating skills is the person's step:
-> tell them which skill is missing or stale, and do not run the install yourself. For the user:
-> `npx hyperframes skills update <name>` installs/refreshes that skill, and bare
-> `npx hyperframes skills update` refreshes the core set plus everything already installed —
-> neither pulls the full set. Newly installed skills load in a new agent session.
-
-## Commands
+## コマンド
 
 ```bash
-npm run build:assets # 全ての生成アセット（タイポ・光学・フレーム・効果音）を一括再生成
-npm run build:typo   # card-config.js のテキスト変更時に透過タイポPNGを再生成
-npm run dev          # human-operated foreground preview (blocks until stopped)
-npx hyperframes preview --background  # agent-safe persistent Studio preview
-npx hyperframes preview --status      # verify the persistent preview is listening
-npx hyperframes preview --stop        # stop it when review is finished
-npm run check        # lint + runtime + layout + motion + contrast (one command)
-npx hyperframes snapshot --at 1,3,5  # PNG frames at those seconds, to look at before rendering
-npm run render       # render to MP4 (renders/ssr_gacha.mp4)
-npm run publish      # publish and get a shareable link
-npx hyperframes lint --verbose  # include info-level findings
-npx hyperframes lint --json     # machine-readable output for CI
-npx hyperframes docs <topic> # reference docs in terminal
+npm run build:assets   # 全ての生成アセット（タイポ・光学・フレーム・効果音）を一括再生成
+npm run build:typo     # card-config.js のテキスト/typography 変更時に透過タイポ PNG を再生成
+npm run build:optics   # 物理光学発光アセット PNG を再生成
+npm run build:material # 虹フレーム・カード裏面・ホロ・フィルムグレイン PNG を再生成
+npm run build:se       # 効果音 WAV（assets/se_custom/ 統合含む）を再生成
+npm run check          # lint + runtime + layout + motion + contrast を一括検証
+npx hyperframes snapshot --at 1,3,5   # 指定秒数のフレーム PNG を出力して目視確認
+npm run render         # MP4 書き出し (renders/ssr_gacha.mp4)
+npm run qa -- renders/ssr_gacha.mp4 --check-audio  # 出力 MP4 の定量 QA（映像・音響）
+npx hyperframes preview --background  # エージェント用の永続 Studio プレビュー起動
+npx hyperframes preview --status      # プレビュー稼働確認
+npx hyperframes preview --stop        # レビュー完了後の停止
+npx hyperframes docs <topic>          # ローカルリファレンス (data-attributes / gsap / compositions / rendering / examples / troubleshooting)
 ```
 
-> **Agents must use `npx hyperframes preview --background` for Studio handoff.** Do not rely
-> on a shell/tool `run_in_background` wrapper around `npm run dev`: that foreground process
-> remains owned by the invoking session and can disappear while the browser stays open,
-> leaving refreshes at `ERR_CONNECTION_TIMED_OUT`. Verify with `preview --status`. The desktop
-> app can't edit the project while this preview runs, so `npx hyperframes open` stops it first.
-> If you hand the project to the app another way, run `preview --stop` before you do. Otherwise keep it
-> alive through review, and stop it explicitly with `preview --stop` afterward.
+> Studio プレビューをエージェントから起動する場合は、`npm run dev`（フォアグラウンド）ではなく必ず `npx hyperframes preview --background` を使い、完了後に `--stop` で終了すること。
 
-> **Back from the desktop app.** Once this project was opened in the HyperFrames desktop app, run `npx hyperframes catch-up` before your next change here: it lists what the person asked Framey in the app and which files changed since.
+## 変更後の検証（必須）
 
-> **Pinned CLI version.** These scripts pin an exact `hyperframes@X.Y.Z` so this project re-renders identically over time. Weeks later that pin lags fixes shipped since. With standalone skills, run the installed launcher with `--cli-version latest upgrade --project . --check` to see the delta. Repeat without `--check` to rewrite the pins. Plugin workflows keep their bundled CLI.
+1. **`.html` / `.css` / `.js` コンポジションを変更した後**: 必ず `npm run check` を実行してエラー 0 を確認し、変更時刻のフレームを `npx hyperframes snapshot --at <seconds>` で視覚確認する。
+2. **Python 生成スクリプトを変更した後**: 対応する `npm run build:*` を実行して生成物を確認する。
+3. **MP4 レンダリング後**: `npm run qa -- renders/ssr_gacha.mp4 --check-audio` で定量基準への適合を確認する。
 
-## Documentation
+## HyperFrames 実装規約
 
-**For quick reference**, use the local CLI docs command (no network required):
-
-```bash
-npx hyperframes docs <topic>
-```
-
-Topics: `data-attributes`, `gsap`, `compositions`, `rendering`, `examples`, `troubleshooting`
-
-**For full documentation**, discover pages via the machine-readable index — do NOT guess URLs:
-
-```
-https://hyperframes.heygen.com/llms.txt
-```
-
-## Project Structure
-
-- `index.html` — main composition (root timeline)
-- `compositions/` — sub-compositions referenced via `data-composition-src`
-- `meta.json` — project metadata (id, name)
-- `transcript.json` — whisper word-level transcript (if generated)
-
-## Linting — ALWAYS RUN AFTER CHANGES
-
-After creating or editing any `.html` composition, **always** run the full check before considering the task complete:
-
-```bash
-npm run check
-```
-
-Fix all errors before presenting the result. Warnings should be reviewed before rendering.
-
-Then look at what you changed: `npx hyperframes snapshot --at <seconds>` (or `--range START,END`, `--composition <id>`) at the moments you edited, and read the frames before you reply. A passing check does not show how it looks.
-
-## Key Rules
-
-1. Every timed element needs `data-start` and a duration. `data-start` is what marks it as timed; `data-track-index` is an optional Studio display lane the render never reads
-2. Give timed visual elements `class="clip"`. The framework keys visibility off `data-start`, not the class, but the shared `.clip` CSS is what gives a scene its full-frame box, and `lint` warns without it
-3. Register one paused root timeline per composition on `window.__timelines`:
+1. すべての時間制御要素に `data-start` と `data-duration` を指定する（`data-track-index` は Studio 表示用の任意属性）。
+2. 時間制御する視覚要素には `class="clip"` を付与する。
+3. コンポジションごとに一時停止状態のルートタイムラインを `window.__timelines` に登録する（手動追加する子タイムラインは `paused` にしない）：
    ```js
    window.__timelines = window.__timelines || {};
    window.__timelines["composition-id"] = gsap.timeline({ paused: true });
    ```
-   Scene timelines manually added to this root must not be paused. A paused
-   child does not advance when the root is seeked. The runtime activates
-   registered composition siblings, not arbitrary nested scene timelines.
-4. A video with sound keeps it on the `<video>` (`data-has-audio="true"`, no `muted`). Use a separate `<audio>` for music, voiceover, replacement audio, J/L cuts, or audio detached in Studio. Silent footage and b-roll: `muted`.
-5. Sub-compositions use `data-composition-src="compositions/file.html"` to reference other HTML files
-6. Only deterministic logic — no `Date.now()`, no `Math.random()`, no network fetches
+4. 音声付き `<video>` は `muted` にせず `data-has-audio="true"` を付け、BGM や差し替え音声は独立した `<audio>` を使用する（無音映像は `muted`）。
+5. サブコンポジションは `data-composition-src="compositions/file.html"` で参照する。
