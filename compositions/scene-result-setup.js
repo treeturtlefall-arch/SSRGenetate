@@ -16,6 +16,39 @@
       ? window.__hyperframes.getVariables()
       : {};
 
+  function resolveAttributeKeyText() {
+    const hasVarSplit =
+      typeof hfVars.attributeBadge === "string" || typeof hfVars.attributeLabel === "string";
+    const hasCfgSplit =
+      Object.prototype.hasOwnProperty.call(baseCfg, "attributeBadge") ||
+      Object.prototype.hasOwnProperty.call(baseCfg, "attributeLabel");
+
+    if (hasVarSplit || hasCfgSplit) {
+      const rawB = typeof hfVars.attributeBadge === "string" && hfVars.attributeBadge !== ""
+        ? hfVars.attributeBadge
+        : (typeof baseCfg.attributeBadge === "string" ? baseCfg.attributeBadge : "");
+      const rawL = typeof hfVars.attributeLabel === "string" && hfVars.attributeLabel !== ""
+        ? hfVars.attributeLabel
+        : (typeof baseCfg.attributeLabel === "string" ? baseCfg.attributeLabel : "");
+      const b = Array.from(rawB.trim())[0] || "";
+      const l = rawL.trim();
+      if (b && l) return b + " / " + l;
+      return l || b;
+    }
+
+    const legacy = typeof baseCfg.attribute === "string" ? baseCfg.attribute.trim() : "";
+    if (!legacy) return "";
+    const parts = legacy.replace(/／/g, "/").split("/").map(function (s) { return s.trim(); }).filter(Boolean);
+    if (parts.length >= 2) {
+      const stripped = parts[0].replace(/属性/g, "").trim();
+      const b = Array.from(stripped || parts[0])[0] || "";
+      return b ? b + " / " + parts[1] : parts[1];
+    }
+    const stripped = legacy.replace(/属性/g, "").trim();
+    const b = Array.from(stripped || legacy)[0] || "";
+    return b ? b + " / " + legacy : legacy;
+  }
+
   const cfg = {
     photo: pick(hfVars.photo, baseCfg.photo, "assets/photo.jpg"),
     photoFit: baseCfg.photoFit || "cover",
@@ -23,7 +56,7 @@
     photoZoom: typeof baseCfg.photoZoom === "number" ? baseCfg.photoZoom : 1.05,
     rarity: pick(hfVars.rarity, baseCfg.rarity, "SSR"),
     stars: typeof baseCfg.stars === "number" ? baseCfg.stars : 0,
-    attribute: typeof baseCfg.attribute === "string" ? baseCfg.attribute.trim() : "",
+    attribute: resolveAttributeKeyText(),
     subtitle: pick(hfVars.subtitle, baseCfg.subtitle, "【覚醒の眼光】"),
     title: pick(hfVars.title, baseCfg.title, "ちいさな覇王"),
     flavor:

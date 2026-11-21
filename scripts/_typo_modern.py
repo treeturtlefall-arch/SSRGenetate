@@ -24,7 +24,17 @@ from _font_slots import (
     resolve_font_path,
     resolve_slot_font,
 )
-from _utils import GOLD_RAMP, SILVER_RAMP, porter_duff_over, ramp_lookup, smoothstep, tight_crop_rgba
+from _utils import (
+    GOLD_RAMP,
+    SILVER_RAMP,
+    gaussian_blur_f,
+    porter_duff_over,
+    ramp_lookup,
+    rgba_from_float,
+    shade_metal_relief,
+    smoothstep,
+    tight_crop_rgba,
+)
 
 # カテゴリ別フォールバックチェーン
 FALLBACK_CHAINS: Dict[str, Tuple[str, ...]] = {
@@ -483,6 +493,476 @@ def render_modern_text(
     return im
 
 
+# 左右共通座布団ギミックの統一物理寸法（左 Pattern A × 右 Pattern C）
+SHARED_BAND_H = 44
+ZABUTON_PAD = 14
+
+
+def _measure_ink_center_y(im: Image.Image, alpha_thresh: float = 0.80) -> float:
+    """ドロップシャドウ等の半透明領域を除外し、文字本体の視覚的な上下中心 Y 座標を返す"""
+    arr = np.asarray(im, dtype=np.float32) / 255.0
+    a = arr[..., 3]
+    ys = np.where(a >= alpha_thresh)[0]
+    if len(ys) == 0:
+        ys = np.where(a > 0.25)[0]
+    if len(ys) == 0:
+        return im.height * 0.5
+    return (float(ys.min()) + float(ys.max()) + 1.0) * 0.5
+
+
+def _measure_ink_center_x(im: Image.Image, alpha_thresh: float = 0.80) -> float:
+    """ドロップシャドウ等の半透明領域を除外し、文字本体の視覚的な左右中心 X 座標を返す"""
+    arr = np.asarray(im, dtype=np.float32) / 255.0
+    a = arr[..., 3]
+    xs = np.where(a >= alpha_thresh)[1]
+    if len(xs) == 0:
+        xs = np.where(a > 0.25)[1]
+    if len(xs) == 0:
+        return im.width * 0.5
+    return (float(xs.min()) + float(xs.max()) + 1.0) * 0.5
+
+
+def parse_attribute_parts(
+    raw_attr: str = "",
+    badge: Optional[str] = None,
+    label: Optional[str] = None,
+) -> Tuple[str, str]:
+    """
+    属性設定を (badge_char, label_text) へ正規化する。
+    - attributeBadge / attributeLabel が指定されていれば優先（badge="" でも label があれば素アイコン表示）
+    - 両方未指定の場合のみ、従来の attribute 文字列（例: "光属性 / BABY"）を後方互換パース
+    """
+    has_split = (badge is not None) or (label is not None)
+    if has_split:
+        b = str(badge or "").strip()[:1]
+        l = str(label or "").strip()
+        if not b and not l:
+            return "", ""
+        return b, l
+
+    clean = str(raw_attr or "").strip()
+    if not clean:
+        return "", ""
+    parts = [p.strip() for p in clean.replace("／", "/").split("/") if p.strip()]
+    if len(parts) >= 2:
+        jp = parts[0]
+        b = jp.replace("属性", "").strip()[:1] or jp[:1]
+        return b, parts[1]
+    # スラッシュなし単体文字列の場合
+    b = clean.replace("属性", "").strip()[:1] or clean[:1]
+    return b, clean
+
+
+def render_shared_zabuton(
+    w: int,
+    h: int,
+    theme: str,
+    palette: Dict[str, str],
+    skew_px: float = 15.0,
+    fishtail_right: bool = False,
+) -> Image.Image:
+    """左右共通座布団ベース生成（Royal: 3D金属レリーフ枠 / Pop: 白ステッカー＋外縁＋ストライプ）"""
+    ss = 3
+    pad = ZABUTON_PAD
+    W, H = (w + pad * 2) * ss, (h + pad * 2) * ss
+    ox, oy = pad * ss, pad * ss
+    bw, bh = w * ss, h * ss
+    sk = skew_px * ss
+
+    im = Image.new("L", (W, H), 0)
+    d = ImageDraw.Draw(im)
+
+    if theme == "royal":
+        p_tl = (ox + sk, oy)
+        p_tr = (ox + bw, oy)
+        p_br = (ox + bw - sk, oy + bh)
+        p_bl = (ox, oy + bh)
+        if fishtail_right:
+            notch = ox + bw - sk * 0.85
+            pts = [p_tl, p_tr, (notch, oy + bh * 0.5), p_br, p_bl]
+        else:
+            pts = [p_tl, p_tr, p_br, p_bl]
+        d.polygon(pts, fill=255)
+    else:
+        r = int(bh * 0.48)
+        d.rounded_rectangle([ox, oy, ox + bw, oy + bh], radius=r, fill=255)
+        if fishtail_right:
+            cut = [
+                (ox + bw + 4 * ss, oy - 2 * ss),
+                (ox + bw - int(bh * 0.34), oy + bh // 2),
+                (ox + bw + 4 * ss, oy + bh + 2 * ss),
+            ]
+            d.polygon(cut, fill=0)
+
+    mask = np.asarray(im.resize((w + pad * 2, h + pad * 2), Image.Resampling.LANCZOS), dtype=np.float32) / 255.0
+    mh, mw = mask.shape
+    yy, xx = np.mgrid[0:mh, 0:mw].astype(np.float32)
+    inside = mask >= 0.5
+    d_in = distance_transform_edt(inside).astype(np.float32)
+    d_out = distance_transform_edt(~inside).astype(np.float32)
+
+    if theme == "royal":
+        is_silver = palette.get("fillBottom", "").upper() == "#9AA8BE"
+        ramp = SILVER_RAMP if is_silver else GOLD_RAMP
+        shimmer_tint = np.array([0.82, 0.90, 1.00], dtype=np.float32) if is_silver else np.array([0.95, 0.82, 0.50], dtype=np.float32)
+
+        ty = np.clip((yy - pad) / max(1.0, float(h)), 0.0, 1.0)
+        c_top = np.array([0.09, 0.12, 0.28], dtype=np.float32)
+        c_bot = np.array([0.02, 0.03, 0.09], dtype=np.float32)
+        body_rgb = c_top[None, None, :] * (1.0 - ty[..., None]) + c_bot[None, None, :] * ty[..., None]
+        shimmer = np.exp(-(((xx - mw * 0.42) * 0.65 + (yy - mh * 0.5)) / 14.0) ** 2) * 0.22
+        shimmer2 = np.exp(-(((xx - mw * 0.58) * 0.65 + (yy - mh * 0.5)) / 5.0) ** 2) * 0.18
+        body_rgb = np.clip(body_rgb + (shimmer + shimmer2)[..., None] * shimmer_tint, 0.0, 1.0)
+        body_a = mask * 0.88
+
+        outer_rim = mask * smoothstep(4.2, 2.5, d_in)
+        inner_pin = np.exp(-((d_in - 6.0) / 0.85) ** 2) * 0.55 * inside
+        metal_mask = np.clip(outer_rim + inner_pin, 0.0, 1.0)
+        metal_rgb = shade_metal_relief(metal_mask, ramp, bevel_px=1.2, depth=5.2, tone=0.68, shininess=34.0)
+
+        shadow = np.roll(np.roll(gaussian_blur_f(mask, 4.5), 3, axis=0), 2, axis=1) * 0.68
+        rgb, a = np.zeros((mh, mw, 3), dtype=np.float32), shadow
+        rgb, a = porter_duff_over(body_rgb, body_a, rgb, a)
+        rgb, a = porter_duff_over(metal_rgb, metal_mask, rgb, a)
+    else:
+        c_out = hex_to_rgb01(palette["outline"])
+        c_in = hex_to_rgb01(palette["inline"])
+        c_p1 = np.array([1.00, 0.91, 0.95], dtype=np.float32)
+        c_p2 = np.array([0.95, 0.82, 0.90], dtype=np.float32)
+
+        stripe = 0.5 + 0.5 * np.tanh(np.sin((xx * 0.75 + yy * 0.75) * (2.0 * math.pi / 18.0)) * 3.0)
+        body_rgb = c_p1[None, None, :] * stripe[..., None] + c_p2[None, None, :] * (1.0 - stripe[..., None])
+        gloss = smoothstep(mh * 0.52, pad + 3.0, yy) * smoothstep(1.5, 4.0, d_in) * 0.45
+        body_rgb = np.clip(body_rgb + gloss[..., None], 0.0, 1.0)
+
+        m_white = np.maximum(mask, smoothstep(4.6, 3.3, d_out))
+        m_plum = np.maximum(m_white, smoothstep(7.4, 6.0, d_out))
+        stitch = np.exp(-((d_in - 3.6) / 0.8) ** 2) * 0.65 * inside
+        body_rgb = np.clip(body_rgb * (1.0 - stitch[..., None]) + c_in[None, None, :] * stitch[..., None], 0.0, 1.0)
+
+        shadow = np.roll(gaussian_filter(m_plum, sigma=3.2), 2, axis=0) * 0.26
+        rgb, a = np.broadcast_to(c_out[None, None, :], (mh, mw, 3)), shadow
+        rgb, a = porter_duff_over(np.broadcast_to(c_out[None, None, :], (mh, mw, 3)), m_plum, rgb, a)
+        rgb, a = porter_duff_over(np.broadcast_to(c_in[None, None, :], (mh, mw, 3)), m_white, rgb, a)
+        rgb, a = porter_duff_over(body_rgb, mask, rgb, a)
+
+    return rgba_from_float(rgb, a)
+
+
+def _render_pastel_medallion_char(
+    ch: str,
+    size: int,
+    palette: Dict[str, str],
+    norm_factors: Optional[Dict[str, float]] = None,
+) -> Image.Image:
+    """Pastel ハートメダリオン専用のスリム縁取り 1 文字（白抜き＋プラム細縁）"""
+    nf = norm_factors or MODERN_NORM_FACTORS
+    ss = 2
+    fs = int(round(size * ss))
+    alpha, _ = _render_mask_ls(
+        text=ch,
+        primary="ZenMaruGothic-Black.ttf",
+        font_size=fs,
+        max_w=fs * 1.4,
+        max_lines=1,
+        tracking_em=0.0,
+        vf_weight=900,
+        norm_factors=nf,
+        align="center",
+        pad=24 * ss,
+    )
+    h, w = alpha.shape
+    _, d_out = _compute_sdf(alpha, need_in=False, need_out=True)
+    assert d_out is not None
+
+    c_fill = hex_to_rgb01(palette["inline"])
+    c_out = hex_to_rgb01(palette["outline"])
+    c_sh = hex_to_rgb01(palette["shadow"])
+
+    m_out = _stroke_mask(d_out, alpha, 2.2 * ss, fill_holes=True)
+    sh = _shift_subpixel(gaussian_filter(m_out, sigma=1.8 * ss, mode="constant"), 0.0, 1.4 * ss) * 0.34
+
+    rgb, a = np.broadcast_to(c_sh[None, None, :], (h, w, 3)), sh
+    rgb, a = porter_duff_over(np.broadcast_to(c_out[None, None, :], (h, w, 3)), m_out, rgb, a)
+    rgb, a = porter_duff_over(np.broadcast_to(c_fill[None, None, :], (h, w, 3)), alpha, rgb, a)
+
+    im = tight_crop_rgba(rgb, a, alpha_threshold=0.008, pad=2 * ss)
+    return im.resize((max(1, im.width // ss), max(1, im.height // ss)), Image.Resampling.LANCZOS)
+
+
+def _render_attribute_medallion(
+    theme: str,
+    palette: Dict[str, str],
+    badge_char: str = "",
+    norm_factors: Optional[Dict[str, float]] = None,
+) -> Tuple[Image.Image, float]:
+    """拡大属性メダリオン（Royal: 78px ダイヤ / Pastel: 4x SSAA 3次ベジェハート）と視覚基準 Y を返す"""
+    if theme == "royal":
+        is_silver = palette.get("fillBottom", "").upper() == "#9AA8BE"
+        ramp = SILVER_RAMP if is_silver else GOLD_RAMP
+        size = 78
+        ss = 3
+        S = size * ss
+        c = S * 0.5
+        yy, xx = np.mgrid[0:size, 0:size].astype(np.float32)
+        cy, cx = size * 0.5, size * 0.5
+
+        im_base = Image.new("L", (S, S), 0)
+        r_out = S * 0.46
+        ImageDraw.Draw(im_base).polygon([(c, c - r_out), (c + r_out, c), (c, c + r_out), (c - r_out, c)], fill=255)
+        m_base = np.asarray(im_base.resize((size, size), Image.Resampling.LANCZOS), dtype=np.float32) / 255.0
+
+        im_in = Image.new("L", (S, S), 0)
+        r_in = S * 0.37
+        ImageDraw.Draw(im_in).polygon([(c, c - r_in), (c + r_in, c), (c, c + r_in), (c - r_in, c)], fill=255)
+        m_gem = np.asarray(im_in.resize((size, size), Image.Resampling.LANCZOS), dtype=np.float32) / 255.0
+        m_bezel = np.clip(m_base - m_gem, 0.0, 1.0)
+
+        im_star = Image.new("L", (S, S), 0)
+        pts = []
+        for i in range(16):
+            a_rad = math.radians(-90 + i * 22.5)
+            r = (S * 0.30 if i % 4 == 0 else S * 0.21) if i % 2 == 0 else S * 0.08
+            pts.append((c + math.cos(a_rad) * r, c + math.sin(a_rad) * r))
+        ImageDraw.Draw(im_star).polygon(pts, fill=255)
+        m_star = np.asarray(im_star.resize((size, size), Image.Resampling.LANCZOS), dtype=np.float32) / 255.0
+
+        bezel_rgb = shade_metal_relief(m_bezel, ramp, bevel_px=1.3, depth=5.8, tone=0.70, shininess=36.0)
+        star_rgb = shade_metal_relief(m_star, ramp, bevel_px=1.0, depth=4.5, tone=0.82, shininess=40.0)
+
+        ang = np.arctan2(yy - cy, xx - cx)
+        dist = np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2) / (size * 0.37)
+        facet = 0.5 + 0.5 * np.tanh(4.0 * np.sin(4.0 * ang + 0.4))
+        if badge_char:
+            c_dark = np.array([0.07, 0.24, 0.52], dtype=np.float32)
+            c_lite = np.array([0.18, 0.52, 0.78], dtype=np.float32)
+            glow_str = 0.28
+        else:
+            c_dark = np.array([0.16, 0.56, 0.86], dtype=np.float32)
+            c_lite = np.array([0.45, 0.88, 0.98], dtype=np.float32)
+            glow_str = 0.85
+
+        gem_rgb = c_dark[None, None, :] * (1.0 - facet[..., None]) + c_lite[None, None, :] * facet[..., None]
+        core_glow = np.exp(-((dist / 0.48) ** 2)) * glow_str
+        gem_rgb = np.clip(gem_rgb + core_glow[..., None] * np.array([0.95, 0.96, 1.0]), 0.0, 1.0)
+
+        shadow = np.roll(gaussian_blur_f(m_base, 3.2), 2, axis=0) * 0.72
+        rgb, a = np.zeros((size, size, 3), dtype=np.float32), shadow
+        rgb, a = porter_duff_over(gem_rgb, m_gem, rgb, a)
+        rgb, a = porter_duff_over(bezel_rgb, m_bezel, rgb, a)
+        if not badge_char:
+            rgb, a = porter_duff_over(star_rgb, m_star, rgb, a)
+        out_im = rgba_from_float(rgb, a)
+
+        if badge_char:
+            ch = badge_char.strip()[:1]
+            k_im = render_modern_text(
+                ch,
+                font_name="ShipporiMincho-ExtraBold.ttf",
+                font_size=33,
+                max_w=46,
+                max_lines=1,
+                style_id="royal-gold-clean",
+                palette=palette,
+                vf_weight=800,
+                norm_factors=norm_factors,
+            )
+            kx = int(round(cx - _measure_ink_center_x(k_im)))
+            ky = int(round(cy - _measure_ink_center_y(k_im)))
+            out_im.alpha_composite(k_im, (kx, ky))
+        return out_im, cy
+
+    else:
+        size = 86
+        ss = 4
+        S = size * ss
+        cx_s, cy_s = S * 0.5, S * 0.5
+
+        def cubic_bezier(p0, p1, p2, p3, n=90):
+            u = np.linspace(0.0, 1.0, n, endpoint=False)[:, None]
+            return (
+                ((1 - u) ** 3) * np.array(p0)
+                + 3 * ((1 - u) ** 2) * u * np.array(p1)
+                + 3 * (1 - u) * (u ** 2) * np.array(p2)
+                + (u ** 3) * np.array(p3)
+            )
+
+        r_top = cubic_bezier((0.0, -0.42), (0.26, -1.00), (1.08, -0.84), (1.00, -0.06), 90)
+        r_bot = cubic_bezier((1.00, -0.06), (0.92, 0.44), (0.38, 0.74), (0.0, 0.96), 90)
+        l_bot = np.column_stack([-r_bot[::-1, 0], r_bot[::-1, 1]])
+        l_top = np.column_stack([-r_top[::-1, 0], r_top[::-1, 1]])
+        curve = np.vstack([r_top, r_bot, l_bot, l_top])
+        hx, hy = curve[:, 0], curve[:, 1]
+        hx = hx - (hx.min() + hx.max()) * 0.5
+        hy = hy - (hy.min() + hy.max()) * 0.5
+        scale_h = (S * 0.72) / max(hx.max() - hx.min(), hy.max() - hy.min())
+        pts = [(float(cx_s + x * scale_h), float(cy_s + y * scale_h)) for x, y in zip(hx, hy)]
+
+        im_h = Image.new("L", (S, S), 0)
+        ImageDraw.Draw(im_h).polygon(pts, fill=255)
+        m_heart = np.asarray(im_h, dtype=np.float32) / 255.0
+        inside = m_heart >= 0.5
+        d_out = distance_transform_edt(~inside).astype(np.float32)
+
+        ys_in = np.where(inside)[0]
+        heart_centroid_y = float(np.mean(ys_in)) / ss
+        heart_box_cy = (float(ys_in.min()) + float(ys_in.max())) * 0.5 / ss
+
+        yy, xx = np.mgrid[0:S, 0:S].astype(np.float32)
+        c_out = hex_to_rgb01(palette["outline"])
+        c_in = hex_to_rgb01(palette["inline"])
+
+        y_min_h, y_max_h = float(ys_in.min()), float(ys_in.max())
+        ty = np.clip((yy - y_min_h) / max(1.0, y_max_h - y_min_h), 0.0, 1.0)
+        c_top = np.array([1.00, 0.58, 0.78], dtype=np.float32)
+        c_bot = np.array([0.92, 0.22, 0.52], dtype=np.float32)
+        h_rgb = c_top[None, None, :] * (1.0 - ty[..., None]) + c_bot[None, None, :] * ty[..., None]
+
+        spec = np.exp(-(((xx - S * 0.34) / (S * 0.072)) ** 2 + ((yy - S * 0.32) / (S * 0.048)) ** 2)) * 0.82 * inside
+        h_rgb = np.clip(h_rgb + spec[..., None], 0.0, 1.0)
+
+        w_white = 3.8 * ss
+        w_plum = (3.8 + 2.6) * ss
+        m_white = np.maximum(m_heart, smoothstep(w_white + 0.8 * ss, w_white - 0.8 * ss, d_out))
+        m_plum = np.maximum(m_white, smoothstep(w_plum + 0.8 * ss, w_plum - 0.8 * ss, d_out))
+        shadow = np.roll(gaussian_filter(m_plum, sigma=2.4 * ss), 2 * ss, axis=0) * 0.28
+
+        rgb, a = np.broadcast_to(c_out[None, None, :], (S, S, 3)), shadow
+        rgb, a = porter_duff_over(np.broadcast_to(c_out[None, None, :], (S, S, 3)), m_plum, rgb, a)
+        rgb, a = porter_duff_over(np.broadcast_to(c_in[None, None, :], (S, S, 3)), m_white, rgb, a)
+        rgb, a = porter_duff_over(h_rgb, m_heart, rgb, a)
+
+        out_im = rgba_from_float(rgb, a).resize((size, size), Image.Resampling.LANCZOS)
+
+        if badge_char:
+            ch = badge_char.strip()[:1]
+            k_im = _render_pastel_medallion_char(ch, size=30, palette=palette, norm_factors=norm_factors)
+            kx = int(round(size * 0.5 - _measure_ink_center_x(k_im)))
+            ky = int(round(heart_centroid_y - _measure_ink_center_y(k_im)))
+            out_im.alpha_composite(k_im, (kx, ky))
+
+        return out_im, heart_box_cy
+
+
+def render_modern_ssr_emblem(
+    text: str,
+    *,
+    font_name: str,
+    font_size: int,
+    max_w: float,
+    style_id: str,
+    palette: Dict[str, str],
+    tracking_em: float = 0.0,
+    compress_x: float = 1.0,
+    vf_weight: int = 700,
+    opacity: float = 1.0,
+    norm_factors: Optional[Dict[str, float]] = None,
+) -> Image.Image:
+    """左上 SSR エンブレム（Pattern A: 共通ハーフ座布団＋フィッシュテール＋文字オーバーハング）"""
+    theme = "royal" if style_id == "royal-gold-clean" else "pastel"
+    ssr_txt = render_modern_text(
+        text,
+        font_name=font_name,
+        font_size=font_size,
+        max_w=max_w,
+        max_lines=1,
+        style_id=style_id,
+        palette=palette,
+        tracking_em=tracking_em,
+        compress_x=compress_x,
+        vf_weight=vf_weight,
+        opacity=opacity,
+        norm_factors=norm_factors,
+    )
+    tw, th = ssr_txt.size
+    z_w = tw + 56
+    zab = render_shared_zabuton(z_w, SHARED_BAND_H, theme, palette, skew_px=15, fishtail_right=True)
+
+    cw = max(zab.width, tw + 64)
+    ch = max(zab.height, th + 20)
+    canvas = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+    zx = (cw - zab.width) // 2
+    zy = (ch - zab.height) // 2
+    canvas.alpha_composite(zab, (zx, zy))
+
+    band_cy = zy + ZABUTON_PAD + SHARED_BAND_H * 0.5
+    tx = zx + (zab.width - tw) // 2 - 5
+    ty = int(round(band_cy - _measure_ink_center_y(ssr_txt)))
+    canvas.alpha_composite(ssr_txt, (max(0, tx), max(0, ty)))
+    arr = np.asarray(canvas, dtype=np.float32) / 255.0
+    return tight_crop_rgba(arr[..., :3], arr[..., 3], pad=2)
+
+
+def render_modern_attribute_badge(
+    badge_char: str,
+    label_text: str,
+    *,
+    style_id: str,
+    palette: Dict[str, str],
+    norm_factors: Optional[Dict[str, float]] = None,
+) -> Image.Image:
+    """右上 属性バッジ（Pattern C: 拡大メダリオン 1文字 ＋ 共通座布団ラベル帯）"""
+    theme = "royal" if style_id == "plate-royal" else "pastel"
+    med, med_cy = _render_attribute_medallion(theme, palette, badge_char=badge_char, norm_factors=norm_factors)
+
+    clean_label = label_text.strip()
+    if not clean_label:
+        # ラベル空・バッジのみの場合はメダリオン単体を返す
+        arr = np.asarray(med, dtype=np.float32) / 255.0
+        return tight_crop_rgba(arr[..., :3], arr[..., 3], pad=2)
+
+    is_ascii = all(ord(c) < 128 for c in clean_label)
+    if theme == "royal":
+        font_name = "Cinzel-VF.ttf" if is_ascii else "ShipporiMincho-ExtraBold.ttf"
+        txt_style = "royal-gold-clean"
+        tracking = 0.11 if is_ascii else 0.06
+        fsize = 27 if is_ascii else 26
+    else:
+        font_name = "Outfit-VF.ttf" if is_ascii else "ZenMaruGothic-Black.ttf"
+        txt_style = "pop-sticker-rose"
+        tracking = 0.06 if is_ascii else 0.04
+        fsize = 26 if is_ascii else 25
+
+    t_lbl = render_modern_text(
+        clean_label,
+        font_name=font_name,
+        font_size=fsize,
+        max_w=196.0,
+        max_lines=1,
+        style_id=txt_style,
+        palette=palette,
+        tracking_em=tracking,
+        vf_weight=800,
+        norm_factors=norm_factors,
+    )
+
+    med_overlap = int(med.width * 0.42)
+    z_w = max(176, t_lbl.width + med_overlap + 42)
+    zab = render_shared_zabuton(z_w, SHARED_BAND_H, theme, palette, skew_px=15, fishtail_right=False)
+
+    zab_x = int(med.width * 0.34)
+    cw = zab_x + zab.width + 4
+    ch = max(med.height, zab.height, t_lbl.height) + 12
+    canvas = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+
+    zab_y = (ch - zab.height) // 2
+    band_cy = zab_y + ZABUTON_PAD + SHARED_BAND_H * 0.5
+    canvas.alpha_composite(zab, (zab_x, zab_y))
+
+    med_y = int(round(band_cy - med_cy))
+    canvas.alpha_composite(med, (0, max(0, med_y)))
+
+    area_left = med.width - 4
+    area_right = zab_x + ZABUTON_PAD + z_w - (12 if theme == "royal" else 8)
+    area_cx = (area_left + area_right) * 0.5
+    tx = int(round(area_cx - _measure_ink_center_x(t_lbl)))
+    ty = int(round(band_cy - _measure_ink_center_y(t_lbl)))
+    canvas.alpha_composite(t_lbl, (max(0, tx), max(0, ty)))
+
+    arr = np.asarray(canvas, dtype=np.float32) / 255.0
+    return tight_crop_rgba(arr[..., :3], arr[..., 3], pad=2)
+
+
 def render_modern_attribute_plate(
     text: str,
     *,
@@ -494,50 +974,15 @@ def render_modern_attribute_plate(
     vf_weight: int = 700,
     norm_factors: Optional[Dict[str, float]] = None,
 ) -> Image.Image:
-    """3x SSAA による Royal 鋭角プレート / Pop 丸ピルタグ生成"""
-    txt_im = render_modern_text(
-        text,
-        font_name=font_name,
-        font_size=font_size,
-        max_w=270.0,
-        max_lines=1,
-        style_id="clean-sub",
+    """後方互換ラッパー（従来単一文字列から Pattern C バッジを生成）"""
+    badge_char, label_text = parse_attribute_parts(raw_attr=text)
+    return render_modern_attribute_badge(
+        badge_char,
+        label_text,
+        style_id=style_id,
         palette=palette,
-        tracking_em=tracking_em,
-        vf_weight=vf_weight,
         norm_factors=norm_factors,
     )
-    tw, th = txt_im.size
-    pad_x = 34 if style_id == "plate-royal" else 30
-    pad_y = 14
-    bw = max(180, tw + pad_x * 2)
-    bh = max(54, th + pad_y * 2)
-
-    ss = 3
-    pbg = hex_to_rgb255(palette["plateBg"])
-    border_col = hex_to_rgb255(palette["ribbonB"] if style_id == "plate-royal" else palette["accent"])
-    plate = Image.new("RGBA", (bw * ss, bh * ss), (0, 0, 0, 0))
-    d = ImageDraw.Draw(plate)
-    if style_id == "plate-royal":
-        skew = 16 * ss
-        d.polygon(
-            [(skew, 2 * ss), ((bw - 2) * ss, 2 * ss), ((bw - 2) * ss - skew, (bh - 2) * ss), (2 * ss, (bh - 2) * ss)],
-            fill=(*pbg, 222),
-            outline=(*border_col, 232),
-            width=int(2 * ss),
-        )
-    else:
-        r = (bh // 2 - 2) * ss
-        d.rounded_rectangle(
-            [2 * ss, 2 * ss, (bw - 2) * ss, (bh - 2) * ss],
-            radius=r,
-            fill=(*pbg, 218),
-            outline=(*border_col, 235),
-            width=int(2.5 * ss),
-        )
-    plate = plate.resize((bw, bh), Image.Resampling.LANCZOS)
-    plate.alpha_composite(txt_im, ((bw - tw) // 2, (bh - th) // 2))
-    return plate
 
 
 def render_royal_diamond_rule(width: int = 760, palette: Optional[Dict[str, str]] = None, ss: int = 3) -> Image.Image:

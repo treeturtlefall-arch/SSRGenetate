@@ -645,7 +645,7 @@
 }
 
 .cutin-main-img {
-  margin-top: 8px;
+  margin: 0;
   width: 667px;
   height: 112px;
   background-image: url("../assets/generated/typo_cutin_main.png");

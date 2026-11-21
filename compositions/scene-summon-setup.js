@@ -32,7 +32,6 @@
   // 1. カットイン箔タイポマニフェスト適用
   const typoItems = (window.SSR_TYPO_MANIFEST && window.SSR_TYPO_MANIFEST.items) || {};
   [
-    ["cutinSub", "cutin-sub-img"],
     ["cutinMain", "cutin-main-img"],
   ].forEach(function (pair) {
     const entry = typoItems[pair[0]];

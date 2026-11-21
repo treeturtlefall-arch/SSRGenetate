@@ -29,7 +29,9 @@ from _font_slots import (
 )
 from _typo_modern import (
     MODERN_PRESETS,
-    render_modern_attribute_plate,
+    parse_attribute_parts,
+    render_modern_attribute_badge,
+    render_modern_ssr_emblem,
     render_modern_text,
     render_royal_diamond_rule,
     resolve_modern_plan,
@@ -831,16 +833,26 @@ def main() -> None:
     is_modern = preset_name in MODERN_PRESETS
     plan = resolve_modern_plan(preset_name, typo_cfg) if is_modern else None
 
+    has_split_attr = ("attributeBadge" in cfg) or ("attributeLabel" in cfg)
+    attr_badge, attr_label = parse_attribute_parts(
+        raw_attr=str(cfg.get("attribute", "")),
+        badge=cfg.get("attributeBadge") if has_split_attr else None,
+        label=cfg.get("attributeLabel") if has_split_attr else None,
+    )
+    if attr_badge and attr_label:
+        attr_key_text = f"{attr_badge} / {attr_label}"
+    else:
+        attr_key_text = attr_label or attr_badge
+
     card_specs = [
         ("ssr",       str(cfg.get("rarity", "SSR")),     94, 320, 1, "typo_ssr.png"),
-        ("attribute", str(cfg.get("attribute", "")),     26, 300, 1, "typo_attr.png"),
+        ("attribute", attr_key_text,                     26, 300, 1, "typo_attr.png"),
         ("subtitle",  str(cfg.get("subtitle", "")),      34, 780, 1, "typo_subtitle.png"),
         ("title",     str(cfg.get("title", "")),         74, 800, 1, "typo_title.png"),
         ("flavor",    str(cfg.get("flavor", "")),        29, 780, 2, "typo_flavor.png"),
         ("cardNo",    str(cfg.get("cardNo", "")),        24, 340, 1, "typo_cardno.png"),
     ]
     cutin_specs = [
-        ("cutinSub",  "RAINBOW ASCENSION",               34, 820, 1, "typo_cutin_sub.png"),
         ("cutinMain", "昇格  SSR 確定",                  112, 980, 1, "typo_cutin_main.png"),
     ]
 
@@ -869,15 +881,26 @@ def main() -> None:
             if plan["mirror"] and align == "right":
                 align = "left"
 
-            if key == "attribute":
-                img = render_modern_attribute_plate(
+            if key == "ssr":
+                img = render_modern_ssr_emblem(
                     clean_text,
                     font_name=sdef["font"],
                     font_size=int(sdef["size"]),
+                    max_w=float(sdef["maxW"]),
                     style_id=str(sdef["style"]),
                     palette=pal,
                     tracking_em=float(sdef["trackingEm"]),
+                    compress_x=float(sdef["compressX"]),
                     vf_weight=int(sdef["vfWeight"]),
+                    opacity=float(sdef["opacity"]),
+                    norm_factors=nf,
+                )
+            elif key == "attribute":
+                img = render_modern_attribute_badge(
+                    attr_badge,
+                    attr_label,
+                    style_id=str(sdef["style"]),
+                    palette=pal,
                     norm_factors=nf,
                 )
             else:
@@ -955,11 +978,12 @@ def main() -> None:
         }
         print(f"[OK] royalRule: typo_royal_rule.png ({rule_img.width}x{rule_img.height})")
 
-    # --- 2. 昇格カットイン 2 スロット（完全分離・不変王道スタイル） ---
+    # --- 2. 昇格カットイン スロット（完全分離・不変王道スタイル） ---
     for c_idx, (key, text, fsize, max_w, max_lines, filename) in enumerate(cutin_specs):
         c_style = CUTIN_STYLE[key]
-        # 従来と同じシードオフセット (idx=6, 7) を維持してピクセル完全一致を保つ
-        item_seed = seed + (6 + c_idx) * 1009
+        # 従来と同じシードオフセット (cutinMain=7, cutinSub=6) を維持してピクセル完全一致を保つ
+        offset_idx = 7 if key == "cutinMain" else (6 + c_idx)
+        item_seed = seed + offset_idx * 1009
         img = render_multiline_block(
             text=text,
             font_file=c_style["font"],

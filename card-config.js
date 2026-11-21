@@ -21,17 +21,18 @@ window.SSR_CARD_CONFIG = {
   rarity: "SSR",
   stars: 0,
 
-  // カード情報（空文字・空配列にすると非表示になります）
-  attribute: "光属性 / BABY", // 例: "光属性 / SMILE"
-  subtitle: "【覚醒の眼光】",
-  title: "ちいさな覇王",
+  // カード属性（右上メダリオン＋帯ラベル。両方空にすると非表示、badgeのみ空にすると素アイコン表示）
+  attributeBadge: "愛",     // メダリオン内の1文字（例: "光", "愛", ""）
+  attributeLabel: "ANGEL",  // 帯ラベル（目安: 英字3〜8文字 / 日本語2〜5文字。例: "BABY", "ANGEL"）
+  subtitle: "【満開の笑顔】",
+  title: "えがおの天使",
   flavor: "", // デフォルト非表示（subtitle + title の 2 段構成）。文言を入れると表示されます。
 
   // カード下部ステータス（デフォルトは写真主役のため非表示。最大3項目まで任意表示可）
   stats: [],
 
   // シリアル番号風フッター表記（カード右下隅へ控えめに極小刻印）
-  cardNo: "NO.077-SSR",
+  cardNo: "NO.777-SSR",
 
   // タイポグラフィ設定（scripts/render_typography.py が参照）
   //   preset: "royal-foil"  (男の子・王道ロイヤル / A-1)
@@ -39,7 +40,7 @@ window.SSR_CARD_CONFIG = {
   //         | "foil-brush" | "handwritten-sign" | "crisp-emboss" (レガシー互換)
   //   ※ 昇格カットイン文字 (5.6s付近) はカード側設定とは完全分離され、王道金箔のまま固定されます。
   typography: {
-    preset: "royal-foil",
+    preset: "cute-pastel",
     wobble: 28,           // 0..100（レガシー互換プリセット用）
     foilGlitter: 0.42,    // 0.0..1.0（レガシー互換プリセット用）
     paperGrain: 0.35,     // 0.0..1.0（レガシー互換プリセット用）
