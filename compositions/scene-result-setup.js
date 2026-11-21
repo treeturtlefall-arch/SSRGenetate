@@ -49,6 +49,9 @@
     return b ? b + " / " + legacy : legacy;
   }
 
+  const rawRingMode = pick(hfVars.resultRingMode, baseCfg.resultRingMode, "rainbow");
+  const resultRingMode = rawRingMode === "cooldown" || rawRingMode === "gold" ? rawRingMode : "rainbow";
+
   const cfg = {
     photo: pick(hfVars.photo, baseCfg.photo, "assets/photo.jpg"),
     photoFit: baseCfg.photoFit || "cover",
@@ -375,6 +378,7 @@
   window.SSR_RESULT_STATE = {
     at: at,
     cfg: cfg,
+    resultRingMode: resultRingMode,
     typoLayout: typoLayout,
     hasRoyalRule: hasRoyalRule,
     titleWipeHalf: titleWipeHalf,

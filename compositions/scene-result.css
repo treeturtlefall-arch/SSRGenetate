@@ -33,7 +33,8 @@
   background-image: url("../assets/generated/opt_godrays_gold_b.png");
 }
 
-#result-halo {
+#result-halo,
+#result-halo-blue {
   position: absolute;
   left: 50%;
   top: 49%;
@@ -42,11 +43,25 @@
   margin-left: -620px;
   margin-top: -620px;
   mix-blend-mode: screen;
+}
+
+#result-halo {
   background: radial-gradient(
     circle closest-side var(--in-oklab),
     rgba(242, 223, 179, 0.44) 0%,
     rgba(232, 141, 180, 0.20) 46%,
     rgba(118, 212, 238, 0.11) 68%,
+    transparent 98%
+  );
+}
+
+#result-halo-blue {
+  opacity: 0;
+  background: radial-gradient(
+    circle closest-side var(--in-oklab),
+    rgba(130, 216, 255, 0.42) 0%,
+    rgba(56, 134, 235, 0.24) 46%,
+    rgba(22, 62, 168, 0.12) 70%,
     transparent 98%
   );
 }
@@ -61,10 +76,28 @@
   margin-top: -850px;
   opacity: 0;
   mix-blend-mode: screen;
-  background-image: url("../assets/generated/opt_result_ring.png");
+}
+
+.result-ring-layer {
+  position: absolute;
+  inset: 0;
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
+  mix-blend-mode: screen;
+  opacity: 0;
+}
+
+#result-ring-rainbow {
+  background-image: url("../assets/generated/opt_result_ring_rainbow.png");
+}
+
+#result-ring-gold {
+  background-image: url("../assets/generated/opt_result_ring_gold.png");
+}
+
+#result-ring-blue {
+  background-image: url("../assets/generated/opt_result_ring_blue.png");
 }
 
 /* 遠景ボケ光粒レイヤー（カード背面） */

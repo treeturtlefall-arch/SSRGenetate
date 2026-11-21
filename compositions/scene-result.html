@@ -9,7 +9,8 @@
     {"id":"rarity","type":"string","label":"Rarity","default":""},
     {"id":"attributeBadge","type":"string","label":"Attribute Badge (1 char)","default":""},
     {"id":"attributeLabel","type":"string","label":"Attribute Label","default":""},
-    {"id":"flavor","type":"string","label":"Flavor Text","default":""}
+    {"id":"flavor","type":"string","label":"Flavor Text","default":""},
+    {"id":"resultRingMode","type":"string","label":"Result Ring Mode (rainbow | cooldown | gold)","default":""}
   ]'
 >
   <head>
@@ -36,7 +37,12 @@
         <div id="result-rays-a" class="result-rays-layer" data-layout-allow-overflow></div>
         <div id="result-rays-b" class="result-rays-layer" data-layout-allow-overflow></div>
         <div id="result-halo" data-layout-allow-overflow></div>
-        <div id="result-bg-ring" data-layout-allow-overflow></div>
+        <div id="result-halo-blue" data-layout-allow-overflow></div>
+        <div id="result-bg-ring" data-layout-allow-overflow>
+          <div id="result-ring-rainbow" class="result-ring-layer" data-layout-allow-overflow></div>
+          <div id="result-ring-gold" class="result-ring-layer" data-layout-allow-overflow></div>
+          <div id="result-ring-blue" class="result-ring-layer" data-layout-allow-overflow></div>
+        </div>
         <div id="result-grain" class="film-grain-overlay" data-layout-allow-overflow></div>
         <div id="bokeh-back-layer" data-layout-allow-overflow></div>
         <div id="landing-shockwave" data-layout-allow-overflow></div>
@@ -138,6 +144,23 @@
         tl.fromTo("#result-rays-a", { rotation: 0, opacity: 0.22 }, { rotation: 38, opacity: 0.56, duration: 4.85, ease: "power2.out" }, at(7.10));
         tl.fromTo("#result-rays-b", { rotation: 12, opacity: 0.16 }, { rotation: -24, opacity: 0.44, duration: 4.85, ease: "power2.out" }, at(7.10));
         tl.fromTo("#result-bg-ring", { rotation: -38, scale: 0.86, opacity: 0 }, { rotation: 0, scale: 1.0, opacity: 0.56, duration: 4.85, ease: "power2.out" }, at(7.10));
+        if (st.resultRingMode === "rainbow") {
+          tl.set("#result-ring-rainbow", { opacity: 1 }, 0);
+          tl.set("#result-ring-gold, #result-ring-blue, #result-halo-blue", { opacity: 0 }, 0);
+        } else if (st.resultRingMode === "gold") {
+          tl.set("#result-ring-gold", { opacity: 1 }, 0);
+          tl.set("#result-ring-rainbow, #result-ring-blue, #result-halo-blue", { opacity: 0 }, 0);
+        } else {
+          // 案B-2 ("cooldown"): 虹 (7.10s..9.30s) -> 赤金 (9.30s..10.80s) -> 青系へ鎮静 (10.80s..13.50s / 全体14.00sで完全青定着)
+          tl.set("#result-ring-rainbow", { opacity: 1 }, 0);
+          tl.set("#result-ring-gold, #result-ring-blue, #result-halo-blue", { opacity: 0 }, 0);
+          tl.to("#result-ring-rainbow", { opacity: 0, duration: 1.50, ease: "sine.inOut" }, at(9.30));
+          tl.to("#result-ring-gold", { opacity: 1, duration: 1.50, ease: "sine.inOut" }, at(9.30));
+          tl.to("#result-ring-gold", { opacity: 0, duration: 2.70, ease: "sine.inOut" }, at(10.80));
+          tl.to("#result-ring-blue", { opacity: 1, duration: 2.70, ease: "sine.inOut" }, at(10.80));
+          tl.to("#result-halo", { opacity: 0.25, duration: 2.70, ease: "sine.inOut" }, at(10.80));
+          tl.to("#result-halo-blue", { opacity: 0.85, duration: 2.70, ease: "sine.inOut" }, at(10.80));
+        }
         tl.fromTo("#card-stage", { opacity: 0 }, { opacity: 1, duration: 0.18, ease: "power2.out" }, at(7.10));
 
         // 3D Card Spin & Landing (7.12s -> 8.88s, hard stop at 8.68s)
@@ -267,7 +290,11 @@
         tl.to("#frame-rim-glare", { opacity: 0.96, duration: 0.16, ease: "power2.out" }, at(12.95));
         tl.to("#frame-rim-glare", { opacity: 0, duration: 0.22, ease: "power2.in" }, at(13.63));
         tl.to("#holo-static-sheen", { opacity: 0.96, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));
-        tl.to("#result-halo", { opacity: 0.76, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));
+        if (st.resultRingMode !== "cooldown") {
+          tl.to("#result-halo", { opacity: 0.76, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));
+        } else {
+          tl.to("#result-halo-blue", { opacity: 0.96, duration: 0.75, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(13.50));
+        }
         tl.to("#result-rays-a", { opacity: 0.42, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));
         tl.to("#result-rays-b", { opacity: 0.62, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));
         tl.to("#result-bg-ring", { opacity: 0.72, duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, at(12.0));

@@ -1063,6 +1063,7 @@ def main() -> None:
             "outer": ex.submit(prepare_optical_mask, g_outer, 20.0),
             "inner": ex.submit(prepare_optical_mask, g_inner, 20.0),
         }
+        prep_ring_fut = ex.submit(prepare_optical_mask, ring_mask, 14.0)
         rings = [
             ("outer", m_outer, prep_mc["outer"].result()),
             ("mid",   m_mid,   prep_mc["mid"].result()),
@@ -1072,6 +1073,7 @@ def main() -> None:
             ("outer", g_outer, prep_gate["outer"].result()),
             ("inner", g_inner, prep_gate["inner"].result()),
         ]
+        prep_ring = prep_ring_fut.result()
 
         # マルチスレッド並列レンダリング＆保存タスクの構築（NumPy/SciPy/Pillow の GIL 解放を活用）
         tasks = []
@@ -1200,8 +1202,39 @@ def main() -> None:
         ]):
             submit_glow(ex, f"opt_sparkle_{cname}.png", sp_mask, spec, 16.0, 1.15, cg * 1.15, hal * 1.05, irr * 0.70, False, seed + 901 + i * 31)
 
-        # 8. リザルト背景の光学魔法リング
-        submit_glow(ex, "opt_result_ring.png", ring_mask, "summon_gold", 14.0, 0.95, cg, hal * 1.15, irr, False, seed + 1201)
+        # 8. リザルト背景の光学魔法リング（3色: rainbow / gold / blue + 後方互換 opt_result_ring.png）
+        ring_styles = [
+            ("rainbow", "summon_gold", True,  1.08, hal * 1.20),
+            ("gold",    "summon_gold", False, 0.95, hal * 1.15),
+            ("blue",    "summon_blue", False, 1.00, hal * 1.12),
+        ]
+        for r_idx, (r_cname, r_spec, r_prism, r_exp, r_hal) in enumerate(ring_styles):
+            def _res_ring_job(
+                cn: str = r_cname,
+                sp: str = r_spec,
+                pr: bool = r_prism,
+                ex_v: float = r_exp,
+                ha_v: float = r_hal,
+                s_off: int = r_idx * 41,
+            ) -> str:
+                img = render_optical_glow(
+                    mask_l=ring_mask,
+                    spectrum_name=sp,
+                    ref_scale=14.0,
+                    exposure=ex_v,
+                    core_glow=cg,
+                    halation=ha_v,
+                    irregularity=irr,
+                    prism_mode=pr,
+                    seed=seed + 1201 + s_off,
+                    prepared=prep_ring,
+                )
+                save_png(img, OUT_DIR / f"opt_result_ring_{cn}.png")
+                if cn == "gold":
+                    save_png(img, OUT_DIR / "opt_result_ring.png")
+                return f"[OK] opt_result_ring_{cn}.png ({img.width}x{img.height})"
+
+            tasks.append(ex.submit(_res_ring_job))
 
         # 9. 玉ボケ光粒
         def _bokeh_job() -> str:

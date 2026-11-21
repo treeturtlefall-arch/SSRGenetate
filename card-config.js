@@ -71,6 +71,9 @@ window.SSR_CARD_CONFIG = {
     magicCircleRingRatios: [1.0, -1.3, 1.7], // [外周, 中段, 内周] の相対倍率（負値で逆回転）
   },
 
+  // リザルト背景魔法陣の配色モード（"rainbow" = 虹色維持[既定] | "cooldown" = 虹→赤金→青系クールダウン | "gold" = 従来赤金）
+  resultRingMode: "rainbow",
+
   // パーティクル配置用の決定論シード値（数値を変えると星屑や紙吹雪の配置パターンが変化）
   seed: 20261120,
 };
