@@ -82,7 +82,7 @@
 - `meta.json` — プロジェクトメタデータ
 
 ### `compositions/`（シーン別サブコンポジション ＆ 共通モジュール）
-- `compositions/shared-base.css` — バンドル済みフォント定義（`YujiSyuku`, `KleeOne`, `CineCaption`, `ShipporiMincho`, `Cinzel`, `ZenMaruGothic`, `Outfit`, `JetBrainsMono`）・カード寸法変数・背景/パレットトークン・フィルムグレイン定義
+- `compositions/shared-base.css` — バンドル済みフォント定義（`YujiSyuku`, `CineCaption`, `ShipporiMincho`, `Cinzel`, `ZenMaruGothic`, `Outfit`, `JetBrainsMono`）・カード寸法変数・背景/パレットトークン・フィルムグレイン定義
 - `compositions/shared-utils.js` — Mulberry32 PRNG (`createRng`)・相対パス解決 (`resolveAssetPath`)・設定優先解決 (`pickConfigValue`)・SVG色収差フィルタ自動注入＆瞬間RGB色収差 (`ensureChromaShockSvg` / `addChromaShock`)
 - `compositions/scene-summon.html` / `scene-summon.css` / `scene-summon-setup.js` — 召喚〜昇格シーンの DOM・GSAP タイムライン・決定論的パーティクル/螺旋軌道セットアップ
 - `compositions/scene-result.html` / `scene-result.css` / `scene-result-setup.js` — 3D カード・リザルトシーンの DOM・GSAP タイムライン・タイポマニフェスト適用・星/スパークル/金箔/玉ボケ生成
@@ -104,7 +104,7 @@
 
 ### `assets/` ＆ `renders/`（素材・生成物）
 - `assets/photo.jpg` — 入力写真（`.gitignore` で画像類は除外）
-- `assets/fonts/` — バンドル済み日本語/欧文フォント群（OFL / `cinecaption` 個別ライセンス）
+- `assets/fonts/` — バンドル済み日本語/欧文フォント群（現行プリセット・カットイン・HUD用 9書体、OFL / `cinecaption` 個別ライセンス。未使用/旧書体は `.gitignore` 隔離でリポジトリ省エネ化）
 - `assets/fonts_custom/` — ローカル専用カスタムフォントスロット（`.gitignore` 隔離、`README.md` のみ追跡）
 - `assets/generated/` — 生成画像群と `typo-manifest.js`
   - タイポ: `typo_ssr.png`, `typo_attr.png`, `typo_subtitle.png`, `typo_title.png`, `typo_flavor.png`, `typo_cardno.png`, `typo_royal_rule.png`, `typo_cutin_main.png`, `typo-manifest.js`

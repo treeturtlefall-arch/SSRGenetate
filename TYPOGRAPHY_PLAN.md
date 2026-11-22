@@ -26,15 +26,18 @@
 ### 2-1. 既存 7 書体の棚卸し実測 ＆ ライセンス監査結果
 根拠: `assets/fonts/*`, `assets/fonts/LICENSE-OFL.txt` (L1-93), `scripts/render_typography.py` (`FONT_NORM_FACTORS` L47-55), および実測（`size=100`, `anchor="la"`）。
 
+> [!NOTE]
+> **リポジトリ省エネ化対応**: 以下のうち、現行プリセット・カットイン・HUD で不使用となった 5 書体（`KleeOne`, `ZenKurenaido`, `SetoFont`, `TekitouPoem`, `TekitouPoem_Bold`、計約 37.2MB）は `.gitignore` に隔離され Git 追跡を解除済み。フォールバックチェーンも同梱の `ZenMaruGothic` / `ShipporiMincho` 等へ移行している。
+
 | ファイル名 | サイズ / 総CP | 一次ライセンス / 再配布 | JIS 第1 / 第2 | `asc/dsc` (@100) | 龍 / あ ink_h | 調整目安 `norm` | 欠落文字・注意点 |
 | :--- | :---: | :--- | :---: | :---: | :---: | :---: | :--- |
-| `YujiSyuku-Regular.ttf` | 8.43MB / 8,013 | **SIL OFL 1.1** (Kinutafontfactory) / **可** | 100% / 100% | `116 / 29` | `88 / 83` | `1.04〜1.05` (維持) | `U+301C(〜)`・`‼⁉`・結合濁点(`U+3099`)欠（`U+FF5E～`・`★☆♡♥ー` 収録） |
-| `KleeOne-Regular.ttf` | 8.72MB / 10,178 | **SIL OFL 1.1** (Fontworks) / **可** | 100% / 100% | `116 / 29` | `88 / 86` | `1.04〜1.05` (維持) | 結合濁点・`✦✧` のみ欠（主要記号網羅） |
-| `ZenKurenaido-Regular.ttf` | 4.30MB / 7,815 | **SIL OFL 1.1** (Google Fonts) / **可** | 100% / 100% | `116 / 29` | `94 / 85` | **`0.98〜1.00`** (現行1.06) | `ゕゖ`・`U+FF5E(～)`・`U+2015(―)`・`‼⁉` 欠（`U+301C〜` 収録） |
-| `SetoFont.ttf` | 13.05MB / 57,020 | **SIL OFL 1.1** (瀬戸のぞみ v6.20) / **可** | 100% / 100% | `86 / 15` | `90 / 82` | `1.02` (現行1.00) | 調査対象記号・結合濁点含め**全網羅** |
-| `TekitouPoem.ttf` | 5.55MB / 16,125 | **SIL OFL 1.1** (Cockatrice Digital) / **可** | 100% / 100% | `86 / 15` | **`73 / 71`** | **`1.18〜1.22`** (現行1.05) | 全網羅（視覚サイズが約15%小） |
-| `TekitouPoem_Bold.ttf` | 5.53MB / 16,125 | **SIL OFL 1.1** (Cockatrice Digital) / **可** | 100% / 100% | `86 / 15` | **`77 / 76`** | **`1.14〜1.17`** (現行1.05) | 全網羅（視覚サイズが約12%小） |
-| `cinecaption.ttf` | 1.67MB / 4,370 | **独自フリー規約** (chiphead v2.26) / **商用可・再配布可・改変禁止** | **100% / 19.1%** | `86 / 15` | `95 / 90` | **`0.96〜0.98`** (現行1.04) | 仮名 `ゔゕゖヷ〜ヺ`・`♡♥`・`謳`・`〜`・`―` 欠。日本語本文でフォールバック多発 |
+| `YujiSyuku-Regular.ttf` | 8.43MB / 8,013 | **SIL OFL 1.1** (Kinutafontfactory) / **可** | 100% / 100% | `116 / 29` | `88 / 83` | `1.04〜1.05` (維持) | `U+301C(〜)`・`‼⁉`・結合濁点(`U+3099`)欠（`U+FF5E～`・`★☆♡♥ー` 収録。カットイン主字固定） |
+| `KleeOne-Regular.ttf` *(除外)* | 8.72MB / 10,178 | **SIL OFL 1.1** (Fontworks) / **可** | 100% / 100% | `116 / 29` | `88 / 86` | `1.04〜1.05` | 結合濁点・`✦✧` のみ欠（主要記号網羅）。`.gitignore` 隔離済み |
+| `ZenKurenaido-Regular.ttf` *(除外)* | 4.30MB / 7,815 | **SIL OFL 1.1** (Google Fonts) / **可** | 100% / 100% | `116 / 29` | `94 / 85` | **`0.98〜1.00`** | `ゕゖ`・`U+FF5E(～)`・`U+2015(―)`・`‼⁉` 欠。`.gitignore` 隔離済み |
+| `SetoFont.ttf` *(除外)* | 13.05MB / 57,020 | **SIL OFL 1.1** (瀬戸のぞみ v6.20) / **可** | 100% / 100% | `86 / 15` | `90 / 82` | `1.02` | 調査対象記号・結合濁点含め**全網羅**。`.gitignore` 隔離済み |
+| `TekitouPoem.ttf` *(除外)* | 5.55MB / 16,125 | **SIL OFL 1.1** (Cockatrice Digital) / **可** | 100% / 100% | `86 / 15` | **`73 / 71`** | **`1.18〜1.22`** | 全網羅（視覚サイズが約15%小）。`.gitignore` 隔離済み |
+| `TekitouPoem_Bold.ttf` *(除外)* | 5.53MB / 16,125 | **SIL OFL 1.1** (Cockatrice Digital) / **可** | 100% / 100% | `86 / 15` | **`77 / 76`** | **`1.14〜1.17`** | 全網羅（視覚サイズが約12%小）。`.gitignore` 隔離済み |
+| `cinecaption.ttf` | 1.67MB / 4,370 | **独自フリー規約** (chiphead v2.26) / **商用可・再配布可・改変禁止** | **100% / 19.1%** | `86 / 15` | `95 / 90` | **`0.96〜0.98`** (現行1.04) | 仮名 `ゔゕゖヷ〜ヺ`・`♡♥`・`謳`・`〜`・`―` 欠。HUD フェーズ表示等で使用 |
 
 > [!IMPORTANT]
 > **ライセンス整備必須事項**: `assets/fonts/LICENSE-OFL.txt` には現在 `KleeOne` の著作権表記（L1）のみ記載されている。Phase 3.5-1 で `YujiSyuku` / `ZenKurenaido` / `SetoFont` / `TekitouPoem` および新規 OFL 書体の著作権表記を追記し、非 OFL かつ改変禁止である `cinecaption.ttf` は専用規約 `assets/fonts/LICENSE-cinecaption.txt` へ分離すること。

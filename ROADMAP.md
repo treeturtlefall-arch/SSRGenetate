@@ -51,9 +51,10 @@
 - **Phase 3（現代ソシャゲ音像 ＆ 映像マイクロポリッシュ）**:
   - **音響**: `_audio_dsp.py` によるモダン音像（シマーパッド＋サブ＆ティンパニ＋クラッシュ＋ハープ/チェレスタ＋ホーン）、`fftconvolve` ホールリバーブ、真空ダッキング、終盤 Cmaj9 余韻＋前後 `0.5s` 無音パディング（`-14.1 LUFS` / TruePeak `-2.3 dBFS` 達成）、`assets/se_custom/` の 11 スロットカスタム SE 基盤（`_audio_slots.py`）を実装。
   - **映像**: 表面四隅フィリグリー撤去（裏面へ移植）、星白閃光＆文字光走査ワイプ化、`13.2s` 外枠リムグレア追加、RGB 三重螺旋ウィスプの流体リボン化、青フェイク区間カメラ溜め、カード側面 5 層金属厚み＆裏面タメ光を追加。
-- **Phase 3.5（タイポグラフィ刷新 ＆ ヘッダー共通座布団 ＆ 出力自動化）**:
+- **Phase 3.5（タイポグラフィ刷新 ＆ ヘッダー共通座布団 ＆ 出力自動化 ＆ フォント省エネ化）**:
   - **設計分離・書体**: 昇格カットイン（`RAINBOW ASCENSION` 撤去・「昇格 SSR 確定」中央配置）とカード文字を完全分離。ジャンル別フォント・`royal-foil` / `cute-pastel` 等プリセット・4 軸直交スキーマ・`scipy` 二重縁取り（`_typo_modern.py`）・非対称スラントレイアウト（`diagonal-ribbon` 等）・表面中央鋲を追加。
   - **ヘッダー＆命名自動化**: 左上 `SSR`（Pattern A オーバーハング）× 右上 `属性`（Pattern C メダリオン＋`attributeBadge` / `attributeLabel` 分割）の共通 `44px` 座布団ギミックを実装。`scripts/render_video.mjs` により `renders/SSR_{preset}_{YYYYMMDD}.mp4` の自動命名出力に対応。
+  - **リポジトリ省エネ化（フォント整理）**: 現行演出・カットイン・HUD で使用する 9 書体（`Cinzel-VF`, `JetBrainsMono-VF`, `Outfit-VF`, `ShipporiMincho-Bold`, `ShipporiMincho-ExtraBold`, `YujiSyuku-Regular`, `ZenMaruGothic-Black`, `ZenMaruGothic-Bold`, `cinecaption`）へ絞り込み、未使用・旧互換フォント（`KleeOne`, `SetoFont`, `TekitouPoem`, `TekitouPoem_Bold`, `ZenKurenaido` 計約 37.2MB）を `.gitignore` 隔離および Git 追跡解除。CSS / スクリプトのフォールバック先を同梱フォント（`ZenMaruGothic` 等）へ更新。
 - **Phase 4（運用性・量産性強化 ＆ 5 評価軸 / 複数素材検証）**:
   - **自動箔タイポ同期＆CLI拡張**: `scripts/render_video.mjs` が `card-config.js` と `--variables` / `--variables-file` の変更を `typo-manifest.js` (`schemaVersion: 2`) の `source` スナップショットで自動検知し、必要時のみ `render_typography.py --overrides-stdin` を自動実行して出力ファイル名もプリセットに同期。Phase 5 先回りの `dimensions` 出力も整備。
   - **オートレイアウト＆ビネット自動適応**: 前後禁則・`\n` 改行・長文タイトル縮小時の `subtitle` 連動（`sqrt(ratio)`）・2〜3文字短文字間拡大を実装。Pillow（EXIF 補正＋`photoFit/Position/Zoom` 近似）で写真下部 30% の知覚輝度を計測し、レイアウト別レンジで `.photo-vignette` 濃度（`--vignette-mid-a` / `--vignette-bot-a`）を自動適応。
