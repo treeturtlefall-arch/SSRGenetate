@@ -112,7 +112,7 @@
   - マテリアル: `mat_rainbow_frame.png`, `mat_window_depth.png`, `mat_card_back.png`, `mat_holo_prism.png`, `mat_flake_{0..5}.png`, `mat_film_grain.png`
 - `assets/se_summon.wav`, `assets/se_upgrade.wav`, `assets/se_fanfare.wav` — 生成済み効果音
 - `assets/se_custom/` — ローカル専用カスタム SE 拡張スロット（`.gitignore` 隔離、`README.md` のみ追跡）
-- `renders/ssr_gacha.mp4` — レンダリング出力 MP4（`.gitignore` 対象）
+- `renders/ssr_gacha_{preset}.mp4` — レンダリング出力 MP4（明示 `-o` 未指定時のデフォルト命名。`.gitignore` 対象）
 
 ---
 
@@ -133,7 +133,7 @@
 | `seed` | `20261120` | 全生成スクリプト・セットアップ JS | 全体の決定論ルートシード |
 
 ### 4-2. CLI 変数オーバーライド（`--variables` / `--variables-file`）
-- `index.html` および `compositions/scene-result.html` は `photo`, `title`, `subtitle`, `rarity`, `attributeBadge`, `attributeLabel`, `flavor`, `cardNo`, `preset`, `photoFit`, `photoPosition`, `photoZoom`, `resultRingMode` の 13 変数を `data-composition-variables` として公開している。
+- `index.html` および `compositions/scene-result.html` は `orientation`, `photo`, `title`, `subtitle`, `rarity`, `attributeBadge`, `attributeLabel`, `flavor`, `cardNo`, `preset`, `photoFit`, `photoPosition`, `photoZoom`, `resultRingMode` の 14 変数を `data-composition-variables` として公開している。
 - `npm run render -- --variables ...`（または `--variables-file <path>`）を実行すると、`scripts/render_video.mjs` が `card-config.js` と CLI 変数をマージし、`typo-manifest.js`（`schemaVersion: 2`）の `source` スナップショットと比較する。テキスト・プリセット・写真情報等に差分がある場合は自動で `scripts/render_typography.py --overrides-stdin` を先行実行して物理箔 PNG と入力写真下部 30% 輝度に応じたビネット値（`vignette.midAlpha` / `vignette.bottomAlpha`）を再生成し、出力ファイル名も上書き後のプリセットへ同期する。
 - `hyperframes render` を直接実行した場合などで `typo-manifest.js` と文字列が一致しないときは、自動的に HTML テキスト描画へフォールバックする。
 

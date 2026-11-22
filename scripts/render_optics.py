@@ -11,8 +11,10 @@ SSRガチャ演出の発光体（3層魔法陣×3色、天蓋ゲート、オー�
 """
 from __future__ import annotations
 
+import argparse
 from concurrent.futures import ThreadPoolExecutor
 import math
+import sys
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -1034,15 +1036,27 @@ def render_crystal_shards(seed: int = 0) -> Dict[str, Image.Image]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Render optical assets")
+    parser.add_argument("--cutin-only", action="store_true", help="Render only cutin flare and speedlines (fast resolution sync)")
+    args = parser.parse_args()
+
     cfg = load_card_config()
     layout = resolve_layout(cfg)
+    seed = resolve_seed(cfg, section="optics")
+
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    if args.cutin_only and (OUT_DIR / "opt_orb_core_bleach.png").exists():
+        flare_img, speed_img = render_cutin_assets(canvas_w=layout.canvas_w, seed=seed + 2901)
+        save_png(flare_img, OUT_DIR / "opt_cutin_flare.png")
+        save_png(speed_img, OUT_DIR / "opt_cutin_speedlines.png")
+        print(f"[OK] [cutin-only] opt_cutin_flare.png ({flare_img.width}x360) & opt_cutin_speedlines.png ({speed_img.width}x420)")
+        return
+
     opt_cfg = cfg.get("optics", {})
     hal = float(opt_cfg.get("halation", 1.05))
     cg = float(opt_cfg.get("coreGlow", 1.15))
     irr = float(opt_cfg.get("irregularity", 0.85))
-    seed = resolve_seed(cfg, section="optics")
-
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # 独立したマスク群を事前構築＆距離変換キャッシュ（並列実行後に3色で共有）
     m_outer, m_mid, m_inner = build_magic_circle_masks(1024, seed=seed + 77)

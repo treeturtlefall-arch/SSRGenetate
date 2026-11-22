@@ -15,6 +15,7 @@ ffmpeg + ffprobe + numpy を用いて以下を定量計測・判定する（`PRE
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import json
 import math
 import re
@@ -169,7 +170,14 @@ def analyze_video(video_path: Path, check_audio: bool = False) -> Dict[str, Any]
     fps = info["fps"]
     is_landscape = info["width"] > info["height"]
     dec_w, dec_h = (480, 270) if is_landscape else (270, 480)
-    frames = decode_gray_frames(video_path, w=dec_w, h=dec_h)
+
+    audio_fut = None
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        video_fut = executor.submit(decode_gray_frames, video_path, w=dec_w, h=dec_h)
+        if info["has_audio"]:
+            audio_fut = executor.submit(measure_audio, video_path, info["duration"])
+        frames = video_fut.result()
+
     n_frames = len(frames)
     times = np.arange(n_frames, dtype=np.float64) / fps
 
@@ -259,7 +267,7 @@ def analyze_video(video_path: Path, check_audio: bool = False) -> Dict[str, Any]
     audio_info: Optional[Dict[str, Any]] = None
     audio_pass = True
     if info["has_audio"]:
-        audio_info = measure_audio(video_path, info["duration"])
+        audio_info = audio_fut.result() if audio_fut is not None else measure_audio(video_path, info["duration"])
         if check_audio:
             lufs = audio_info["integrated_lufs"]
             rms_head = audio_info["head_rms"]["rms_dbfs"]

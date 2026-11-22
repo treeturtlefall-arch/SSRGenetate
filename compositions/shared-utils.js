@@ -99,11 +99,55 @@
     tl.set(targetSel, { filter: "none" }, startAt + 0.21);
   }
 
+  function resolveAttributeKeyText(hfVars, baseCfg) {
+    hfVars = hfVars || {};
+    baseCfg = baseCfg || {};
+    const hasSplit =
+      Object.prototype.hasOwnProperty.call(hfVars, "attributeBadge") ||
+      Object.prototype.hasOwnProperty.call(hfVars, "attributeLabel") ||
+      Object.prototype.hasOwnProperty.call(baseCfg, "attributeBadge") ||
+      Object.prototype.hasOwnProperty.call(baseCfg, "attributeLabel");
+
+    if (hasSplit) {
+      function resolveOne(cliV, cfgV) {
+        if (cliV === "__EMPTY__") return "";
+        if (typeof cliV === "string") {
+          const trimmed = cliV.trim();
+          return trimmed.toLowerCase() === "none" ? "" : trimmed;
+        }
+        if (typeof cfgV === "string") {
+          const trimmed = cfgV.trim();
+          return trimmed.toLowerCase() === "none" ? "" : trimmed;
+        }
+        return "";
+      }
+      const rawB = resolveOne(hfVars.attributeBadge, baseCfg.attributeBadge);
+      const rawL = resolveOne(hfVars.attributeLabel, baseCfg.attributeLabel);
+      const b = Array.from(rawB)[0] || "";
+      const l = rawL;
+      if (b && l) return b + " / " + l;
+      return l || b;
+    }
+
+    const legacy = pickConfigValue(hfVars.attribute, baseCfg.attribute, "");
+    if (!legacy || legacy.toLowerCase() === "none") return "";
+    const parts = legacy.replace(/／/g, "/").split("/").map(function (s) { return s.trim(); }).filter(Boolean);
+    if (parts.length >= 2) {
+      const stripped = parts[0].replace(/属性/g, "").trim();
+      const b = Array.from(stripped || parts[0])[0] || "";
+      return b ? b + " / " + parts[1] : parts[1];
+    }
+    const stripped = legacy.replace(/属性/g, "").trim();
+    const b = Array.from(stripped || legacy)[0] || "";
+    return b ? b + " / " + legacy : legacy;
+  }
+
   window.SSR_SHARED = {
     createRng: createRng,
     resolveAssetPath: resolveAssetPath,
     pickConfigValue: pickConfigValue,
     ensureChromaShockSvg: ensureChromaShockSvg,
     addChromaShock: addChromaShock,
+    resolveAttributeKeyText: resolveAttributeKeyText,
   };
 })();

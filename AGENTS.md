@@ -17,7 +17,7 @@
 - `compositions/` — サブコンポジション（`scene-summon.*`, `scene-result.*`）および共通基盤（`shared-base.css`, `shared-utils.js`）
 - `scripts/` — Python 決定論的アセット生成（`build_all.py`, `render_*.py`, `generate_se.py`）と自動定量 QA（`qa_video.py`）
 - `assets/` — 入力写真・フォント・生成アセット（`generated/`）・ローカル専用カスタム SE（`se_custom/`）
-- `renders/` — 出力 MP4（`renders/ssr_gacha.mp4`）
+- `renders/` — 出力 MP4（`renders/ssr_gacha_{preset}.mp4`、または明示指定したファイル）
 
 **詳細ドキュメント**:
 - [`SPEC.md`](./SPEC.md) — 確定仕様（詳細タイムライン・全ファイル一覧・設定スキーマ・音響/QA 基準）※仕様確認や構造変更時は必ず参照

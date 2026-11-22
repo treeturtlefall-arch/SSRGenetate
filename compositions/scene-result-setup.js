@@ -17,37 +17,10 @@
       : {};
 
   function resolveAttributeKeyText() {
-    const hasVarSplit =
-      typeof hfVars.attributeBadge === "string" || typeof hfVars.attributeLabel === "string";
-    const hasCfgSplit =
-      Object.prototype.hasOwnProperty.call(baseCfg, "attributeBadge") ||
-      Object.prototype.hasOwnProperty.call(baseCfg, "attributeLabel");
-
-    if (hasVarSplit || hasCfgSplit) {
-      function resolveOne(v, cfgV) {
-        if (v === "__EMPTY__" || (typeof v === "string" && v.trim().toLowerCase() === "none")) return "";
-        if (typeof v === "string" && v.trim() !== "") return v;
-        return typeof cfgV === "string" ? cfgV : "";
-      }
-      const rawB = resolveOne(hfVars.attributeBadge, baseCfg.attributeBadge);
-      const rawL = resolveOne(hfVars.attributeLabel, baseCfg.attributeLabel);
-      const b = Array.from(rawB.trim())[0] || "";
-      const l = rawL.trim();
-      if (b && l) return b + " / " + l;
-      return l || b;
+    if (window.SSR_SHARED && typeof window.SSR_SHARED.resolveAttributeKeyText === "function") {
+      return window.SSR_SHARED.resolveAttributeKeyText(hfVars, baseCfg);
     }
-
-    const legacy = typeof baseCfg.attribute === "string" ? baseCfg.attribute.trim() : "";
-    if (!legacy) return "";
-    const parts = legacy.replace(/／/g, "/").split("/").map(function (s) { return s.trim(); }).filter(Boolean);
-    if (parts.length >= 2) {
-      const stripped = parts[0].replace(/属性/g, "").trim();
-      const b = Array.from(stripped || parts[0])[0] || "";
-      return b ? b + " / " + parts[1] : parts[1];
-    }
-    const stripped = legacy.replace(/属性/g, "").trim();
-    const b = Array.from(stripped || legacy)[0] || "";
-    return b ? b + " / " + legacy : legacy;
+    return "";
   }
 
   const rawRingMode = pick(hfVars.resultRingMode, baseCfg.resultRingMode, "rainbow");
@@ -56,9 +29,11 @@
   const rawZoom =
     typeof hfVars.photoZoom === "string" && hfVars.photoZoom.trim() !== ""
       ? Number(hfVars.photoZoom)
-      : typeof baseCfg.photoZoom === "number"
-        ? baseCfg.photoZoom
-        : 1.05;
+      : typeof hfVars.photoZoom === "number"
+        ? hfVars.photoZoom
+        : typeof baseCfg.photoZoom === "number"
+          ? baseCfg.photoZoom
+          : 1.05;
   const resolvedPhotoZoom = Number.isFinite(rawZoom) && rawZoom > 0 ? rawZoom : 1.05;
 
   const cfg = {

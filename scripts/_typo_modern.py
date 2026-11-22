@@ -11,7 +11,7 @@ from __future__ import annotations
 import functools
 import math
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -28,7 +28,9 @@ from _font_slots import (
 from _utils import (
     GOLD_RAMP,
     SILVER_RAMP,
+    format_attribute_key_text,
     gaussian_blur_f,
+    parse_attribute_parts,
     porter_duff_over,
     ramp_lookup,
     rgba_from_float,
@@ -229,16 +231,13 @@ KINSOKU_HEAD: Set[str] = set("、。，．・！？!?）」』】〕〉》｝］
 KINSOKU_TAIL: Set[str] = set("（「『【〔〈《｛［([{")
 
 
-def _wrap_lines(
+def wrap_lines_kinsoku(
     text: str,
-    primary: str,
-    size: int,
     max_w: float,
     max_lines: int,
-    tracking_em: float,
-    vf_weight: int,
-    norm_factors: Dict[str, float],
+    measure_fn: Callable[[str], float],
 ) -> List[str]:
+    """汎用禁則折り返し処理（行頭・行末禁則文字、句読点優先、明示改行対応）"""
     clean = text.replace("\r\n", "\n").replace("\r", "\n").strip()
     if not clean:
         return []
@@ -254,7 +253,7 @@ def _wrap_lines(
         if len(lines) >= max_lines:
             lines[-1] = f"{lines[-1]} {para}".strip()
             continue
-        if _measure_width(para, primary, size, tracking_em, vf_weight, norm_factors) <= max_w:
+        if measure_fn(para) <= max_w:
             lines.append(para)
             continue
 
@@ -269,13 +268,13 @@ def _wrap_lines(
                     lines.append(rest.strip())
                 rest = ""
                 break
-            if _measure_width(rest, primary, size, tracking_em, vf_weight, norm_factors) <= max_w:
+            if measure_fn(rest) <= max_w:
                 lines.append(rest.strip())
                 rest = ""
                 break
 
             split_idx = len(rest)
-            while split_idx > 1 and _measure_width(rest[:split_idx], primary, size, tracking_em, vf_weight, norm_factors) > max_w:
+            while split_idx > 1 and measure_fn(rest[:split_idx]) > max_w:
                 split_idx -= 1
             best = split_idx
             for k in range(split_idx, max(1, split_idx - 8), -1):
@@ -308,6 +307,24 @@ def _wrap_lines(
             lines = lines[: max_lines - 1] + [" ".join(lines[max_lines - 1 :])]
 
     return lines[:max_lines] if len(lines) > max_lines else lines
+
+
+def _wrap_lines(
+    text: str,
+    primary: str,
+    size: int,
+    max_w: float,
+    max_lines: int,
+    tracking_em: float,
+    vf_weight: int,
+    norm_factors: Dict[str, float],
+) -> List[str]:
+    return wrap_lines_kinsoku(
+        text=text,
+        max_w=max_w,
+        max_lines=max_lines,
+        measure_fn=lambda s: _measure_width(s, primary, size, tracking_em, vf_weight, norm_factors),
+    )
 
 
 def adjust_short_title_tracking(text: str, base_tracking_em: float, explicit_override: bool = False) -> float:
@@ -623,37 +640,6 @@ def _measure_ink_center_x(im: Image.Image, alpha_thresh: float = 0.80) -> float:
     if len(xs) == 0:
         return im.width * 0.5
     return (float(xs.min()) + float(xs.max()) + 1.0) * 0.5
-
-
-def parse_attribute_parts(
-    raw_attr: str = "",
-    badge: Optional[str] = None,
-    label: Optional[str] = None,
-) -> Tuple[str, str]:
-    """
-    属性設定を (badge_char, label_text) へ正規化する。
-    - attributeBadge / attributeLabel が指定されていれば優先（badge="" でも label があれば素アイコン表示）
-    - 両方未指定の場合のみ、従来の attribute 文字列（例: "光属性 / BABY"）を後方互換パース
-    """
-    has_split = (badge is not None) or (label is not None)
-    if has_split:
-        b = str(badge or "").strip()[:1]
-        l = str(label or "").strip()
-        if not b and not l:
-            return "", ""
-        return b, l
-
-    clean = str(raw_attr or "").strip()
-    if not clean:
-        return "", ""
-    parts = [p.strip() for p in clean.replace("／", "/").split("/") if p.strip()]
-    if len(parts) >= 2:
-        jp = parts[0]
-        b = jp.replace("属性", "").strip()[:1] or jp[:1]
-        return b, parts[1]
-    # スラッシュなし単体文字列の場合
-    b = clean.replace("属性", "").strip()[:1] or clean[:1]
-    return b, clean
 
 
 def render_shared_zabuton(
@@ -1064,28 +1050,6 @@ def render_modern_attribute_badge(
 
     arr = np.asarray(canvas, dtype=np.float32) / 255.0
     return tight_crop_rgba(arr[..., :3], arr[..., 3], pad=2)
-
-
-def render_modern_attribute_plate(
-    text: str,
-    *,
-    font_name: str,
-    font_size: int,
-    style_id: str,
-    palette: Dict[str, str],
-    tracking_em: float = 0.05,
-    vf_weight: int = 700,
-    norm_factors: Optional[Dict[str, float]] = None,
-) -> Image.Image:
-    """後方互換ラッパー（従来単一文字列から Pattern C バッジを生成）"""
-    badge_char, label_text = parse_attribute_parts(raw_attr=text)
-    return render_modern_attribute_badge(
-        badge_char,
-        label_text,
-        style_id=style_id,
-        palette=palette,
-        norm_factors=norm_factors,
-    )
 
 
 def render_royal_diamond_rule(width: int = 760, palette: Optional[Dict[str, str]] = None, ss: int = 3) -> Image.Image:

@@ -200,14 +200,18 @@ function applyCliOverrides(baseCfg, overrides) {
 function parseAttributeParts(cfg) {
   const hasSplit = Object.prototype.hasOwnProperty.call(cfg, "attributeBadge") || Object.prototype.hasOwnProperty.call(cfg, "attributeLabel");
   if (hasSplit) {
-    const b = Array.from(String(cfg.attributeBadge ?? "").trim())[0] || "";
-    const l = String(cfg.attributeLabel ?? "").trim();
+    let rawB = String(cfg.attributeBadge ?? "").trim();
+    let rawL = String(cfg.attributeLabel ?? "").trim();
+    if (rawB === "__EMPTY__" || rawB.toLowerCase() === "none") rawB = "";
+    if (rawL === "__EMPTY__" || rawL.toLowerCase() === "none") rawL = "";
+    const b = Array.from(rawB)[0] || "";
+    const l = rawL;
     if (!b && !l) return "";
     return b && l ? `${b} / ${l}` : l || b;
   }
 
   const clean = String(cfg.attribute ?? "").trim();
-  if (!clean) return "";
+  if (!clean || clean === "__EMPTY__" || clean.toLowerCase() === "none") return "";
   const parts = clean.replace(/／/g, "/").split("/").map((p) => p.trim()).filter(Boolean);
   if (parts.length >= 2) {
     const stripped = parts[0].replace(/属性/g, "").trim();
@@ -434,6 +438,7 @@ if (shouldSyncTypo) {
   const envWithOverrides = {
     ...process.env,
     SSR_CARD_CONFIG_OVERRIDES: JSON.stringify(cliVars),
+    SSR_RESOLVED_CONFIG_JSON: JSON.stringify(effectiveCfg),
   };
 
   console.log(`[typo-sync] Regenerating typography (${syncReasonText.join(", ")})...`);
@@ -459,8 +464,12 @@ if (shouldSyncTypo) {
   const nextOri = updatedManifest?.dimensions?.orientation || "portrait";
   if (forceTypo || syncStatus.needsLayoutRebuild || prevOri !== nextOri) {
     console.log(`[layout-sync] Ensuring material & optics assets for orientation=${nextOri}...`);
-    for (const script of ["scripts/render_material.py", "scripts/render_optics.py"]) {
-      const r = spawnSync("python", [script], {
+    const layoutScripts = [
+      ["scripts/render_material.py"],
+      ["scripts/render_optics.py", "--cutin-only"],
+    ];
+    for (const [script, ...args] of layoutScripts) {
+      const r = spawnSync("python", [script, ...args], {
         cwd: PROJECT_ROOT,
         env: envWithOverrides,
         stdio: "inherit",

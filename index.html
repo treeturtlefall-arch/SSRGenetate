@@ -190,7 +190,11 @@
             ? window.__hyperframes.getVariables()
             : {};
         const hasOverride = Object.keys(hfVars).some(function (k) {
-          return typeof hfVars[k] === "string" && hfVars[k].trim() !== "";
+          const v = hfVars[k];
+          if (typeof v === "string") return v.trim() !== "";
+          if (typeof v === "number") return Number.isFinite(v);
+          if (typeof v === "boolean") return true;
+          return v !== null && v !== undefined;
         });
         if (hasOverride) {
           const resComp = document.getElementById("comp-result");

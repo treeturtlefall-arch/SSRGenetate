@@ -7,6 +7,8 @@ SSRGenerate — 全アセット一括並列生成ランナー
 from __future__ import annotations
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import json
+import os
 import subprocess
 import sys
 import time
@@ -24,13 +26,17 @@ JOBS = [
 ]
 
 
-def _run_job(name: str, script_path: Path) -> Tuple[str, float, str]:
+def _run_job(name: str, script_path: Path, cfg_json: str = "") -> Tuple[str, float, str]:
     t0 = time.perf_counter()
+    env = os.environ.copy()
+    if cfg_json:
+        env["SSR_RESOLVED_CONFIG_JSON"] = cfg_json
     res = subprocess.run(
         [sys.executable, str(script_path)],
         capture_output=True,
         text=True,
         encoding="utf-8",
+        env=env,
         check=True,
     )
     elapsed = time.perf_counter() - t0
@@ -39,13 +45,15 @@ def _run_job(name: str, script_path: Path) -> Tuple[str, float, str]:
 
 def main() -> int:
     t_start = time.perf_counter()
-    layout = resolve_layout(load_card_config())
+    cfg = load_card_config()
+    cfg_json = json.dumps(cfg, ensure_ascii=False)
+    layout = resolve_layout(cfg)
     changed_html = sync_html_resolution(layout)
     print(f"=== SSRGenerate Parallel Asset Builder ({layout.orientation}: {layout.canvas_w}x{layout.canvas_h}, card {layout.card_w}x{layout.card_h}) ===")
     if changed_html:
         print(f"[HTML Sync] Updated resolution attributes in: {', '.join(changed_html)}")
     with ProcessPoolExecutor(max_workers=len(JOBS)) as ex:
-        futures = {ex.submit(_run_job, name, path): name for name, path in JOBS}
+        futures = {ex.submit(_run_job, name, path, cfg_json): name for name, path in JOBS}
         for fut in as_completed(futures):
             name = futures[fut]
             try:

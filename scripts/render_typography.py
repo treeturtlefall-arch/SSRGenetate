@@ -13,14 +13,16 @@ SSRカード最前面オーバーレイ用の高精細透過PNG群を決定論�
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import functools
 import json
 import math
+import os
 from pathlib import Path
 import random
 import re
 import sys
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
@@ -36,12 +38,12 @@ from _typo_modern import (
     MODERN_PRESETS,
     adjust_short_title_tracking,
     compute_fitted_font_size,
-    parse_attribute_parts,
     render_modern_attribute_badge,
     render_modern_ssr_emblem,
     render_modern_text,
     render_royal_diamond_rule,
     resolve_modern_plan,
+    wrap_lines_kinsoku,
 )
 from _utils import (
     FONTS_DIR,
@@ -51,10 +53,12 @@ from _utils import (
     SILVER_RAMP,
     LayoutSpec,
     apply_config_overrides,
+    format_attribute_key_text,
     gaussian_blur_f,
     generate_micro_emboss_height,
     load_card_config,
     make_linear_gradient,
+    parse_attribute_parts,
     polygon_mask,
     porter_duff_over,
     resolve_layout,
@@ -119,7 +123,6 @@ TYPO_PRESETS: Dict[str, Dict[str, Any]] = {
         "title":     {"font": "YujiSyuku-Regular.ttf", "material": "foil-gold",      "stamp": False, "wobble_mul": 1.00},
         "flavor":    {"font": "KleeOne-Regular.ttf",   "material": "ink-ivory",      "stamp": False, "wobble_mul": 0.75},
         "cardNo":    {"font": "cinecaption.ttf",       "material": "foil-silver",    "stamp": True,  "wobble_mul": 0.40},
-        "cutinSub":  {"font": "cinecaption.ttf",       "material": "foil-champagne", "stamp": True,  "wobble_mul": 0.30},
         "cutinMain": {"font": "YujiSyuku-Regular.ttf", "material": "foil-gold",      "stamp": False, "wobble_mul": 0.65},
     },
     "handwritten-sign": {
@@ -129,7 +132,6 @@ TYPO_PRESETS: Dict[str, Dict[str, Any]] = {
         "title":     {"font": "TekitouPoem_Bold.ttf",     "material": "ink-posca",      "stamp": False, "wobble_mul": 1.05},
         "flavor":    {"font": "TekitouPoem.ttf",          "material": "ink-ivory",      "stamp": False, "wobble_mul": 0.90},
         "cardNo":    {"font": "ZenKurenaido-Regular.ttf", "material": "foil-silver",    "stamp": False, "wobble_mul": 0.65},
-        "cutinSub":  {"font": "cinecaption.ttf",          "material": "foil-champagne", "stamp": True,  "wobble_mul": 0.35},
         "cutinMain": {"font": "TekitouPoem_Bold.ttf",     "material": "foil-gold",      "stamp": False, "wobble_mul": 0.75},
     },
     "crisp-emboss": {
@@ -139,7 +141,6 @@ TYPO_PRESETS: Dict[str, Dict[str, Any]] = {
         "title":     {"font": "KleeOne-Regular.ttf",   "material": "foil-gold",      "stamp": False, "wobble_mul": 0.60},
         "flavor":    {"font": "KleeOne-Regular.ttf",   "material": "ink-ivory",      "stamp": False, "wobble_mul": 0.50},
         "cardNo":    {"font": "cinecaption.ttf",       "material": "foil-silver",    "stamp": True,  "wobble_mul": 0.25},
-        "cutinSub":  {"font": "cinecaption.ttf",       "material": "foil-champagne", "stamp": True,  "wobble_mul": 0.20},
         "cutinMain": {"font": "KleeOne-Regular.ttf",   "material": "foil-gold",      "stamp": False, "wobble_mul": 0.45},
     },
 }
@@ -245,72 +246,12 @@ def measure_text_width(text: str, primary_font_file: str, primary_size: int) -> 
 
 def wrap_text_lines(text: str, font_file: str, font_size: int, max_w: float, max_lines: int = 2) -> List[str]:
     """長文を安全に折り返す（明示改行・前後禁則・日本語句読点・スペース優先）"""
-    clean = text.replace("\r\n", "\n").replace("\r", "\n").strip()
-    if not clean:
-        return []
-    if max_lines <= 1:
-        return [re.sub(r"\s*\n\s*", " ", clean)]
-
-    paragraphs = [p.strip() for p in clean.split("\n") if p.strip()]
-    if not paragraphs:
-        return []
-
-    lines: List[str] = []
-    for p_idx, para in enumerate(paragraphs):
-        if len(lines) >= max_lines:
-            lines[-1] = f"{lines[-1]} {para}".strip()
-            continue
-        if measure_text_width(para, font_file, font_size) <= max_w:
-            lines.append(para)
-            continue
-
-        rest = para
-        while rest:
-            remaining_slots = max_lines - len(lines)
-            if remaining_slots <= 1:
-                if lines and remaining_slots <= 0:
-                    lines[-1] = f"{lines[-1]} {rest}".strip()
-                else:
-                    lines.append(rest.strip())
-                rest = ""
-                break
-            if measure_text_width(rest, font_file, font_size) <= max_w:
-                lines.append(rest.strip())
-                rest = ""
-                break
-
-            split_idx = len(rest)
-            while split_idx > 1 and measure_text_width(rest[:split_idx], font_file, font_size) > max_w:
-                split_idx -= 1
-            best_idx = split_idx
-            for k in range(split_idx, max(1, split_idx - 8), -1):
-                if rest[k - 1] in "、。，．・ ,.　":
-                    best_idx = k
-                    break
-
-            for _ in range(2):
-                if best_idx < len(rest) and rest[best_idx] in KINSOKU_HEAD and best_idx - 1 > 1:
-                    best_idx -= 1
-                else:
-                    break
-            for _ in range(2):
-                if best_idx > 1 and rest[best_idx - 1] in KINSOKU_TAIL and best_idx - 1 > 1:
-                    best_idx -= 1
-                else:
-                    break
-
-            head_part = rest[:best_idx].rstrip()
-            tail_part = rest[best_idx:].lstrip()
-            if not head_part:
-                head_part = rest[:1]
-                tail_part = rest[1:].lstrip()
-            lines.append(head_part)
-            rest = tail_part
-
-        if p_idx < len(paragraphs) - 1 and len(lines) > max_lines:
-            lines = lines[: max_lines - 1] + [" ".join(lines[max_lines - 1 :])]
-
-    return lines[:max_lines] if len(lines) > max_lines else lines
+    return wrap_lines_kinsoku(
+        text=text,
+        max_w=max_w,
+        max_lines=max_lines,
+        measure_fn=lambda s: measure_text_width(s, font_file, font_size),
+    )
 
 
 def render_humanized_line(
@@ -335,7 +276,7 @@ def render_humanized_line(
     w = max(0.0, min(1.0, float(wobble_strength)))
     rng = random.Random(seed & 0xFFFFFFFF)
 
-    kin = STAMP_KINEMATICS.copy() if is_stamp else FONT_KINEMATICS.get(font_file, FONT_KINEMATICS["KleeOne-Regular.ttf"]).copy()
+    kin = STAMP_KINEMATICS.copy() if is_stamp else FONT_KINEMATICS.get(font_file, FONT_KINEMATICS["YujiSyuku-Regular.ttf"]).copy()
     arc_mul = kin["arc_mul"]
     rot_mul = kin["rot_mul"]
     dy_mul = kin["dy_mul"]
@@ -1113,16 +1054,12 @@ def main() -> None:
                 flav_def = plan["slots"]["flavor"]
                 flav_def["size"] = max(18, min(int(flav_def["size"]), int(round(fitted_title_size * 0.52))))
 
-    has_split_attr = ("attributeBadge" in cfg) or ("attributeLabel" in cfg)
     attr_badge, attr_label = parse_attribute_parts(
         raw_attr=str(cfg.get("attribute", "")),
-        badge=cfg.get("attributeBadge") if has_split_attr else None,
-        label=cfg.get("attributeLabel") if has_split_attr else None,
+        badge=cfg.get("attributeBadge"),
+        label=cfg.get("attributeLabel"),
     )
-    if attr_badge and attr_label:
-        attr_key_text = f"{attr_badge} / {attr_label}"
-    else:
-        attr_key_text = attr_label or attr_badge
+    attr_key_text = format_attribute_key_text(cfg)
 
     is_land = layout.orientation == "landscape"
     card_specs = [
@@ -1186,11 +1123,12 @@ def main() -> None:
             f"-> fallback mid={vignette['midAlpha']}, bot={vignette['bottomAlpha']}"
         )
 
-    # --- 1. カード側 6 スロット ---
-    for idx, (key, text, legacy_fsize, legacy_max_w, legacy_max_lines, filename) in enumerate(card_specs):
+    # --- 並列レンダリングワーカー ---
+    def render_card_slot(idx: int, spec: Tuple[str, str, int, int, int, str]) -> Optional[Tuple[str, str, int, int, str]]:
+        key, text, legacy_fsize, legacy_max_w, legacy_max_lines, filename = spec
         clean_text = text.strip()
         if not clean_text:
-            continue
+            return None
         item_seed = seed + idx * 1009
 
         if is_modern and plan is not None:
@@ -1274,35 +1212,15 @@ def main() -> None:
                 )
 
         if img is None:
-            continue
+            return None
         out_path = OUT_DIR / filename
         save_png(img, out_path)
-        manifest["items"][key] = {
-            "src": f"assets/generated/{filename}",
-            "width": img.width,
-            "height": img.height,
-            "text": clean_text,
-        }
         print(f"[OK] {key}: {filename} ({img.width}x{img.height}) -> '{clean_text}'")
+        return key, filename, img.width, img.height, clean_text
 
-    # --- 1b. Royal 細二重罫線アセット（royal-fantasy 時） ---
-    if is_modern and plan is not None and plan["layout"] == "royal-fantasy":
-        rule_w = 1140 if is_land else 760
-        rule_img = render_royal_diamond_rule(width=rule_w, palette=plan["palette"], ss=3)
-        rule_path = OUT_DIR / "typo_royal_rule.png"
-        save_png(rule_img, rule_path)
-        manifest["items"]["royalRule"] = {
-            "src": "assets/generated/typo_royal_rule.png",
-            "width": rule_img.width,
-            "height": rule_img.height,
-            "text": "__rule__",
-        }
-        print(f"[OK] royalRule: typo_royal_rule.png ({rule_img.width}x{rule_img.height})")
-
-    # --- 2. 昇格カットイン スロット（完全分離・不変王道スタイル） ---
-    for c_idx, (key, text, fsize, max_w, max_lines, filename) in enumerate(cutin_specs):
+    def render_cutin_slot(c_idx: int, spec: Tuple[str, str, int, int, int, str]) -> Optional[Tuple[str, str, int, int, str]]:
+        key, text, fsize, max_w, max_lines, filename = spec
         c_style = CUTIN_STYLE[key]
-        # 従来と同じシードオフセット (cutinMain=7, cutinSub=6) を維持してピクセル完全一致を保つ
         offset_idx = 7 if key == "cutinMain" else (6 + c_idx)
         item_seed = seed + offset_idx * 1009
         img = render_multiline_block(
@@ -1320,16 +1238,46 @@ def main() -> None:
             norm_factors=CUTIN_NORM_FACTORS,
         )
         if img is None:
-            continue
+            return None
         out_path = OUT_DIR / filename
         save_png(img, out_path)
-        manifest["items"][key] = {
-            "src": f"assets/generated/{filename}",
-            "width": img.width,
-            "height": img.height,
-            "text": text,
-        }
         print(f"[OK] {key}: {filename} ({img.width}x{img.height}) -> '{text}' [CUTIN_FIXED]")
+        return key, filename, img.width, img.height, text
+
+    def render_rule_slot() -> Optional[Tuple[str, str, int, int, str]]:
+        rule_w = 1140 if is_land else 760
+        rule_img = render_royal_diamond_rule(width=rule_w, palette=plan["palette"], ss=3)
+        rule_path = OUT_DIR / "typo_royal_rule.png"
+        save_png(rule_img, rule_path)
+        print(f"[OK] royalRule: typo_royal_rule.png ({rule_img.width}x{rule_img.height})")
+        return "royalRule", "typo_royal_rule.png", rule_img.width, rule_img.height, "__rule__"
+
+    max_workers = min(8, max(2, os.cpu_count() or 4))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        card_futures = [executor.submit(render_card_slot, idx, spec) for idx, spec in enumerate(card_specs)]
+        rule_future = None
+        if is_modern and plan is not None and plan["layout"] == "royal-fantasy":
+            rule_future = executor.submit(render_rule_slot)
+        cutin_futures = [executor.submit(render_cutin_slot, c_idx, spec) for c_idx, spec in enumerate(cutin_specs)]
+
+        # 完了順に関わらず、マニフェスト登録順序を安定化
+        for fut in card_futures:
+            res = fut.result()
+            if res:
+                k, fn, w, h, t = res
+                manifest["items"][k] = {"src": f"assets/generated/{fn}", "width": w, "height": h, "text": t}
+
+        if rule_future is not None:
+            res = rule_future.result()
+            if res:
+                k, fn, w, h, t = res
+                manifest["items"][k] = {"src": f"assets/generated/{fn}", "width": w, "height": h, "text": t}
+
+        for fut in cutin_futures:
+            res = fut.result()
+            if res:
+                k, fn, w, h, t = res
+                manifest["items"][k] = {"src": f"assets/generated/{fn}", "width": w, "height": h, "text": t}
 
     manifest_path = OUT_DIR / "typo-manifest.js"
     manifest_js = (

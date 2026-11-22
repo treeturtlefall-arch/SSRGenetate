@@ -7,6 +7,7 @@ ITU-R BS.1770-4 準拠 LUFS 計測を提供する。
 """
 from __future__ import annotations
 
+import functools
 import math
 from typing import Sequence
 
@@ -709,6 +710,7 @@ def synth_riser(
 # ITU-R BS.1770-4 準拠ラウドネス計測＆透明ソフトリミッター
 # =========================================================================
 
+@functools.lru_cache(maxsize=8)
 def _k_weighting_sos(sr: int = SR) -> np.ndarray:
     """ITU-R BS.1770-4 K-weighting 2段フィルタ (High-Shelf + RLB High-Pass) の SOS 係数"""
     # Stage 1: +4 dB High-Shelf @ 1681.97 Hz

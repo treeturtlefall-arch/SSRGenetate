@@ -111,6 +111,63 @@ SILVER_RAMP: List[Tuple[int, int, int]] = [
 ]
 
 
+def parse_attribute_parts(
+    raw_attr: str = "",
+    badge: Any = None,
+    label: Any = None,
+) -> Tuple[str, str]:
+    """
+    属性設定を (badge_char, label_text) へ正規化する。
+    - attributeBadge / attributeLabel が指定されていれば優先（"__EMPTY__" / "none" は空文字列化）
+    - 両方未指定の場合のみ、従来の attribute 文字列（例: "光属性 / BABY"）を後方互換パース
+    """
+    has_split = (badge is not None) or (label is not None)
+    if has_split:
+        raw_b = str(badge or "").strip()
+        raw_l = str(label or "").strip()
+        if raw_b == "__EMPTY__" or raw_b.lower() == "none":
+            raw_b = ""
+        if raw_l == "__EMPTY__" or raw_l.lower() == "none":
+            raw_l = ""
+        b = raw_b[:1]
+        l = raw_l
+        if not b and not l:
+            return "", ""
+        return b, l
+
+    clean = str(raw_attr or "").strip()
+    if not clean or clean == "__EMPTY__" or clean.lower() == "none":
+        return "", ""
+    parts = [p.strip() for p in clean.replace("／", "/").split("/") if p.strip()]
+    if len(parts) >= 2:
+        jp = parts[0]
+        b = jp.replace("属性", "").strip()[:1] or jp[:1]
+        return b, parts[1]
+    # スラッシュなし単体文字列の場合
+    b = clean.replace("属性", "").strip()[:1] or clean[:1]
+    return b, clean
+
+
+def format_attribute_key_text(
+    cfg_or_raw: Any = "",
+    badge: Any = None,
+    label: Any = None,
+) -> str:
+    """(b, l) から "b / l" または "l" または "b" または "" を組み立てる"""
+    if isinstance(cfg_or_raw, dict):
+        raw_attr = cfg_or_raw.get("attribute", "")
+        has_split = ("attributeBadge" in cfg_or_raw) or ("attributeLabel" in cfg_or_raw)
+        b_val = cfg_or_raw.get("attributeBadge") if has_split else None
+        l_val = cfg_or_raw.get("attributeLabel") if has_split else None
+        b, l = parse_attribute_parts(raw_attr=str(raw_attr or ""), badge=b_val, label=l_val)
+    else:
+        b, l = parse_attribute_parts(raw_attr=str(cfg_or_raw or ""), badge=badge, label=label)
+
+    if b and l:
+        return f"{b} / {l}"
+    return l or b
+
+
 def apply_config_overrides(cfg: Dict[str, Any], overrides: Any) -> Dict[str, Any]:
     """CLI --variables / 環境変数 SSR_CARD_CONFIG_OVERRIDES を card-config 辞書へマージする"""
     if not isinstance(overrides, dict):
@@ -162,7 +219,16 @@ def apply_config_overrides(cfg: Dict[str, Any], overrides: Any) -> Dict[str, Any
 
 
 def load_card_config() -> Dict[str, Any]:
-    """card-config.js から window.SSR_CARD_CONFIG を読み込み、環境変数オーバーライドがあれば適用する"""
+    """card-config.js から window.SSR_CARD_CONFIG を読み込み、環境変数オーバーライドがあれば適用する。
+    親プロセスが SSR_RESOLVED_CONFIG_JSON を設定している場合は即座にパースして返し、Node.js 多重起動を抑止する。
+    """
+    cached_json = os.environ.get("SSR_RESOLVED_CONFIG_JSON", "").strip()
+    if cached_json:
+        try:
+            return json.loads(cached_json)
+        except Exception:
+            pass
+
     cfg: Dict[str, Any] = {}
     if CONFIG_PATH.exists():
         try:
