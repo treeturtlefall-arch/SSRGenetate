@@ -44,28 +44,26 @@ from _typo_modern import (
     resolve_modern_plan,
 )
 from _utils import (
-    CANVAS_H,
-    CANVAS_W,
-    CARD_BORDER,
-    CARD_H,
-    CARD_INNER_H,
-    CARD_INNER_W,
-    CARD_W,
     FONTS_DIR,
     GOLD_RAMP,
     OUT_DIR,
     PROJECT_ROOT,
     SILVER_RAMP,
+    LayoutSpec,
+    apply_config_overrides,
     gaussian_blur_f,
     generate_micro_emboss_height,
     load_card_config,
     make_linear_gradient,
     polygon_mask,
     porter_duff_over,
+    resolve_layout,
+    resolve_photo_path,
     resolve_seed,
     save_png,
     shade_metal_relief,
     smoothstep,
+    sync_html_resolution,
     tight_crop_rgba,
 )
 
@@ -880,60 +878,6 @@ VIGNETTE_RANGES: Dict[str, Dict[str, Tuple[float, float]]] = {
 }
 
 
-def apply_cli_overrides(cfg: Dict[str, Any], overrides: Any) -> Dict[str, Any]:
-    """CLI --variables / --overrides JSON を card-config 辞書へマージする"""
-    if not isinstance(overrides, dict):
-        return cfg
-    out = dict(cfg)
-    typo = dict(out.get("typography", {})) if isinstance(out.get("typography"), dict) else {}
-
-    str_keys = (
-        "photo",
-        "photoFit",
-        "photoPosition",
-        "rarity",
-        "attribute",
-        "attributeBadge",
-        "attributeLabel",
-        "subtitle",
-        "title",
-        "flavor",
-        "cardNo",
-        "resultRingMode",
-    )
-    for k in str_keys:
-        if k in overrides and overrides[k] is not None:
-            out[k] = str(overrides[k])
-
-    for nk, conv in (("photoZoom", float), ("stars", int), ("seed", int)):
-        if nk in overrides and overrides[nk] is not None and str(overrides[nk]).strip() != "":
-            try:
-                val = conv(overrides[nk])
-                if math.isfinite(float(val)):
-                    out[nk] = val
-            except (TypeError, ValueError):
-                pass
-
-    if "preset" in overrides and isinstance(overrides["preset"], str) and overrides["preset"].strip():
-        typo["preset"] = overrides["preset"].strip()
-
-    if isinstance(overrides.get("typography"), dict):
-        for tk, tv in overrides["typography"].items():
-            if tv is not None:
-                typo[tk] = tv
-
-    out["typography"] = typo
-    return out
-
-
-def _resolve_photo_path(photo_rel: str) -> Path:
-    raw = str(photo_rel or "assets/photo.jpg").strip()
-    p = Path(raw)
-    if p.is_absolute():
-        return p
-    return PROJECT_ROOT / raw.lstrip("./\\")
-
-
 def _parse_css_object_position(pos_str: str) -> Tuple[float, float]:
     """CSS object-position 文字列から正規化アンカー (px, py) in [0, 1] を返す"""
     tokens = str(pos_str or "50% 35%").strip().lower().split()
@@ -965,12 +909,12 @@ def _parse_css_object_position(pos_str: str) -> Tuple[float, float]:
     return parse_tok(tokens[0], False), parse_tok(tokens[1], True)
 
 
-def compute_adaptive_vignette(cfg: Dict[str, Any], layout_id: str) -> Dict[str, Any]:
+def compute_adaptive_vignette(cfg: Dict[str, Any], layout_id: str, layout: LayoutSpec) -> Dict[str, Any]:
     """入力写真の下部 30% 知覚輝度を計測し、レイアウト別レンジ内でビネット濃度を算出する"""
     spec = VIGNETTE_RANGES.get(layout_id, VIGNETTE_RANGES["classic-center"])
     def_mid, def_bot = spec["default"]
     photo_rel = str(cfg.get("photo", "assets/photo.jpg") or "assets/photo.jpg").strip().replace("\\", "/")
-    photo_path = _resolve_photo_path(photo_rel)
+    photo_path = resolve_photo_path(photo_rel)
 
     if not photo_path.is_file():
         return {
@@ -991,7 +935,8 @@ def compute_adaptive_vignette(cfg: Dict[str, Any], layout_id: str) -> Dict[str, 
             "bottomAlpha": def_bot,
         }
 
-    tw, th = 172, 310
+    tw = max(32, layout.card_inner_w // 5)
+    th = max(32, layout.card_inner_h // 5)
     iw, ih = max(1, im.width), max(1, im.height)
     fit = str(cfg.get("photoFit", "cover") or "cover").strip().lower()
     try:
@@ -1049,6 +994,7 @@ def compute_adaptive_vignette(cfg: Dict[str, Any], layout_id: str) -> Dict[str, 
 
 def build_source_snapshot(
     cfg: Dict[str, Any],
+    layout: LayoutSpec,
     preset_name: str,
     texts_map: Dict[str, str],
     wobble_val: float,
@@ -1059,7 +1005,7 @@ def build_source_snapshot(
     """render_video.mjs との差分判定用入力スナップショットを構築する"""
     typo_cfg = cfg.get("typography", {}) if isinstance(cfg.get("typography"), dict) else {}
     photo_rel = str(cfg.get("photo", "assets/photo.jpg") or "assets/photo.jpg").strip().replace("\\", "/")
-    photo_path = _resolve_photo_path(photo_rel)
+    photo_path = resolve_photo_path(photo_rel)
     if photo_path.is_file():
         st = photo_path.stat()
         photo_size = int(st.st_size)
@@ -1074,6 +1020,8 @@ def build_source_snapshot(
         zoom_val = 1.05
 
     return {
+        "orientation": layout.orientation,
+        "orientationRaw": str(cfg.get("orientation", "portrait") or "portrait").strip().lower(),
         "preset": preset_name,
         "seed": int(seed),
         "texts": {k: str(v).strip() for k, v in texts_map.items()},
@@ -1111,9 +1059,14 @@ def main() -> None:
     if args.overrides_stdin:
         raw_stdin = sys.stdin.read().strip()
         if raw_stdin:
-            cfg = apply_cli_overrides(cfg, json.loads(raw_stdin))
+            cfg = apply_config_overrides(cfg, json.loads(raw_stdin))
     if args.overrides:
-        cfg = apply_cli_overrides(cfg, json.loads(args.overrides))
+        cfg = apply_config_overrides(cfg, json.loads(args.overrides))
+
+    layout = resolve_layout(cfg)
+    changed_html = sync_html_resolution(layout)
+    if changed_html:
+        print(f"[OK] synced HTML resolution ({layout.orientation} {layout.canvas_w}x{layout.canvas_h}): {', '.join(changed_html)}")
 
     typo_cfg = cfg.get("typography", {}) if isinstance(cfg.get("typography"), dict) else {}
 
@@ -1130,7 +1083,7 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     is_modern = preset_name in MODERN_PRESETS
-    plan = resolve_modern_plan(preset_name, typo_cfg) if is_modern else None
+    plan = resolve_modern_plan(preset_name, typo_cfg, orientation=layout.orientation) if is_modern else None
 
     # タイトル実効縮小率の先行計算（サブタイトル・フレーバー連動 & 2-3文字トラッキング拡大）
     if is_modern and plan is not None:
@@ -1171,23 +1124,25 @@ def main() -> None:
     else:
         attr_key_text = attr_label or attr_badge
 
+    is_land = layout.orientation == "landscape"
     card_specs = [
-        ("ssr",       str(cfg.get("rarity", "SSR")),     94, 320, 1, "typo_ssr.png"),
-        ("attribute", attr_key_text,                     26, 300, 1, "typo_attr.png"),
-        ("subtitle",  str(cfg.get("subtitle", "")),      34, 780, 1, "typo_subtitle.png"),
-        ("title",     str(cfg.get("title", "")),         74, 800, 1, "typo_title.png"),
-        ("flavor",    str(cfg.get("flavor", "")),        29, 780, 2, "typo_flavor.png"),
-        ("cardNo",    str(cfg.get("cardNo", "")),        24, 340, 1, "typo_cardno.png"),
+        ("ssr",       str(cfg.get("rarity", "SSR")), 82 if is_land else 94, 300 if is_land else 320, 1, "typo_ssr.png"),
+        ("attribute", attr_key_text,                 24 if is_land else 26, 280 if is_land else 300, 1, "typo_attr.png"),
+        ("subtitle",  str(cfg.get("subtitle", "")),  29 if is_land else 34, 1120 if is_land else 780, 1, "typo_subtitle.png"),
+        ("title",     str(cfg.get("title", "")),     64 if is_land else 74, 1180 if is_land else 800, 1, "typo_title.png"),
+        ("flavor",    str(cfg.get("flavor", "")),    25 if is_land else 29, 1120 if is_land else 780, 2, "typo_flavor.png"),
+        ("cardNo",    str(cfg.get("cardNo", "")),    22 if is_land else 24, 340, 1, "typo_cardno.png"),
     ]
     cutin_specs = [
         ("cutinMain", "昇格  SSR 確定",                  112, 980, 1, "typo_cutin_main.png"),
     ]
 
     layout_id = plan["layout"] if plan else "classic-center"
-    vignette = compute_adaptive_vignette(cfg, layout_id)
+    vignette = compute_adaptive_vignette(cfg, layout_id, layout)
     texts_map = {key: text for key, text, _, _, _, _ in card_specs}
     source_snapshot = build_source_snapshot(
         cfg=cfg,
+        layout=layout,
         preset_name=preset_name,
         texts_map=texts_map,
         wobble_val=float(wobble_val),
@@ -1205,14 +1160,14 @@ def main() -> None:
         "wobble": wobble_val,
         "seed": seed,
         "dimensions": {
-            "orientation": "portrait",
-            "canvasW": CANVAS_W,
-            "canvasH": CANVAS_H,
-            "cardW": CARD_W,
-            "cardH": CARD_H,
-            "cardBorder": CARD_BORDER,
-            "innerW": CARD_INNER_W,
-            "innerH": CARD_INNER_H,
+            "orientation": layout.orientation,
+            "canvasW": layout.canvas_w,
+            "canvasH": layout.canvas_h,
+            "cardW": layout.card_w,
+            "cardH": layout.card_h,
+            "cardBorder": layout.card_border,
+            "innerW": layout.card_inner_w,
+            "innerH": layout.card_inner_h,
         },
         "vignette": vignette,
         "source": source_snapshot,
@@ -1332,7 +1287,8 @@ def main() -> None:
 
     # --- 1b. Royal 細二重罫線アセット（royal-fantasy 時） ---
     if is_modern and plan is not None and plan["layout"] == "royal-fantasy":
-        rule_img = render_royal_diamond_rule(width=760, palette=plan["palette"], ss=3)
+        rule_w = 1140 if is_land else 760
+        rule_img = render_royal_diamond_rule(width=rule_w, palette=plan["palette"], ss=3)
         rule_path = OUT_DIR / "typo_royal_rule.png"
         save_png(rule_img, rule_path)
         manifest["items"]["royalRule"] = {

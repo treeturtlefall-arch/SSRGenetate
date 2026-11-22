@@ -1,6 +1,6 @@
 # SSRGenerate 統合ロードマップ (`ROADMAP.md`)
 
-> 写真 1 枚から **16.0 秒（1080×1920）の最新 3D ソシャゲ級 SSR ガチャ演出 MP4** を生成する HyperFrames プロジェクトの開発計画・進捗管理ドキュメントです。  
+> 写真 1 枚から **16.0 秒（1080×1920 / 1920×1080）の最新 3D ソシャゲ級 SSR ガチャ演出 MP4** を生成する HyperFrames プロジェクトの開発計画・進捗管理ドキュメントです。  
 > 詳細仕様は [`SPEC.md`](./SPEC.md)、エージェント作業規約は [`AGENTS.md`](./AGENTS.md)、Phase 5 詳細設計は [`LANDSCAPE_PLAN.md`](./LANDSCAPE_PLAN.md) を参照してください。
 
 ---
@@ -35,11 +35,11 @@
 | **Phase 3** | 音響「現代ソシャゲ音像化」＆ 映像マイクロポリッシュ | `scripts/_audio_*`, `scripts/generate_se.py`, `compositions/scene-*` | 完了 |
 | **Phase 3.5** | カードタイポグラフィ刷新（書体・縁取り・非対称配置） | `assets/fonts/*`, `card-config.js`, `scripts/_typo_modern.py`, `render_video.mjs` | 完了 |
 | **Phase 4** | 運用性・量産性強化 ＆ 5 評価軸 / 複数素材検証 | `package.json`, `scripts/render_typography.py`, `scripts/render_video.mjs`, `compositions/scene-result-setup.js` | 完了 |
-| **Phase 5** | 横動画（16:9 / 1920×1080）× 横型カード対応 | `card-config.js`, `index.html`, `compositions/*`, `scripts/*` | **未着手（次期）** |
+| **Phase 5** | 横動画（16:9 / 1920×1080）× 横型カード対応 | `card-config.js`, `index.html`, `compositions/*`, `scripts/*` | 完了 |
 
 ---
 
-## 3. 実装済み基盤サマリー（Phase 0 〜 Phase 4：完了）
+## 3. 実装済み基盤サマリー（Phase 0 〜 Phase 5：完了）
 
 初期の「Web UI 感・光の濁り・90年代シンセ感」は Phase 0〜4 で解消・標準化済みです。現在のコードベースには以下の機能が実装・検証済みです。
 
@@ -59,10 +59,14 @@
   - **自動箔タイポ同期＆CLI拡張**: `scripts/render_video.mjs` が `card-config.js` と `--variables` / `--variables-file` の変更を `typo-manifest.js` (`schemaVersion: 2`) の `source` スナップショットで自動検知し、必要時のみ `render_typography.py --overrides-stdin` を自動実行して出力ファイル名もプリセットに同期。Phase 5 先回りの `dimensions` 出力も整備。
   - **オートレイアウト＆ビネット自動適応**: 前後禁則・`\n` 改行・長文タイトル縮小時の `subtitle` 連動（`sqrt(ratio)`）・2〜3文字短文字間拡大を実装。Pillow（EXIF 補正＋`photoFit/Position/Zoom` 近似）で写真下部 30% の知覚輝度を計測し、レイアウト別レンジで `.photo-vignette` 濃度（`--vignette-mid-a` / `--vignette-bot-a`）を自動適応。
   - **5評価軸 / 複数素材検証＆音響補強**: 人物・暗所ポスター・白背景物体・2Dパステルイラスト・CG＋長文/短文境界で全検証を実施。右下特大スパークルのコーナー退避（`NO.777-SSR` 被り解消）と、着地・フィナーレ頭への高域クリスタル煌めきレイヤーを追加。
+- **Phase 5（横動画 16:9 / 1920×1080 × 横型カード対応）**:
+  - **縦横切替＆プリフライト同期**: `card-config.js` / `--variables` へ `orientation`（`"portrait" | "landscape" | "auto"`）を導入し、EXIF 補正後の写真アスペクト比自動判定（`resolve_layout`）、HTML 3 ファイル静的属性同期（`sync_html_resolution`）、`render_video.mjs` での向き変更検知＋Windows 一時 JSON ファイル経由 `--variables` 引き渡しを実装。
+  - **横型物理アセット生成**: `1480×860`（内窓 `1440×820`）の虹フレーム・裏面紋章/ギョーシェスケーリング・`960×540` グレイン・`1920px` カットインフレア/スピードライン・横カード用タイポプラン＆内窓連動ビネット計測に対応。
+  - **16:9 コンポジション＆QA 解像度フリー化**: `scene-summon.*`（天頂雷撃・光柱・天蓋・魔法陣・HUD・流れ星・三重螺旋・破片座標）および `scene-result.*`（横カード配置・光学リング・中央保護マスク・カード半寸相対スパークル/金箔/玉ボケ・ホロ走査距離）を 16:9 対応し、`qa_video.py` のデコード解像度を自動追従化。
 
 ---
 
-## 4. 今後の開発フェーズ（Phase 5：未着手）
+## 4. フェーズ進捗詳細（Phase 4 〜 Phase 5：完了）
 
 ### Phase 4：運用性・量産性の強化 ＆ 品質評価・複数素材検証（完了）
 
@@ -71,25 +75,19 @@
 
 ---
 
-### Phase 5：横動画（16:9 / 1920×1080）× 横型カード対応（拡張）
+### Phase 5：横動画（16:9 / 1920×1080）× 横型カード対応（完了）
 
 > **詳細設計書**: HyperFrames 解像度同期の制約、モジュール別の改修箇所（裏面紋章スケーリング・ホロ走査距離・座標のカード半寸相対化など）は **[`LANDSCAPE_PLAN.md`](./LANDSCAPE_PLAN.md)** を参照してください。
 
 縦（9:16）の演出・音響・運用性が Phase 0〜4 で完成した後に着手する、風景・集合写真など横長素材向けのワイドスクリーン対応フェーズです（パターン B）。
 
-- [ ] **5-1. 縦横レイアウト切替アーキテクチャの整備**
-  - **対象**: `card-config.js`, `scripts/_utils.py`, `package.json`, `index.html`（または横専用エントリ／設定切替）
-  - **対策**: `card-config.js` にレイアウト指定（例：`orientation: "portrait" | "landscape" | "auto"`、`auto` 時は入力写真の縦横比から自動判定）を追加し、`1080×1920`（縦）と `1920×1080`（横）をクリーンに切り替えられる構成にする。
-- [ ] **5-2. 横型カード物理アセット生成（虹フレーム・裏面・内窓深度・グレイン）**
-  - **対象**: `scripts/_utils.py`, `scripts/render_material.py`, `scripts/render_typography.py`
-  - **対策**: `CARD_W / CARD_H` を横型カード比率（例：画面幅の約 75〜80% を占める `1440×860` 付近の 16:10 / 3:2 比率）へ切り替え、虹金属箔フレーム・ギョーシェ裏面・内窓深度・`1920×1080` フィルムグレインおよび横幅に合わせた箔タイポを自動生成する。
-- [ ] **5-3. 召喚＆リザルトコンポジションの 16:9 レスポンシブ対応**
-  - **対象**: `compositions/scene-summon.html`, `compositions/scene-result.html`, `compositions/scene-result.css`, `compositions/scene-result-setup.js`
-  - **対策**: 1920×1080 キャンバスに合わせて 3D 床パース魔法陣・アナモルフィック光閃・カットイン・背景光学リング・疎密スパークル・3D 金箔片・玉ボケの座標および中央写真保護マスクを調整する。タイトル・星・フレーバーはカード下端の薄い暗色グラデ上へコンパクトに配置し、風景の水平線や主要被写体をクリアに保つ。
+- [x] **5-1. 縦横レイアウト切替アーキテクチャ＆プリフライト同期の整備**（`card-config.js`, `scripts/_utils.py`, `scripts/build_all.py`, `scripts/render_typography.py`, `scripts/render_video.mjs`, `index.html`, `compositions/scene-*.html`, `compositions/shared-base.css`）
+- [x] **5-2. 横型カード物理アセット生成（虹フレーム・裏面・内窓深度・グレイン・箔タイポ・カットイン）**（`scripts/render_material.py`, `scripts/_typo_modern.py`, `scripts/render_typography.py`, `scripts/render_optics.py`）
+- [x] **5-3. 召喚＆リザルトコンポジションの 16:9 レスポンシブ対応 ＆ 定量 QA 解像度フリー化**（`compositions/scene-summon.*`, `compositions/scene-result.*`, `scripts/qa_video.py`）
 
 **Phase 5 完了基準（DoD）**
-- 横長写真を指定して `1920×1080`（16:9）の SSR ガチャ演出 MP4 が、縦版と同等の物理質感・写真保護・`12.0s〜15.0s` 光微動を保ったまま出力できること。
-- 既存の縦版（`1080×1920`）の品質・出力結果に一切のデグレがないこと。
+- [x] 横長設定で `1920×1080`（16:9）の SSR ガチャ演出 MP4 が、縦版と同等の物理質感・写真保護・`12.0s〜15.0s` 光微動を保ったまま出力でき、`npm run check` および `npm run qa -- --check-audio` に全項目 PASS すること。
+- [x] 既存の縦版（`1080×1920`）の品質・出力結果に一切のデグレがないこと。
 
 ### 将来検討アイデア（全フェーズ完了後）
 - リザルト確定状態の静止画カード（`card.png`）書き出し機能の追加検討（`card.png` 専用の付随オプションとして、下部ステータス枠＝旧 `.stat-box` / 最大 3 項目 `{label, value}` 等の導入を検討）。

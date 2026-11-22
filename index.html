@@ -3,6 +3,7 @@
   lang="ja"
   data-resolution="portrait"
   data-composition-variables='[
+    {"id":"orientation","type":"string","label":"Orientation (portrait | landscape | auto)","default":""},
     {"id":"photo","type":"string","label":"Photo Path","default":""},
     {"id":"title","type":"string","label":"Card Title","default":""},
     {"id":"subtitle","type":"string","label":"Card Subtitle","default":""},
@@ -27,6 +28,13 @@
       :root {
         --in-oklab: ;
         --bg-edge-black: #000000;
+        --canvas-w: 1080px;
+        --canvas-h: 1920px;
+      }
+
+      html[data-resolution="landscape"] {
+        --canvas-w: 1920px;
+        --canvas-h: 1080px;
       }
 
       @supports (background: linear-gradient(in oklab, white, black)) {
@@ -43,8 +51,8 @@
 
       html,
       body {
-        width: 1080px;
-        height: 1920px;
+        width: var(--canvas-w);
+        height: var(--canvas-h);
         overflow: hidden;
         background: var(--bg-edge-black);
         -webkit-font-smoothing: antialiased;
@@ -52,8 +60,8 @@
 
       #root {
         position: relative;
-        width: 1080px;
-        height: 1920px;
+        width: var(--canvas-w);
+        height: var(--canvas-h);
         overflow: hidden;
         background: var(--bg-edge-black);
         isolation: isolate;
@@ -62,8 +70,8 @@
       .clip {
         position: absolute;
         inset: 0;
-        width: 1080px;
-        height: 1920px;
+        width: var(--canvas-w);
+        height: var(--canvas-h);
         overflow: hidden;
         pointer-events: none;
       }

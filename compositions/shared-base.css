@@ -63,12 +63,21 @@
   --font-display: "YujiSyuku", "Playfair Display", serif;
   --font-ui: "CineCaption", "Montserrat", "Noto Sans JP", sans-serif;
   --font-mono: "JetBrainsMono", monospace;
-  /* scripts/_utils.py の CARD_* と同期 */
+  /* scripts/_utils.py の LayoutSpec と同期 */
+  --canvas-w: 1080px;
+  --canvas-h: 1920px;
   --card-w: 900px;
   --card-h: 1590px;
   --card-border: 20px;
   --card-outer-r: 40px;
   --card-inner-r: 24px;
+}
+
+html[data-resolution="landscape"] {
+  --canvas-w: 1920px;
+  --canvas-h: 1080px;
+  --card-w: 1480px;
+  --card-h: 860px;
 }
 
 @supports (background: linear-gradient(in oklab, white, black)) {
@@ -86,8 +95,8 @@
 
 html,
 body {
-  width: 1080px;
-  height: 1920px;
+  width: var(--canvas-w);
+  height: var(--canvas-h);
   overflow: hidden;
   background: transparent;
   color: var(--ink-ivory);
@@ -97,8 +106,8 @@ body {
 
 .scene-root {
   position: relative;
-  width: 1080px;
-  height: 1920px;
+  width: var(--canvas-w);
+  height: var(--canvas-h);
   overflow: hidden;
   isolation: isolate;
 }
@@ -106,8 +115,8 @@ body {
 .clip {
   position: absolute;
   inset: 0;
-  width: 1080px;
-  height: 1920px;
+  width: var(--canvas-w);
+  height: var(--canvas-h);
   overflow: hidden;
   pointer-events: none;
 }

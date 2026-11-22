@@ -44,6 +44,7 @@ from _utils import (
     norm_std,
     polygon_mask,
     porter_duff_over,
+    resolve_layout,
     resolve_seed,
     rgba_from_float,
     save_png,
@@ -377,16 +378,17 @@ def _crest_mask(w: int, h: int, cx: float, cy: float, ss: int = 2) -> np.ndarray
     im = Image.new("L", (S_w, S_h), 0)
     d = ImageDraw.Draw(im)
     c = (cx * ss, cy * ss)
+    sc = (min(w, h) / 980.0) if w > h else (min(w, h) / 900.0)
 
     def ring(r: float, width: float, val: int = 255) -> None:
-        rr = r * ss
-        d.ellipse([c[0] - rr, c[1] - rr, c[0] + rr, c[1] + rr], outline=val, width=max(1, int(width * ss)))
+        rr = r * sc * ss
+        d.ellipse([c[0] - rr, c[1] - rr, c[0] + rr, c[1] + rr], outline=val, width=max(1, int(width * sc * ss)))
 
     def star(n: int, r_out: float, r_in: float, rot: float, val: int = 255) -> None:
         pts = []
         for i in range(n * 2):
             a = math.radians(rot + i * 180.0 / n)
-            r = (r_out if i % 2 == 0 else r_in) * ss
+            r = (r_out if i % 2 == 0 else r_in) * sc * ss
             pts.append((c[0] + math.cos(a) * r, c[1] + math.sin(a) * r))
         d.polygon(pts, fill=val)
 
@@ -399,17 +401,17 @@ def _crest_mask(w: int, h: int, cx: float, cy: float, ss: int = 2) -> np.ndarray
     # 8芒星
     star(8, 140, 58, -90)
     # 中央ディスク
-    rr = 34 * ss
+    rr = 34 * sc * ss
     d.ellipse([c[0] - rr, c[1] - rr, c[0] + rr, c[1] + rr], fill=255)
     # 外周の目盛り
     for i in range(72):
         a = math.radians(i * 5.0)
-        r0 = (196 if i % 6 else 192) * ss
-        r1 = (206 if i % 6 else 216) * ss
+        r0 = (196 if i % 6 else 192) * sc * ss
+        r1 = (206 if i % 6 else 216) * sc * ss
         d.line(
             [(c[0] + math.cos(a) * r0, c[1] + math.sin(a) * r0), (c[0] + math.cos(a) * r1, c[1] + math.sin(a) * r1)],
             fill=235,
-            width=max(1, int(2.2 * ss)),
+            width=max(1, int(2.2 * sc * ss)),
         )
     return np.asarray(im.resize((w, h), Image.Resampling.LANCZOS), dtype=np.float32) / 255.0
 
@@ -419,11 +421,12 @@ def _guilloche_mask(w: int, h: int, cx: float, cy: float, ss: int = 2) -> np.nda
     S_w, S_h = w * ss, h * ss
     im = Image.new("L", (S_w, S_h), 0)
     d = ImageDraw.Draw(im)
+    sc = (min(w, h) / 980.0) if w > h else (min(w, h) / 900.0)
     th = np.linspace(0.0, 2.0 * math.pi, 1440, dtype=np.float64)
     families = [
-        (36, 400.0, 0.80, 0.14, 7),
-        (28, 300.0, 0.74, 0.18, 11),
-        (48, 560.0, 0.86, 0.09, 5),
+        (36, 400.0 * sc, 0.80, 0.14, 7),
+        (28, 300.0 * sc, 0.74, 0.18, 11),
+        (48, 560.0 * sc, 0.86, 0.09, 5),
     ]
     for count, R, base, amp, lobes in families:
         for k in range(count):
@@ -469,9 +472,10 @@ def generate_card_back(w: int = CARD_W, h: int = CARD_H, seed: int = 20261120) -
     rr = np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2)
     facet8 = np.tanh(8.0 * np.sin(8.0 * (theta + math.pi / 2.0)))
     facet4 = np.tanh(8.0 * np.sin(4.0 * (theta + math.pi / 2.0)))
+    sc = (min(w, h) / 980.0) if w > h else (min(w, h) / 900.0)
     tone = np.full_like(crest, 0.64)
-    tone = np.where(rr < 150, 0.62 + 0.17 * facet8, tone)
-    tone = np.where(rr > 214, 0.60 + 0.17 * facet4, tone)
+    tone = np.where(rr < 150 * sc, 0.62 + 0.17 * facet8, tone)
+    tone = np.where(rr > 214 * sc, 0.60 + 0.17 * facet4, tone)
     crest_rgb = shade_metal_relief(crest, GOLD_RAMP, bevel_px=2.0, depth=7.0, tone_map=tone, shininess=30.0)
     halo = gaussian_blur_f(crest, 22.0) * 0.55
     rgb += halo[..., None] * np.array([0.85, 0.62, 0.26])[None, None, :]
@@ -571,6 +575,7 @@ def generate_foil_flakes(count: int = 6, size: int = 72, seed: int = 20261120) -
 
 def main() -> None:
     cfg = load_card_config()
+    layout = resolve_layout(cfg)
     mat_cfg = cfg.get("material", {})
     glitter = float(mat_cfg.get("frameFoilGlitter", 0.45))
     brush = float(mat_cfg.get("frameBrushStrength", 0.85))
@@ -579,17 +584,26 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     def _job_frame() -> str:
-        frame_img = generate_rainbow_foil_frame(glitter_strength=glitter, brush_strength=brush, seed=seed)
+        frame_img = generate_rainbow_foil_frame(
+            w=layout.card_w,
+            h=layout.card_h,
+            border=layout.card_border,
+            outer_r=layout.card_outer_r,
+            inner_r=layout.card_inner_r,
+            glitter_strength=glitter,
+            brush_strength=brush,
+            seed=seed,
+        )
         save_png(frame_img, OUT_DIR / "mat_rainbow_frame.png")
         return f"[OK] mat_rainbow_frame.png ({frame_img.width}x{frame_img.height})"
 
     def _job_depth() -> str:
-        depth_img = generate_window_depth(CARD_INNER_W, CARD_INNER_H)
+        depth_img = generate_window_depth(layout.card_inner_w, layout.card_inner_h)
         save_png(depth_img, OUT_DIR / "mat_window_depth.png")
         return f"[OK] mat_window_depth.png ({depth_img.width}x{depth_img.height})"
 
     def _job_back() -> str:
-        back_img = generate_card_back(seed=seed)
+        back_img = generate_card_back(w=layout.card_w, h=layout.card_h, seed=seed)
         save_png(back_img, OUT_DIR / "mat_card_back.png")
         return f"[OK] mat_card_back.png ({back_img.width}x{back_img.height})"
 
@@ -604,7 +618,8 @@ def main() -> None:
         return "[OK] mat_flake_0..5.png (72x72)"
 
     def _job_grain() -> str:
-        grain_img = generate_film_grain_overlay(540, 960, sigma=14.0, seed=seed + 101)
+        gw, gh = layout.canvas_w // 2, layout.canvas_h // 2
+        grain_img = generate_film_grain_overlay(gw, gh, sigma=14.0, seed=seed + 101)
         save_png(grain_img, OUT_DIR / "mat_film_grain.png")
         return f"[OK] mat_film_grain.png ({grain_img.width}x{grain_img.height})"
 

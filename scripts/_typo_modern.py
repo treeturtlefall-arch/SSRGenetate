@@ -129,6 +129,22 @@ MODERN_PRESETS: Dict[str, Dict[str, Any]] = {
     },
 }
 
+# Landscape (1480x860 / 内窓 1440x820) 用のスロット調整テーブル
+LANDSCAPE_SLOT_OVERRIDES: Dict[str, Dict[str, Dict[str, Any]]] = {
+    "royal-foil": {
+        "ssr":      {"size": 76, "maxW": 320},
+        "subtitle": {"size": 30, "maxW": 1120},
+        "title":    {"size": 76, "maxW": 1200},
+        "flavor":   {"size": 23, "maxW": 1140},
+    },
+    "cute-pastel": {
+        "ssr":      {"size": 72, "maxW": 280},
+        "subtitle": {"size": 31, "maxW": 1060},
+        "title":    {"size": 76, "maxW": 1180},
+        "flavor":   {"size": 22, "maxW": 1120},
+    },
+}
+
 
 def hex_to_rgb01(h: str) -> np.ndarray:
     s = h.lstrip("#")
@@ -1104,10 +1120,15 @@ def render_royal_diamond_rule(width: int = 760, palette: Optional[Dict[str, str]
     return im.resize((width, h), Image.Resampling.LANCZOS)
 
 
-def resolve_modern_plan(preset_name: str, typo_cfg: Dict[str, Any]) -> Dict[str, Any]:
-    """4軸直交スキーマ (preset + font/style/palette/layout 個別上書き + fonts_custom) を解決する"""
+def resolve_modern_plan(
+    preset_name: str,
+    typo_cfg: Dict[str, Any],
+    orientation: str = "portrait",
+) -> Dict[str, Any]:
+    """4軸直交スキーマ (preset + font/style/palette/layout 個別上書き + fonts_custom + orientation) を解決する"""
     base = MODERN_PRESETS[preset_name]
     custom_mf = load_custom_fonts_manifest()
+    land_ov_map = LANDSCAPE_SLOT_OVERRIDES.get(preset_name, {}) if orientation == "landscape" else {}
 
     # 1. layout 軸
     lay_cfg = typo_cfg.get("layout", {})
@@ -1142,6 +1163,8 @@ def resolve_modern_plan(preset_name: str, typo_cfg: Dict[str, Any]) -> Dict[str,
     slots: Dict[str, Dict[str, Any]] = {}
     for skey, sdef in base["slots"].items():
         cur = dict(sdef)
+        if skey in land_ov_map:
+            cur.update(land_ov_map[skey])
         cur["trackingExplicit"] = False
         # fonts_custom/fonts.json 上書き
         cur["font"] = resolve_slot_font(skey, cur["font"], custom_mf)

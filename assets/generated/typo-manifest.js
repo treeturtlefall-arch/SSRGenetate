@@ -27,6 +27,8 @@ window.SSR_TYPO_MANIFEST = {
     "bottomAlpha": 0.699
   },
   "source": {
+    "orientation": "portrait",
+    "orientationRaw": "portrait",
     "preset": "cute-pastel",
     "seed": 20261120,
     "texts": {

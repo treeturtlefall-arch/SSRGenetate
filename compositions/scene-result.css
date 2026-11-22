@@ -830,3 +830,131 @@
   pointer-events: none;
   display: block;
 }
+
+/* =========================================================================
+ * Phase 5: Landscape (1920x1080 / Card 1480x860) レイアウト調整
+ * ========================================================================= */
+html[data-resolution="landscape"] #card-stage {
+  top: 110px;
+}
+
+html[data-resolution="landscape"] #result-bg-ring {
+  width: 1380px;
+  height: 1380px;
+  margin-left: -690px;
+  margin-top: -690px;
+}
+
+html[data-resolution="landscape"] #result-halo,
+html[data-resolution="landscape"] #result-halo-blue {
+  width: 1560px;
+  height: 1160px;
+  margin-left: -780px;
+  margin-top: -580px;
+}
+
+html[data-resolution="landscape"] #spin-spec-front {
+  -webkit-mask-image: radial-gradient(
+    ellipse 42% 48% at 50% 44%,
+    rgba(0, 0, 0, 0.04) 0%,
+    rgba(0, 0, 0, 0.25) 68%,
+    rgba(0, 0, 0, 1) 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 42% 48% at 50% 44%,
+    rgba(0, 0, 0, 0.04) 0%,
+    rgba(0, 0, 0, 0.25) 68%,
+    rgba(0, 0, 0, 1) 100%
+  );
+}
+
+html[data-resolution="landscape"] #holo-mask-zone {
+  -webkit-mask-image: radial-gradient(
+    ellipse 46% 50% at 50% 44%,
+    transparent 0%,
+    transparent 66%,
+    rgba(0, 0, 0, 0.26) 84%,
+    rgba(0, 0, 0, 0.90) 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 46% 50% at 50% 44%,
+    transparent 0%,
+    transparent 66%,
+    rgba(0, 0, 0, 0.26) 84%,
+    rgba(0, 0, 0, 0.90) 100%
+  );
+}
+
+html[data-resolution="landscape"] .photo-vignette {
+  background:
+    linear-gradient(
+      to bottom var(--in-oklab),
+      rgba(6, 9, 22, 0.24) 0%,
+      transparent 16%,
+      transparent 62%,
+      rgba(6, 9, 22, var(--vignette-mid-a, 0.54)) 79%,
+      rgba(4, 6, 17, var(--vignette-bot-a, 0.88)) 100%
+    ),
+    radial-gradient(circle at 50% 44% var(--in-oklab), transparent 62%, rgba(4, 6, 17, 0.30) 100%);
+}
+
+html[data-resolution="landscape"] .card-front-inner[data-typo-layout="royal-fantasy"] .photo-vignette {
+  background: linear-gradient(
+    to bottom,
+    rgba(6, 9, 20, 0) 0%,
+    rgba(6, 9, 20, 0) 65%,
+    rgba(6, 9, 20, var(--vignette-mid-a, 0.40)) 82%,
+    rgba(6, 9, 20, var(--vignette-bot-a, 0.76)) 100%
+  );
+}
+
+html[data-resolution="landscape"] .card-front-inner[data-typo-layout="pop-horizontal"] .photo-vignette {
+  background: linear-gradient(
+    to bottom,
+    rgba(12, 10, 22, 0) 0%,
+    rgba(12, 10, 22, 0) 64%,
+    rgba(12, 10, 22, var(--vignette-mid-a, 0.22)) 80%,
+    rgba(12, 10, 22, var(--vignette-bot-a, 0.56)) 100%
+  );
+}
+
+html[data-resolution="landscape"] #card-overlay-layer {
+  padding: 20px 48px 34px;
+  gap: 8px;
+}
+
+html[data-resolution="landscape"] .card-front-inner[data-typo-layout="royal-fantasy"] #card-overlay-layer {
+  padding: 20px 48px 32px;
+  gap: 6px;
+}
+
+html[data-resolution="landscape"] .card-front-inner[data-typo-layout="pop-horizontal"] #card-overlay-layer {
+  padding: 20px 44px 34px;
+  gap: 6px;
+}
+
+html[data-resolution="landscape"] .star-item {
+  width: 74px;
+  height: 74px;
+  margin: 0 -8px;
+}
+
+html[data-resolution="landscape"] .card-front-inner[data-typo-layout="royal-fantasy"] #ssr-emblem {
+  top: 22px;
+  left: 32px;
+}
+
+html[data-resolution="landscape"] .card-front-inner[data-typo-layout="royal-fantasy"] #attr-badge {
+  top: 28px;
+  right: 30px;
+}
+
+html[data-resolution="landscape"] .card-front-inner[data-typo-layout="pop-horizontal"] #ssr-emblem {
+  top: 24px;
+  left: 36px;
+}
+
+html[data-resolution="landscape"] .card-front-inner[data-typo-layout="pop-horizontal"] #attr-badge {
+  top: 32px;
+  right: 30px;
+}

@@ -12,8 +12,8 @@
 #summon-camera {
   position: absolute;
   inset: 0;
-  width: 1080px;
-  height: 1920px;
+  width: var(--canvas-w);
+  height: var(--canvas-h);
   transform-origin: 50% 47%;
   pointer-events: none;
   z-index: 10;
@@ -449,7 +449,7 @@
   position: absolute;
   left: 0;
   top: 47%;
-  width: 1080px;
+  width: 100%;
   height: 220px;
   margin-top: -110px;
   mix-blend-mode: screen;
@@ -582,7 +582,7 @@
   position: absolute;
   left: 0;
   top: 47%;
-  width: 1080px;
+  width: 100%;
   height: 500px;
   margin-top: -250px;
   z-index: 30;
@@ -616,7 +616,7 @@
   position: absolute;
   left: 0;
   top: 50%;
-  width: 1080px;
+  width: 100%;
   height: 360px;
   margin-top: -180px;
   mix-blend-mode: screen;
@@ -705,4 +705,69 @@
 
 .intro-meteor-node {
   background-image: url("../assets/generated/opt_meteor_blue.png");
+}
+
+/* =========================================================================
+ * Phase 5: Landscape (1920x1080 / 16:9) 空間バランス調整
+ * ========================================================================= */
+html[data-resolution="landscape"] #light-pillar,
+html[data-resolution="landscape"] #light-pillar-rainbow {
+  top: 36px;
+  width: 460px;
+  height: 940px;
+  margin-left: -230px;
+}
+
+html[data-resolution="landscape"] #celestial-gate-wrap {
+  top: 6%;
+  width: 880px;
+  height: 880px;
+  margin-left: -440px;
+  margin-top: -440px;
+}
+
+html[data-resolution="landscape"] #magic-circle-wrap {
+  top: 56%;
+  width: 900px;
+  height: 900px;
+  margin-left: -450px;
+  margin-top: -450px;
+}
+
+html[data-resolution="landscape"] .sky-bolt {
+  top: 28px;
+}
+
+html[data-resolution="landscape"] #bolt-gold {
+  width: 320px;
+  height: 540px;
+  margin-left: -160px;
+}
+
+html[data-resolution="landscape"] #bolt-prism {
+  width: 420px;
+  height: 540px;
+  margin-left: -210px;
+}
+
+html[data-resolution="landscape"] #orb-wrap {
+  width: 360px;
+  height: 360px;
+  margin-left: -180px;
+  margin-top: -180px;
+}
+
+html[data-resolution="landscape"] #orb-cracks {
+  inset: -18px;
+  width: 396px;
+  height: 396px;
+}
+
+html[data-resolution="landscape"] #summon-top-hud {
+  top: 54px;
+}
+
+html[data-resolution="landscape"] #cutin-band {
+  height: 420px;
+  margin-top: -210px;
 }

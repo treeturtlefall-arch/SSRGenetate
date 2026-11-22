@@ -85,6 +85,12 @@
   };
 
   const typoManifestRoot = window.SSR_TYPO_MANIFEST || {};
+  const isLandscape = document.documentElement.getAttribute("data-resolution") === "landscape";
+  const dims = typoManifestRoot.dimensions || {};
+  const cardW = isLandscape ? (dims.cardW || 1480) : 900;
+  const cardH = isLandscape ? (dims.cardH || 860) : 1590;
+  const cardHalfW = cardW * 0.5;
+  const cardHalfH = cardH * 0.5;
   const typoLayout = typoManifestRoot.layout || "classic-center";
   const typoMirror = Boolean(typoManifestRoot.mirror);
   const cardFrontInner = document.querySelector(".card-front-inner");
@@ -164,7 +170,9 @@
       const ssrH = typoManifest.ssr.height || 0;
       const attrH = typoManifest.attribute.height || 0;
       if (ssrH > 0 && attrH > 0) {
-        const baseSsrTop = typoLayout === "royal-fantasy" ? 30 : 34;
+        const baseSsrTop = isLandscape
+          ? (typoLayout === "royal-fantasy" ? 22 : 24)
+          : (typoLayout === "royal-fantasy" ? 30 : 34);
         const alignedAttrTop = baseSsrTop + Math.round((ssrH - attrH) / 2);
         attrEl.style.top = alignedAttrTop + "px";
       }
@@ -254,6 +262,19 @@
     { x: -494, y: 185,  tier: "micro", color: "white", group: 0 },
   ];
 
+  function mapSparkleX(bx) {
+    if (!isLandscape) return bx;
+    const s = bx < 0 ? -1 : 1;
+    const ax = Math.abs(bx);
+    return ax >= 430 ? s * (cardHalfW + (ax - 450)) : Math.round(bx * (cardHalfW / 450));
+  }
+  function mapSparkleY(by) {
+    if (!isLandscape) return by;
+    const s = by < 0 ? -1 : 1;
+    const ay = Math.abs(by);
+    return ay >= 760 ? s * (cardHalfH + (ay - 795)) : Math.round(by * (cardHalfH / 795));
+  }
+
   const sparkleData = [];
   for (let i = 0; i < sparkleClusters.length; i++) {
     const spec = sparkleClusters[i];
@@ -281,12 +302,14 @@
     celebLayer.appendChild(sp);
 
     const jitter = spec.tier === "micro" ? 18 : 10;
+    const mappedX = mapSparkleX(spec.x);
+    const mappedY = mapSparkleY(spec.y);
     sparkleData.push({
       el: sp,
       tier: spec.tier,
       group: spec.group,
-      endX: spec.x + (rng() - 0.5) * jitter,
-      endY: spec.y + (rng() - 0.5) * jitter,
+      endX: mappedX + (rng() - 0.5) * jitter,
+      endY: mappedY + (rng() - 0.5) * jitter,
       rot: (rng() - 0.5) * 44,
       finalScale: 0.90 + rng() * 0.20,
       baseAlpha: baseAlpha,
@@ -313,12 +336,12 @@
 
     const side = i % 2 === 0 ? -1 : 1;
     // カード外周縁から外側へ飛び出し、写真中央を横切らない
-    const startX = side * (360 + rng() * 85);
-    const startY = (rng() - 0.5) * 1180;
+    const startX = side * ((cardHalfW - 90) + rng() * 85);
+    const startY = (rng() - 0.5) * (isLandscape ? 640 : 1180);
     const midX = startX + side * (55 + rng() * 95);
-    const midY = startY - (70 + rng() * 90);
+    const midY = startY - (isLandscape ? (45 + rng() * 60) : (70 + rng() * 90));
     const endX = midX + side * (20 + rng() * 55);
-    const endY = midY + 190 + rng() * 140;
+    const endY = midY + (isLandscape ? (120 + rng() * 95) : (190 + rng() * 140));
 
     flakeData.push({
       el: el,
@@ -366,12 +389,12 @@
     let endY;
     if (i % 4 < 2) {
       // 左右の外縁レーン
-      endX = side * (435 + rng() * 90);
-      endY = (rng() - 0.5) * 1580;
+      endX = side * ((cardHalfW - 15) + rng() * (isLandscape ? 145 : 90));
+      endY = (rng() - 0.5) * (cardH - 10);
     } else {
       // 上下の外縁レーン
-      endX = (rng() - 0.5) * 920;
-      endY = (i % 4 === 2 ? -1 : 1) * (775 + rng() * 145);
+      endX = (rng() - 0.5) * (cardW + 20);
+      endY = (i % 4 === 2 ? -1 : 1) * ((cardHalfH - 20) + rng() * (isLandscape ? 85 : 145));
     }
 
     bokehData.push({
@@ -388,9 +411,14 @@
     });
   }
 
+  const extraSpanX = isLandscape ? (cardW - 900) : 0;
   window.SSR_RESULT_STATE = {
     at: at,
     cfg: cfg,
+    isLandscape: isLandscape,
+    spinSpecBackEndX: 1420 + extraSpanX,
+    spinSpecFrontEndX: 1460 + extraSpanX,
+    holoSweepEndX: 1850 + extraSpanX,
     resultRingMode: resultRingMode,
     typoLayout: typoLayout,
     hasRoyalRule: hasRoyalRule,

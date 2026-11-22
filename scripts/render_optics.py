@@ -33,6 +33,7 @@ from _utils import (
     OUT_DIR,
     linear_to_srgb,
     load_card_config,
+    resolve_layout,
     resolve_seed,
     save_png,
     smoothstep,
@@ -648,12 +649,12 @@ def render_shockwave_ring(style: str, size: int = 640, seed: int = 0) -> Image.I
     return srgb_to_unpremul_rgba(srgb)
 
 
-def render_cutin_assets(seed: int = 0) -> Tuple[Image.Image, Image.Image]:
-    """脱ベタ帯カットイン用の水平アナモルフィックフレア(1080x360)とスピードライン(1080x420)を生成"""
+def render_cutin_assets(canvas_w: int = 1080, seed: int = 0) -> Tuple[Image.Image, Image.Image]:
+    """脱ベタ帯カットイン用の水平アナモルフィックフレア(canvas_w x 360)とスピードライン(canvas_w x 420)を生成"""
     rng = np.random.default_rng((seed * 99991 + 17) & 0xFFFFFFFF)
 
-    # 1. opt_cutin_flare.png (1080x360)
-    fw, fh = 1080, 360
+    # 1. opt_cutin_flare.png (canvas_w x 360)
+    fw, fh = int(canvas_w), 360
     yy, xx = np.mgrid[0:fh, 0:fw].astype(np.float32)
     nx = (xx - (fw - 1) * 0.5) / ((fw - 1) * 0.5)
     ny = (yy - (fh - 1) * 0.5) / ((fh - 1) * 0.5)
@@ -674,8 +675,8 @@ def render_cutin_assets(seed: int = 0) -> Tuple[Image.Image, Image.Image]:
     ) * edge_fade[..., None]
     flare_img = srgb_to_unpremul_rgba(linear_to_srgb(1.0 - np.exp(-np.maximum(lin_flare, 0.0) * 1.3)))
 
-    # 2. opt_cutin_speedlines.png (1080x420) — 1D分離ベクトル計算で高速化
-    sw, sh = 1080, 420
+    # 2. opt_cutin_speedlines.png (canvas_w x 420) — 1D分離ベクトル計算で高速化
+    sw, sh = int(canvas_w), 420
     sl = np.zeros((sh, sw, 3), dtype=np.float32)
     y_1d = np.arange(sh, dtype=np.float32)[:, None]
     x_1d = np.arange(sw, dtype=np.float32)[None, :]
@@ -687,10 +688,12 @@ def render_cutin_assets(seed: int = 0) -> Tuple[Image.Image, Image.Image]:
         np.array([0.52, 0.88, 1.00], dtype=np.float32),
         np.array([0.96, 0.58, 0.78], dtype=np.float32),
     ]
-    for i in range(44):
+    n_lines = int(round(44 * (sw / 1080.0)))
+    w_scale = sw / 1080.0
+    for i in range(n_lines):
         yc = float(rng.uniform(28, sh - 28))
-        xc = float(rng.uniform(140, sw - 140))
-        half_len = float(rng.uniform(90, 420))
+        xc = float(rng.uniform(140 * w_scale, sw - 140 * w_scale))
+        half_len = float(rng.uniform(90 * w_scale, 420 * w_scale))
         thick = float(rng.uniform(0.8, 2.2))
         amp = float(rng.uniform(0.30, 0.95))
         # (sh, 1) と (1, sw) の1次元配列で計算してから外積をとることで 420x1080 全要素の exp を回避
@@ -1032,6 +1035,7 @@ def render_crystal_shards(seed: int = 0) -> Dict[str, Image.Image]:
 
 def main() -> None:
     cfg = load_card_config()
+    layout = resolve_layout(cfg)
     opt_cfg = cfg.get("optics", {})
     hal = float(opt_cfg.get("halation", 1.05))
     cg = float(opt_cfg.get("coreGlow", 1.15))
@@ -1183,10 +1187,10 @@ def main() -> None:
             tasks.append(ex.submit(_pl_job))
 
         def _cutin_job() -> str:
-            flare_img, speed_img = render_cutin_assets(seed=seed + 2901)
+            flare_img, speed_img = render_cutin_assets(canvas_w=layout.canvas_w, seed=seed + 2901)
             save_png(flare_img, OUT_DIR / "opt_cutin_flare.png")
             save_png(speed_img, OUT_DIR / "opt_cutin_speedlines.png")
-            return "[OK] opt_cutin_flare.png (1080x360) & opt_cutin_speedlines.png (1080x420)"
+            return f"[OK] opt_cutin_flare.png ({flare_img.width}x360) & opt_cutin_speedlines.png ({speed_img.width}x420)"
 
         tasks.append(ex.submit(_cutin_job))
 

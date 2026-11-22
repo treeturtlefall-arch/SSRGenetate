@@ -9,6 +9,9 @@
  *   npx hyperframes render --variables '{"title":"新しいタイトル","photo":"assets/other.jpg"}'
  */
 window.SSR_CARD_CONFIG = {
+  // 動画キャンバス＆カードの向き（"portrait" = 1080x1920 縦 | "landscape" = 1920x1080 横 | "auto" = 入力写真の縦横比から自動判定）
+  orientation: "portrait",
+
   // 入力写真のパス（index.html からの相対パス）
   photo: "assets/photo.jpg",
 

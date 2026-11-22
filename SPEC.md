@@ -9,11 +9,11 @@
 
 | 項目 | 仕様 | 定義箇所 |
 | :--- | :--- | :--- |
-| **解像度** | `1080 × 1920`（縦 9:16、`data-resolution="portrait"`） | `index.html`, `compositions/scene-*.html` |
+| **解像度** | 縦 9:16: `1080 × 1920`（`data-resolution="portrait"`）<br>横 16:9: `1920 × 1080`（`data-resolution="landscape"`） | `index.html`, `compositions/scene-*.html`, `card-config.js` (`orientation`) |
 | **フレームレート / 書き出し** | `30fps` / `hyperframes@0.9.72 render -q delivery --crf 12` | `package.json` |
 | **出力ファイル** | `renders/SSR_{preset}_{YYYYMMDD}.mp4`（同日重複時は `_2`, `_3` ... 自動連番） | `scripts/render_video.mjs` |
 | **総尺** | **16.0 秒**（冒頭 `0.5s` 無音黒フェードイン ＋ 本編 `15.0s` ＋ 末尾 `0.5s` 無音黒フェードアウト） | `index.html`, `scripts/qa_video.py` |
-| **カード物理寸法** | 幅 `900px` × 高さ `1590px` / 枠幅 `20px` / 外角丸 `40px` / 内窓角丸 `24px` | `scripts/_utils.py`, `compositions/shared-base.css` |
+| **カード物理寸法** | 縦: `900px × 1590px`（内窓 `860×1550`）<br>横: `1480px × 860px`（内窓 `1440×820`）<br>共通: 枠幅 `20px` / 外角丸 `40px` / 内窓角丸 `24px` | `scripts/_utils.py`, `compositions/shared-base.css` |
 | **写真保護方針** | 入力写真は 100% クリアなまま無加工維持（顔被りは Z 順・軌道・中央減衰マスクで回避） | `compositions/scene-result.css`, `scene-result-setup.js` |
 | **決定論性** | Mulberry32 疑似乱数 + NumPy `default_rng(seed)` + `window.__timelines` 登録済み GSAP タイムラインのみ使用 | `compositions/shared-utils.js`, `scripts/*` |
 

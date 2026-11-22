@@ -167,7 +167,9 @@ def analyze_video(video_path: Path, check_audio: bool = False) -> Dict[str, Any]
 
     info = probe_streams(video_path)
     fps = info["fps"]
-    frames = decode_gray_frames(video_path)
+    is_landscape = info["width"] > info["height"]
+    dec_w, dec_h = (480, 270) if is_landscape else (270, 480)
+    frames = decode_gray_frames(video_path, w=dec_w, h=dec_h)
     n_frames = len(frames)
     times = np.arange(n_frames, dtype=np.float64) / fps
 

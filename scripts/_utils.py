@@ -13,16 +13,19 @@ SSRGenerate — アセット生成スクリプト共通ユーティリティ
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 import io
 import json
 import math
+import os
+import re
 import subprocess
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 from scipy.ndimage import gaussian_filter
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -44,6 +47,53 @@ CARD_INNER_R = 24
 CARD_INNER_W = CARD_W - CARD_BORDER * 2
 CARD_INNER_H = CARD_H - CARD_BORDER * 2
 
+
+@dataclass(frozen=True)
+class LayoutSpec:
+    orientation: str      # "portrait" | "landscape"
+    canvas_w: int         # 1080 | 1920
+    canvas_h: int         # 1920 | 1080
+    card_w: int           # 900  | 1480
+    card_h: int           # 1590 | 860
+    card_border: int      # 20
+    card_outer_r: int     # 40
+    card_inner_r: int     # 24
+    card_inner_w: int     # 860  | 1440
+    card_inner_h: int     # 1550 | 820
+
+
+PORTRAIT_LAYOUT = LayoutSpec(
+    orientation="portrait",
+    canvas_w=1080,
+    canvas_h=1920,
+    card_w=900,
+    card_h=1590,
+    card_border=CARD_BORDER,
+    card_outer_r=CARD_OUTER_R,
+    card_inner_r=CARD_INNER_R,
+    card_inner_w=900 - CARD_BORDER * 2,
+    card_inner_h=1590 - CARD_BORDER * 2,
+)
+
+LANDSCAPE_LAYOUT = LayoutSpec(
+    orientation="landscape",
+    canvas_w=1920,
+    canvas_h=1080,
+    card_w=1480,
+    card_h=860,
+    card_border=CARD_BORDER,
+    card_outer_r=CARD_OUTER_R,
+    card_inner_r=CARD_INNER_R,
+    card_inner_w=1480 - CARD_BORDER * 2,
+    card_inner_h=860 - CARD_BORDER * 2,
+)
+
+HTML_TARGETS = (
+    PROJECT_ROOT / "index.html",
+    PROJECT_ROOT / "compositions" / "scene-summon.html",
+    PROJECT_ROOT / "compositions" / "scene-result.html",
+)
+
 # 金属パレット（白 → シャンパン → 琥珀 → 暗褐の明暗階調）
 GOLD_RAMP: List[Tuple[int, int, int]] = [
     (58, 34, 14),     # 暗褐
@@ -61,8 +111,59 @@ SILVER_RAMP: List[Tuple[int, int, int]] = [
 ]
 
 
+def apply_config_overrides(cfg: Dict[str, Any], overrides: Any) -> Dict[str, Any]:
+    """CLI --variables / 環境変数 SSR_CARD_CONFIG_OVERRIDES を card-config 辞書へマージする"""
+    if not isinstance(overrides, dict):
+        return cfg
+    out = dict(cfg)
+    typo = dict(out.get("typography", {})) if isinstance(out.get("typography"), dict) else {}
+
+    str_keys = (
+        "orientation",
+        "photo",
+        "photoFit",
+        "photoPosition",
+        "rarity",
+        "attribute",
+        "attributeBadge",
+        "attributeLabel",
+        "subtitle",
+        "title",
+        "flavor",
+        "cardNo",
+        "resultRingMode",
+    )
+    for k in str_keys:
+        if k in overrides and overrides[k] is not None:
+            val_s = str(overrides[k])
+            if k == "orientation" and not val_s.strip():
+                continue
+            out[k] = val_s
+
+    for nk, conv in (("photoZoom", float), ("stars", int), ("seed", int)):
+        if nk in overrides and overrides[nk] is not None and str(overrides[nk]).strip() != "":
+            try:
+                val = conv(overrides[nk])
+                if math.isfinite(float(val)):
+                    out[nk] = val
+            except (TypeError, ValueError):
+                pass
+
+    if "preset" in overrides and isinstance(overrides["preset"], str) and overrides["preset"].strip():
+        typo["preset"] = overrides["preset"].strip()
+
+    if isinstance(overrides.get("typography"), dict):
+        for tk, tv in overrides["typography"].items():
+            if tv is not None:
+                typo[tk] = tv
+
+    out["typography"] = typo
+    return out
+
+
 def load_card_config() -> Dict[str, Any]:
-    """card-config.js から window.SSR_CARD_CONFIG を読み込む"""
+    """card-config.js から window.SSR_CARD_CONFIG を読み込み、環境変数オーバーライドがあれば適用する"""
+    cfg: Dict[str, Any] = {}
     if CONFIG_PATH.exists():
         try:
             res = subprocess.run(
@@ -82,10 +183,76 @@ def load_card_config() -> Dict[str, Any]:
                 encoding="utf-8",
                 check=True,
             )
-            return json.loads(res.stdout)
+            cfg = json.loads(res.stdout)
+        except Exception:
+            cfg = {}
+
+    env_ov = os.environ.get("SSR_CARD_CONFIG_OVERRIDES", "").strip()
+    if env_ov:
+        try:
+            cfg = apply_config_overrides(cfg, json.loads(env_ov))
         except Exception:
             pass
-    return {}
+    return cfg
+
+
+def resolve_photo_path(photo_rel: str) -> Path:
+    raw = str(photo_rel or "assets/photo.jpg").strip()
+    p = Path(raw)
+    if p.is_absolute():
+        return p
+    return PROJECT_ROOT / raw.lstrip("./\\")
+
+
+def resolve_layout(cfg: Dict[str, Any] | None = None) -> LayoutSpec:
+    """
+    cfg["orientation"] ("portrait" | "landscape" | "auto") を解決して LayoutSpec を返す。
+    "auto" の場合は EXIF 回転補正後の入力写真サイズで width > height なら landscape とする。
+    """
+    c = cfg if cfg is not None else load_card_config()
+    raw_ori = str(c.get("orientation", "portrait") or "portrait").strip().lower()
+    if raw_ori == "landscape":
+        return LANDSCAPE_LAYOUT
+    if raw_ori == "auto":
+        photo_path = resolve_photo_path(str(c.get("photo", "assets/photo.jpg")))
+        if photo_path.is_file():
+            try:
+                with Image.open(photo_path) as im:
+                    im_t = ImageOps.exif_transpose(im)
+                    w, h = im_t.size
+                if w > h:
+                    return LANDSCAPE_LAYOUT
+            except Exception:
+                pass
+    return PORTRAIT_LAYOUT
+
+
+def sync_html_resolution(layout: LayoutSpec) -> List[str]:
+    """
+    index.html, scene-summon.html, scene-result.html の静的属性
+    (data-resolution, viewport, data-width, data-height) を解決済み LayoutSpec に一括同期する。
+    変更があったファイル名のリストを返す（差分がない場合はディスク書き込みを行わない）。
+    """
+    updated: List[str] = []
+    ori = layout.orientation
+    cw, ch = layout.canvas_w, layout.canvas_h
+
+    for html_path in HTML_TARGETS:
+        if not html_path.is_file():
+            continue
+        src = html_path.read_text(encoding="utf-8")
+        out = re.sub(r'(?<!\[)data-resolution="(?:portrait|landscape)"', f'data-resolution="{ori}"', src)
+        out = re.sub(
+            r'(<meta\s+name="viewport"\s+content=")width=\d+,\s*height=\d+("\s*/?>)',
+            rf"\g<1>width={cw}, height={ch}\2",
+            out,
+        )
+        out = re.sub(r'data-width="\d+"', f'data-width="{cw}"', out)
+        out = re.sub(r'data-height="\d+"', f'data-height="{ch}"', out)
+        if out != src:
+            html_path.write_text(out, encoding="utf-8")
+            updated.append(html_path.name)
+    return updated
 
 
 def resolve_seed(cfg: Dict[str, Any], section: str | None = None, override: int | None = None) -> int:

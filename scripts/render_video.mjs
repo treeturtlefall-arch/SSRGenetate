@@ -9,6 +9,7 @@
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
@@ -148,6 +149,7 @@ function applyCliOverrides(baseCfg, overrides) {
   const typo = baseCfg.typography && typeof baseCfg.typography === "object" ? { ...baseCfg.typography } : {};
 
   const strKeys = [
+    "orientation",
     "photo",
     "photoFit",
     "photoPosition",
@@ -163,7 +165,9 @@ function applyCliOverrides(baseCfg, overrides) {
   ];
   for (const k of strKeys) {
     if (Object.prototype.hasOwnProperty.call(overrides, k) && overrides[k] !== null && overrides[k] !== undefined) {
-      out[k] = String(overrides[k]);
+      const s = String(overrides[k]);
+      if (k === "orientation" && !s.trim()) continue;
+      out[k] = s;
     }
   }
 
@@ -254,7 +258,10 @@ function buildExpectedSource(cfg) {
   const rawZoom = cfg.photoZoom !== undefined && cfg.photoZoom !== null ? Number(cfg.photoZoom) : 1.05;
   const zoomVal = Number.isFinite(rawZoom) ? roundTo(rawZoom, 4) : 1.05;
 
+  const orientationRaw = String(cfg.orientation ?? "portrait").trim().toLowerCase() || "portrait";
+
   return {
+    orientationRaw,
     preset: presetName,
     seed,
     texts: {
@@ -285,18 +292,42 @@ function buildExpectedSource(cfg) {
   };
 }
 
+function readIndexHtmlResolution() {
+  const indexPath = path.join(PROJECT_ROOT, "index.html");
+  if (!fs.existsSync(indexPath)) return "portrait";
+  const m = fs.readFileSync(indexPath, "utf8").match(/data-resolution="(portrait|landscape)"/);
+  return m ? m[1] : "portrait";
+}
+
 function checkTypoSyncStatus(expectedSource, manifest) {
   const reasons = [];
+  let needsLayoutRebuild = false;
+
   if (!manifest) {
     reasons.push("manifest-missing");
-    return { needsSync: true, reasons };
+    return { needsSync: true, needsLayoutRebuild: true, reasons };
   }
   if (manifest.schemaVersion !== 2 || !manifest.source) {
     reasons.push("manifest-schema-outdated");
-    return { needsSync: true, reasons };
+    return { needsSync: true, needsLayoutRebuild: true, reasons };
   }
 
   const actual = manifest.source;
+  const manifestOri = manifest.dimensions?.orientation || "portrait";
+  const htmlOri = readIndexHtmlResolution();
+
+  if (expectedSource.orientationRaw !== (actual.orientationRaw ?? "portrait")) {
+    reasons.push(`orientation(${actual.orientationRaw ?? "portrait"}->${expectedSource.orientationRaw})`);
+    needsLayoutRebuild = true;
+  }
+  if (expectedSource.orientationRaw === "auto" && !deepEqual(expectedSource.photo, actual.photo)) {
+    reasons.push("auto-orientation-photo-changed");
+    needsLayoutRebuild = true;
+  }
+  if (htmlOri !== manifestOri) {
+    reasons.push(`html-resolution-mismatch(${htmlOri}!=${manifestOri})`);
+    needsLayoutRebuild = true;
+  }
   if (expectedSource.preset !== actual.preset) reasons.push(`preset(${actual.preset}->${expectedSource.preset})`);
   if (expectedSource.seed !== actual.seed) reasons.push("seed");
 
@@ -322,7 +353,7 @@ function checkTypoSyncStatus(expectedSource, manifest) {
     }
   }
 
-  return { needsSync: reasons.length > 0, reasons };
+  return { needsSync: reasons.length > 0, needsLayoutRebuild, reasons };
 }
 
 function formatLocalDate(now = new Date()) {
@@ -373,8 +404,9 @@ const cmdArgs = ["--yes", "hyperframes@0.9.72", "render", "-q", "delivery", "--c
 if (!hasExplicitOutput) {
   cmdArgs.push("-o", autoOutput);
 }
-if (Object.keys(cliVars).length > 0) {
-  const encodedVars = encodeVariablesForHyperFrames(cliVars);
+const hasCliVars = Object.keys(cliVars).length > 0;
+const encodedVars = hasCliVars ? encodeVariablesForHyperFrames(cliVars) : null;
+if (hasCliVars && dryRun) {
   cmdArgs.push("--variables", JSON.stringify(encodedVars));
 }
 cmdArgs.push(...passthroughArgs);
@@ -390,16 +422,25 @@ if (dryRun) {
   );
   if (shouldSyncTypo) {
     console.log(`[dry-run] preflight: python scripts/render_typography.py --overrides-stdin`);
+    if (forceTypo || syncStatus.needsLayoutRebuild) {
+      console.log(`[dry-run] layout-sync: python scripts/render_material.py && python scripts/render_optics.py (if orientation changed)`);
+    }
   }
   console.log(`[dry-run] command: npx ${cmdArgs.join(" ")}`);
   process.exit(0);
 }
 
 if (shouldSyncTypo) {
+  const envWithOverrides = {
+    ...process.env,
+    SSR_CARD_CONFIG_OVERRIDES: JSON.stringify(cliVars),
+  };
+
   console.log(`[typo-sync] Regenerating typography (${syncReasonText.join(", ")})...`);
   const pyRes = spawnSync("python", ["scripts/render_typography.py", "--overrides-stdin"], {
     cwd: PROJECT_ROOT,
     input: JSON.stringify(cliVars),
+    env: envWithOverrides,
     encoding: "utf8",
     stdio: ["pipe", "inherit", "inherit"],
     shell: false,
@@ -412,17 +453,58 @@ if (shouldSyncTypo) {
     console.error(`[typo-sync] render_typography.py exited with status ${pyRes.status}`);
     process.exit(pyRes.status ?? 1);
   }
+
+  const updatedManifest = loadTypoManifest();
+  const prevOri = manifest?.dimensions?.orientation || "portrait";
+  const nextOri = updatedManifest?.dimensions?.orientation || "portrait";
+  if (forceTypo || syncStatus.needsLayoutRebuild || prevOri !== nextOri) {
+    console.log(`[layout-sync] Ensuring material & optics assets for orientation=${nextOri}...`);
+    for (const script of ["scripts/render_material.py", "scripts/render_optics.py"]) {
+      const r = spawnSync("python", [script], {
+        cwd: PROJECT_ROOT,
+        env: envWithOverrides,
+        stdio: "inherit",
+        shell: false,
+      });
+      if (r.error) {
+        console.error(`[layout-sync] Failed to spawn python (${script}): ${r.error.message}`);
+        process.exit(1);
+      }
+      if ((r.status ?? 1) !== 0) {
+        console.error(`[layout-sync] ${script} exited with status ${r.status}`);
+        process.exit(r.status ?? 1);
+      }
+    }
+  }
 } else {
   console.log(`[typo-sync] up-to-date (${preset})`);
 }
 
 console.log(`[render] preset=${preset} -> ${hasExplicitOutput ? "(custom -o)" : autoOutput}`);
 
+let tmpVarsPath = null;
+if (hasCliVars) {
+  tmpVarsPath = path.join(os.tmpdir(), `ssr-hf-vars-${process.pid}-${Date.now()}.json`);
+  fs.writeFileSync(tmpVarsPath, JSON.stringify(encodedVars), "utf8");
+  cmdArgs.push("--variables", tmpVarsPath);
+}
+
 const isWin = process.platform === "win32";
-const res = spawnSync(isWin ? "npx.cmd" : "npx", cmdArgs, {
-  cwd: PROJECT_ROOT,
-  stdio: "inherit",
-  shell: isWin,
-});
+let res;
+try {
+  res = spawnSync(isWin ? "npx.cmd" : "npx", cmdArgs, {
+    cwd: PROJECT_ROOT,
+    stdio: "inherit",
+    shell: isWin,
+  });
+} finally {
+  if (tmpVarsPath && fs.existsSync(tmpVarsPath)) {
+    try {
+      fs.unlinkSync(tmpVarsPath);
+    } catch {
+      // ignore cleanup error
+    }
+  }
+}
 
 process.exit(res.status ?? 1);

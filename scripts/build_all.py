@@ -13,6 +13,8 @@ import time
 from pathlib import Path
 from typing import Tuple
 
+from _utils import load_card_config, resolve_layout, sync_html_resolution
+
 SCRIPTS_DIR = Path(__file__).resolve().parent
 JOBS = [
     ("typo",     SCRIPTS_DIR / "render_typography.py"),
@@ -37,7 +39,11 @@ def _run_job(name: str, script_path: Path) -> Tuple[str, float, str]:
 
 def main() -> int:
     t_start = time.perf_counter()
-    print("=== SSRGenerate Parallel Asset Builder ===")
+    layout = resolve_layout(load_card_config())
+    changed_html = sync_html_resolution(layout)
+    print(f"=== SSRGenerate Parallel Asset Builder ({layout.orientation}: {layout.canvas_w}x{layout.canvas_h}, card {layout.card_w}x{layout.card_h}) ===")
+    if changed_html:
+        print(f"[HTML Sync] Updated resolution attributes in: {', '.join(changed_html)}")
     with ProcessPoolExecutor(max_workers=len(JOBS)) as ex:
         futures = {ex.submit(_run_job, name, path): name for name, path in JOBS}
         for fut in as_completed(futures):

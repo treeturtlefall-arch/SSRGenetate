@@ -28,6 +28,9 @@
       : [1.0, -1.3, 1.7];
 
   const rng = createRng(seed);
+  const isLandscape = document.documentElement.getAttribute("data-resolution") === "landscape";
+  const canvasW = isLandscape ? 1920 : 1080;
+  const canvasH = isLandscape ? 1080 : 1920;
 
   // 1. カットイン箔タイポマニフェスト適用
   const typoItems = (window.SSR_TYPO_MANIFEST && window.SSR_TYPO_MANIFEST.items) || {};
@@ -52,10 +55,16 @@
   const introMeteorDusts = [];
 
   function evalIntroMeteor(p) {
-    const x = -140 + 1370 * p;
-    const y = 260 + 680 * p - 55 * Math.sin(Math.PI * p);
-    const dx = 1370;
-    const dy = 680 - 55 * Math.PI * Math.cos(Math.PI * p);
+    const xStart = isLandscape ? -180 : -140;
+    const dxSpan = isLandscape ? 2260 : 1370;
+    const yStart = isLandscape ? 130 : 260;
+    const dySpan = isLandscape ? 420 : 680;
+    const arcAmp = isLandscape ? 42 : 55;
+
+    const x = xStart + dxSpan * p;
+    const y = yStart + dySpan * p - arcAmp * Math.sin(Math.PI * p);
+    const dx = dxSpan;
+    const dy = dySpan - arcAmp * Math.PI * Math.cos(Math.PI * p);
     const rad = Math.atan2(dy, dx);
     return {
       x: +x.toFixed(1),
@@ -177,13 +186,15 @@
     const yProg = 0.65 * p + 0.35 * (0.5 - 0.5 * Math.cos(Math.PI * p));
     const theta = sd.theta0 + Math.PI * 2 * sd.turns * (0.72 * p + 0.28 * Math.pow(p, 1.75));
     const rEnv = Math.pow(Math.max(0, 1 - p), 0.72);
+    const rScale = isLandscape ? 1.22 : 1.0;
+    const ySpan = isLandscape ? 450 : 755;
     const radius = Math.max(
       0,
-      (128 * (1 - p) + 265 * Math.sin(Math.PI * Math.pow(p, 0.82))) * rEnv + spread * (1 - p)
+      ((128 * (1 - p) + 265 * Math.sin(Math.PI * Math.pow(p, 0.82))) * rEnv + spread * (1 - p)) * rScale
     );
     const z = Math.sin(theta);
     const x = radius * Math.cos(theta);
-    const y = -755 * (1 - yProg) + radius * 0.28 * z;
+    const y = -ySpan * (1 - yProg) + radius * (isLandscape ? 0.22 : 0.28) * z;
     const depthScale = 1.0 + 0.22 * z;
     const depthAlpha = 0.86 + 0.14 * z;
     return {
@@ -367,10 +378,12 @@
       convergeContainer.appendChild(el);
       const angle = (i / 28) * Math.PI * 2 + (rng() - 0.5) * 0.28;
       const dist = 390 + rng() * 240;
+      const sxMul = isLandscape ? 1.35 : 1.0;
+      const syMul = isLandscape ? 0.78 : 1.0;
       convergeData.push({
         el: el,
-        startX: Math.cos(angle) * dist,
-        startY: Math.sin(angle) * dist,
+        startX: Math.cos(angle) * dist * sxMul,
+        startY: Math.sin(angle) * dist * syMul,
         delay: 0.45 + rng() * 0.85,
         dur: 0.9 + rng() * 0.4,
       });
@@ -393,8 +406,10 @@
       el.className = "sky-shard sky-shard-far";
       el.setAttribute("data-layout-allow-overflow", "");
       const size = 22 + Math.floor(rng() * 32);
-      const x0 = 55 + rng() * 970;
-      const y0 = Math.max(80, Math.min(1840, 100 + (i / 36) * 1680 + (rng() - 0.5) * 90));
+      const x0 = 55 + rng() * (canvasW - 110);
+      const y0 = isLandscape
+        ? Math.max(50, Math.min(canvasH - 50, 60 + (i / 36) * (canvasH - 120) + (rng() - 0.5) * 55))
+        : Math.max(80, Math.min(1840, 100 + (i / 36) * 1680 + (rng() - 0.5) * 90));
       el.style.cssText =
         "width:" +
         size +
@@ -434,8 +449,10 @@
       el.className = "sky-star sky-star-g" + (i % 3);
       el.setAttribute("data-layout-allow-overflow", "");
       const size = 18 + Math.floor(rng() * 20);
-      const x0 = 65 + rng() * 950;
-      const y0 = Math.max(70, Math.min(1780, 80 + (i / 20) * 1620 + (rng() - 0.5) * 90));
+      const x0 = 65 + rng() * (canvasW - 130);
+      const y0 = isLandscape
+        ? Math.max(45, Math.min(canvasH - 70, 55 + (i / 20) * (canvasH - 140) + (rng() - 0.5) * 55))
+        : Math.max(70, Math.min(1780, 80 + (i / 20) * 1620 + (rng() - 0.5) * 90));
       el.style.cssText =
         "width:" +
         size +
@@ -466,8 +483,11 @@
       el.setAttribute("data-layout-allow-overflow", "");
       const size = 78 + Math.floor(rng() * 46);
       const isLeft = i % 2 === 0;
-      const x0 = isLeft ? 50 + rng() * 195 : 835 + rng() * 195;
-      const y0 = 150 + (i >> 1) * 245 + rng() * 110;
+      const rightLaneStart = canvasW - 245;
+      const x0 = isLeft ? 50 + rng() * 195 : rightLaneStart + rng() * 195;
+      const y0 = isLandscape
+        ? 85 + (i >> 1) * 135 + rng() * 65
+        : 150 + (i >> 1) * 245 + rng() * 110;
       el.style.cssText =
         "width:" +
         size +
@@ -504,9 +524,25 @@
   if (farContainer && nearContainer) {
     const waveConfigs = [
       // 金昇格ウェーブ (8個: 遠景5 + 近景3)
-      { count: 8, baseTime: 3.78, spreadT: 0.28, nearRatio: 3, kindPool: [1, 2, 1], yMin: 1280, yMax: 1940 },
+      {
+        count: 8,
+        baseTime: 3.78,
+        spreadT: 0.28,
+        nearRatio: 3,
+        kindPool: [1, 2, 1],
+        yMin: isLandscape ? 700 : 1280,
+        yMax: isLandscape ? 1100 : 1940,
+      },
       // 虹昇格ウェーブ (12個: 遠景8 + 近景4)
-      { count: 12, baseTime: 5.2, spreadT: 0.45, nearRatio: 4, kindPool: [2, 0, 1], yMin: 1320, yMax: 1980 },
+      {
+        count: 12,
+        baseTime: 5.2,
+        spreadT: 0.45,
+        nearRatio: 4,
+        kindPool: [2, 0, 1],
+        yMin: isLandscape ? 720 : 1320,
+        yMax: isLandscape ? 1120 : 1980,
+      },
     ];
     waveConfigs.forEach(function (wc) {
       for (let i = 0; i < wc.count; i++) {
@@ -518,7 +554,10 @@
         el.setAttribute("data-layout-allow-overflow", "");
         const size = isNear ? 76 + Math.floor(rng() * 44) : 20 + Math.floor(rng() * 26);
         const isLeft = i % 2 === 0;
-        const x0 = isNear ? (isLeft ? 55 + rng() * 210 : 815 + rng() * 210) : 65 + rng() * 950;
+        const rightWaveStart = canvasW - 265;
+        const x0 = isNear
+          ? (isLeft ? 55 + rng() * 210 : rightWaveStart + rng() * 210)
+          : 65 + rng() * (canvasW - 130);
         const y0 = wc.yMin + rng() * (wc.yMax - wc.yMin);
         el.style.cssText =
           "width:" +
