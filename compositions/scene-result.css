@@ -652,6 +652,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.75));
 }
 
 #card-no-img {

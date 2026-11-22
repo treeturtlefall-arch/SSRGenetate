@@ -237,7 +237,7 @@ def build_se_upgrade(rng: np.random.Generator, slots: CustomSlotBank) -> np.ndar
     return cosine_fade_out(buf, 0.32)
 
 
-def build_se_fanfare(rng: np.random.Generator, slots: CustomSlotBank) -> np.ndarray:
+def build_se_fanfare(rng: np.random.Generator, slots: CustomSlotBank, star_count: int = 0) -> np.ndarray:
     """Track 3 (6.8s 〜 14.8s / clip 0.0s 〜 8.0s): ホワイトアウト爆発・3D回転・SSR確定ファンファーレ・14.8s余韻"""
     dur = 8.0
     buf = make_buffer(dur)
@@ -312,15 +312,27 @@ def build_se_fanfare(rng: np.random.Generator, slots: CustomSlotBank) -> np.ndar
         wc = synth_crystal_celesta(wf, duration=0.45, brightness=1.02)
         add_mono_panned(buf, wc, 2.64 + w_i * 0.022, gain=0.042, pan=-0.55 + w_i * 0.36)
 
-    # 5. 5つ星点灯に合わせたキラメキチャイム連打 (clip 2.20s 〜 2.76s = 映像 9.00s 〜 9.56s)
-    star_notes = [1046.50, 1174.66, 1318.51, 1567.98, 2093.00]
-    star_semis = [0.0, 2.0, 4.0, 7.0, 12.0]
-    for i, (f, semi) in enumerate(zip(star_notes, star_semis)):
-        pan = -0.52 + i * 0.26
-        ps_star = _mix_slot(buf, slots, "star_chime", 2.20 + i * 0.14, semitones=semi, pan=pan, extra_gain=0.78)
-        if ps_star > 0.0:
-            cel = synth_crystal_celesta(f, duration=1.35, brightness=1.15)
-            add_mono_panned(buf, cel, 2.20 + i * 0.14, gain=0.14 * ps_star, pan=pan)
+    # 5. 星点灯に合わせたキラメキチャイム連打 (clip 2.20s 〜 2.76s = 映像 9.00s 〜 9.56s)
+    # stars == 0 のときはテキスト出現 (clip 2.58s = 9.38s サブタイトル / clip 2.80s = 9.60s タイトル) に寄り添う2音の控えめな煌めき
+    if star_count > 0:
+        star_notes = [1046.50, 1174.66, 1318.51, 1567.98, 2093.00, 2349.32]
+        star_semis = [0.0, 2.0, 4.0, 7.0, 12.0, 14.0]
+        n_play = min(star_count, len(star_notes))
+        for i in range(n_play):
+            f = star_notes[i]
+            semi = star_semis[i]
+            pan = -0.52 + (i / max(1, n_play - 1)) * 1.04 if n_play > 1 else 0.0
+            st_time = 2.20 + i * 0.14
+            ps_star = _mix_slot(buf, slots, "star_chime", st_time, semitones=semi, pan=pan, extra_gain=0.78)
+            if ps_star > 0.0:
+                cel = synth_crystal_celesta(f, duration=1.35, brightness=1.15)
+                add_mono_panned(buf, cel, st_time, gain=0.14 * ps_star, pan=pan)
+    else:
+        # stars: 0 時はテキスト出現（9.38s サブタイトル / 9.60s タイトル）に合わせた控えめな2音
+        sub_ch = synth_crystal_celesta(1567.98, duration=1.2, brightness=0.95)
+        add_mono_panned(buf, sub_ch, 2.58, gain=0.08, pan=-0.22)
+        tit_ch = synth_crystal_celesta(2093.00, duration=1.2, brightness=1.0)
+        add_mono_panned(buf, tit_ch, 2.80, gain=0.09, pan=0.22)
 
     # 6. タイトル光走査ワイプ (clip 2.80s = 映像 9.60s)
     wipe_l, wipe_r = synth_air_whoosh(0.42, 1800.0, 7800.0, rng=rng, pan_start=-0.65, pan_end=0.65, curve=1.2)
@@ -384,10 +396,11 @@ def main() -> None:
     print(slots.used_summary())
 
     # 各トラックを独立シードで並列生成（1トラックの変更が他トラックの位相へ波及しない）
+    star_count = max(0, min(6, int(cfg.get("stars", 0))))
     with ThreadPoolExecutor(max_workers=3) as ex:
         fut_summon = ex.submit(build_se_summon, np.random.default_rng(seed + 101), slots)
         fut_upgrade = ex.submit(build_se_upgrade, np.random.default_rng(seed + 202), slots)
-        fut_fanfare = ex.submit(build_se_fanfare, np.random.default_rng(seed + 303), slots)
+        fut_fanfare = ex.submit(build_se_fanfare, np.random.default_rng(seed + 303), slots, star_count)
         b_summon = fut_summon.result()
         b_upgrade = fut_upgrade.result()
         b_fanfare = fut_fanfare.result()

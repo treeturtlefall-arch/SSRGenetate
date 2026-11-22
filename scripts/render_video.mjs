@@ -128,11 +128,9 @@ function parseCliArgs(argv) {
           process.exit(1);
         }
         rawVal = argv[i + 1];
-        passthroughArgs.push(a, rawVal);
         i += 1;
       } else {
         rawVal = a.slice(`${flagName}=`.length);
-        passthroughArgs.push(a);
       }
       const parsed = loadVariablesPayload(rawVal, flagName);
       cliVars = { ...cliVars, ...parsed };
@@ -355,12 +353,29 @@ const expectedSource = buildExpectedSource(effectiveCfg);
 const manifest = loadTypoManifest();
 const syncStatus = checkTypoSyncStatus(expectedSource, manifest);
 
+function encodeVariablesForHyperFrames(vars) {
+  if (!vars || typeof vars !== "object") return {};
+  const out = {};
+  for (const [k, v] of Object.entries(vars)) {
+    if (typeof v === "string" && v.trim() === "") {
+      out[k] = "__EMPTY__";
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 const preset = expectedSource.preset;
 const autoOutput = resolveOutputPath(preset);
 
 const cmdArgs = ["--yes", "hyperframes@0.9.72", "render", "-q", "delivery", "--crf", "12"];
 if (!hasExplicitOutput) {
   cmdArgs.push("-o", autoOutput);
+}
+if (Object.keys(cliVars).length > 0) {
+  const encodedVars = encodeVariablesForHyperFrames(cliVars);
+  cmdArgs.push("--variables", JSON.stringify(encodedVars));
 }
 cmdArgs.push(...passthroughArgs);
 

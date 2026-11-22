@@ -24,12 +24,13 @@
       Object.prototype.hasOwnProperty.call(baseCfg, "attributeLabel");
 
     if (hasVarSplit || hasCfgSplit) {
-      const rawB = typeof hfVars.attributeBadge === "string" && hfVars.attributeBadge !== ""
-        ? hfVars.attributeBadge
-        : (typeof baseCfg.attributeBadge === "string" ? baseCfg.attributeBadge : "");
-      const rawL = typeof hfVars.attributeLabel === "string" && hfVars.attributeLabel !== ""
-        ? hfVars.attributeLabel
-        : (typeof baseCfg.attributeLabel === "string" ? baseCfg.attributeLabel : "");
+      function resolveOne(v, cfgV) {
+        if (v === "__EMPTY__" || (typeof v === "string" && v.trim().toLowerCase() === "none")) return "";
+        if (typeof v === "string" && v.trim() !== "") return v;
+        return typeof cfgV === "string" ? cfgV : "";
+      }
+      const rawB = resolveOne(hfVars.attributeBadge, baseCfg.attributeBadge);
+      const rawL = resolveOne(hfVars.attributeLabel, baseCfg.attributeLabel);
       const b = Array.from(rawB.trim())[0] || "";
       const l = rawL.trim();
       if (b && l) return b + " / " + l;
@@ -71,11 +72,13 @@
     subtitle: pick(hfVars.subtitle, baseCfg.subtitle, "【覚醒の眼光】"),
     title: pick(hfVars.title, baseCfg.title, "ちいさな覇王"),
     flavor:
-      typeof hfVars.flavor === "string" && hfVars.flavor.trim()
-        ? hfVars.flavor.trim()
-        : typeof baseCfg.flavor === "string"
-          ? baseCfg.flavor.trim()
-          : "",
+      hfVars.flavor === "__EMPTY__"
+        ? ""
+        : typeof hfVars.flavor === "string" && hfVars.flavor.trim()
+          ? hfVars.flavor.trim()
+          : typeof baseCfg.flavor === "string"
+            ? baseCfg.flavor.trim()
+            : "",
     cardNo: pick(hfVars.cardNo, baseCfg.cardNo, "NO.077-SSR"),
     material: baseCfg.material || {},
     seed: typeof baseCfg.seed === "number" ? baseCfg.seed : 20261120,
@@ -152,6 +155,21 @@
   bindTypoSlot("title", cfg.title, "card-title-img", "card-title", "card-title-wrap", 0);
   bindTypoSlot("flavor", cfg.flavor, "card-flavor-img", "card-flavor", "card-flavor-wrap", 0);
   bindTypoSlot("cardNo", cfg.cardNo, "card-no-img", "card-no-text", "card-no-corner", 0);
+
+  // モダンレイアウト時の左右バッジ（SSR と 属性）の水平中心ライン自動同期
+  if (isModernLayout && typoManifest.ssr && typoManifest.attribute) {
+    const ssrEl = document.getElementById("ssr-emblem");
+    const attrEl = document.getElementById("attr-badge");
+    if (ssrEl && attrEl) {
+      const ssrH = typoManifest.ssr.height || 0;
+      const attrH = typoManifest.attribute.height || 0;
+      if (ssrH > 0 && attrH > 0) {
+        const baseSsrTop = typoLayout === "royal-fantasy" ? 30 : 34;
+        const alignedAttrTop = baseSsrTop + Math.round((ssrH - attrH) / 2);
+        attrEl.style.top = alignedAttrTop + "px";
+      }
+    }
+  }
 
   // Royal 細二重罫線スロット（royal-fantasy 時のみ表示）
   const royalRuleWrap = document.getElementById("royal-rule-wrap");

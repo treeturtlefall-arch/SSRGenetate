@@ -378,12 +378,22 @@ def print_report(res: Dict[str, Any]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="SSRGenerate automated video QA")
-    parser.add_argument("video_path", nargs="?", default="renders/ssr_gacha.mp4", help="Target MP4 path")
+    parser.add_argument("video_path", nargs="?", default=None, help="Target MP4 path (defaults to newest in renders/)")
     parser.add_argument("--check-audio", action="store_true", help="Enforce Phase 3 audio LUFS/tail criteria")
     parser.add_argument("--json", action="store_true", help="Output machine-readable JSON")
     args = parser.parse_args()
 
-    res = analyze_video(Path(args.video_path), check_audio=args.check_audio)
+    target_path = args.video_path
+    if not target_path:
+        renders_dir = Path("renders")
+        mp4_files = list(renders_dir.glob("*.mp4")) if renders_dir.is_dir() else []
+        if mp4_files:
+            mp4_files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+            target_path = str(mp4_files[0])
+        else:
+            target_path = "renders/ssr_gacha.mp4"
+
+    res = analyze_video(Path(target_path), check_audio=args.check_audio)
     if args.json:
         print(json.dumps(res, ensure_ascii=False, indent=2))
     else:

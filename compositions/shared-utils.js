@@ -24,6 +24,7 @@
   }
 
   function pickConfigValue(varVal, cfgVal, fallback) {
+    if (varVal === "__EMPTY__") return "";
     if (typeof varVal === "string" && varVal.trim() !== "") return varVal;
     if (cfgVal !== undefined && cfgVal !== null && cfgVal !== "") return cfgVal;
     return fallback;
