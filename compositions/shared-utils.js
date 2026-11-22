@@ -111,7 +111,7 @@
     if (hasSplit) {
       function resolveOne(cliV, cfgV) {
         if (cliV === "__EMPTY__") return "";
-        if (typeof cliV === "string") {
+        if (typeof cliV === "string" && cliV.trim() !== "") {
           const trimmed = cliV.trim();
           return trimmed.toLowerCase() === "none" ? "" : trimmed;
         }
