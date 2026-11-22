@@ -24,3 +24,10 @@ assets/se_custom/*
 # Local custom font library (commercial / non-redistributable fonts - never commit)
 assets/fonts_custom/*
 !assets/fonts_custom/README.md
+
+# Unused / legacy-only fonts (keep out of repo to save size)
+assets/fonts/KleeOne-Regular.ttf
+assets/fonts/SetoFont.ttf
+assets/fonts/TekitouPoem.ttf
+assets/fonts/TekitouPoem_Bold.ttf
+assets/fonts/ZenKurenaido-Regular.ttf

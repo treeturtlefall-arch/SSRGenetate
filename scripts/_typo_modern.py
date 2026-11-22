@@ -39,10 +39,10 @@ from _utils import (
 
 # カテゴリ別フォールバックチェーン
 FALLBACK_CHAINS: Dict[str, Tuple[str, ...]] = {
-    "mincho": ("ShipporiMincho-ExtraBold.ttf", "ShipporiMincho-Bold.ttf", "YujiSyuku-Regular.ttf", "KleeOne-Regular.ttf", "SetoFont.ttf", "TekitouPoem.ttf"),
-    "maru": ("ZenMaruGothic-Black.ttf", "ZenMaruGothic-Bold.ttf", "SetoFont.ttf", "KleeOne-Regular.ttf", "TekitouPoem.ttf"),
-    "latin": ("Outfit-VF.ttf", "Cinzel-VF.ttf", "JetBrainsMono-VF.ttf", "ZenMaruGothic-Bold.ttf", "ShipporiMincho-Bold.ttf", "SetoFont.ttf"),
-    "default": ("SetoFont.ttf", "KleeOne-Regular.ttf", "TekitouPoem.ttf"),
+    "mincho": ("ShipporiMincho-ExtraBold.ttf", "ShipporiMincho-Bold.ttf", "YujiSyuku-Regular.ttf", "ZenMaruGothic-Bold.ttf"),
+    "maru": ("ZenMaruGothic-Black.ttf", "ZenMaruGothic-Bold.ttf", "ShipporiMincho-Bold.ttf"),
+    "latin": ("Outfit-VF.ttf", "Cinzel-VF.ttf", "JetBrainsMono-VF.ttf", "ZenMaruGothic-Bold.ttf", "ShipporiMincho-Bold.ttf"),
+    "default": ("ZenMaruGothic-Bold.ttf", "ShipporiMincho-Bold.ttf"),
 }
 
 # 脱 Tailwind 禁止色パレット（役割トークン）
@@ -190,7 +190,7 @@ def _pick_char_font(
             f_norm = norm_factors.get(fname, 1.0)
             eff = max(8, int(round(size * f_norm)))
             return _load_vf_font(str(p), eff, vf_weight)
-    fb_p = resolve_font_path("TekitouPoem.ttf")
+    fb_p = resolve_font_path("ZenMaruGothic-Bold.ttf") or resolve_font_path("ShipporiMincho-Bold.ttf")
     assert fb_p is not None
     return _load_vf_font(str(fb_p), size, vf_weight)
 

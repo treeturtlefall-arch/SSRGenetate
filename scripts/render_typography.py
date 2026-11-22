@@ -77,7 +77,7 @@ CUTIN_WOBBLE_NORM = 0.28
 CUTIN_FOIL_GLITTER = 0.42
 CUTIN_PAPER_GRAIN = 0.35
 
-FALLBACK_FONT_FILE = "TekitouPoem.ttf"
+FALLBACK_FONT_FILE = "ZenMaruGothic-Bold.ttf"
 
 # 書体別・視覚サイズ正規化係数（_font_slots.py の実測値と同期。カットインのみ従来互換係数を使用）
 FONT_NORM_FACTORS: Dict[str, float] = SHARED_NORM_FACTORS

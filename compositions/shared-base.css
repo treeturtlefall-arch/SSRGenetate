@@ -4,11 +4,6 @@
   font-display: block;
 }
 @font-face {
-  font-family: "KleeOne";
-  src: url("../assets/fonts/KleeOne-Regular.ttf") format("truetype");
-  font-display: block;
-}
-@font-face {
   font-family: "CineCaption";
   src: url("../assets/fonts/cinecaption.ttf") format("truetype");
   font-display: block;
@@ -64,7 +59,7 @@
   --ink-ivory: #f8f4ea;
   --ink-gold-light: #f2dfb3;
   --ink-gold: #d4a24c;
-  --font-jp: "KleeOne", "Noto Sans JP", sans-serif;
+  --font-jp: "ZenMaruGothic", "Noto Sans JP", sans-serif;
   --font-display: "YujiSyuku", "Playfair Display", serif;
   --font-ui: "CineCaption", "Montserrat", "Noto Sans JP", sans-serif;
   --font-mono: "JetBrainsMono", monospace;
