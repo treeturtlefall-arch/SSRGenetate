@@ -33,7 +33,9 @@ OUT_DIR = ASSETS_DIR / "generated"
 CONFIG_PATH = PROJECT_ROOT / "card-config.js"
 DEFAULT_SEED = 20261120
 
-# リザルトカードの物理寸法（compositions/shared-base.css の --card-w / --card-h / --card-border と一致させること）
+# キャンバス・リザルトカードの物理寸法（compositions/shared-base.css の --card-w / --card-h / --card-border と一致させること）
+CANVAS_W = 1080
+CANVAS_H = 1920
 CARD_W = 900
 CARD_H = 1590
 CARD_BORDER = 20

@@ -8,12 +8,14 @@ __pycache__/
 *.pyc
 repomix-output.xml
 
-# Private input photos
+# Private input photos & test directories
 assets/*.jpg
 assets/*.jpeg
 assets/*.png
 assets/*.webp
 assets/*.heic
+assets/Pastel-test/
+assets/Random1/
 
 # Local custom SE library (commercial / personal samples - never commit)
 assets/se_custom/*

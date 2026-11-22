@@ -11,7 +11,7 @@
 | :--- | :--- | :--- |
 | **解像度** | `1080 × 1920`（縦 9:16、`data-resolution="portrait"`） | `index.html`, `compositions/scene-*.html` |
 | **フレームレート / 書き出し** | `30fps` / `hyperframes@0.9.72 render -q delivery --crf 12` | `package.json` |
-| **出力ファイル** | `renders/ssr_gacha.mp4` | `package.json` |
+| **出力ファイル** | `renders/SSR_{preset}_{YYYYMMDD}.mp4`（同日重複時は `_2`, `_3` ... 自動連番） | `scripts/render_video.mjs` |
 | **総尺** | **16.0 秒**（冒頭 `0.5s` 無音黒フェードイン ＋ 本編 `15.0s` ＋ 末尾 `0.5s` 無音黒フェードアウト） | `index.html`, `scripts/qa_video.py` |
 | **カード物理寸法** | 幅 `900px` × 高さ `1590px` / 枠幅 `20px` / 外角丸 `40px` / 内窓角丸 `24px` | `scripts/_utils.py`, `compositions/shared-base.css` |
 | **写真保護方針** | 入力写真は 100% クリアなまま無加工維持（顔被りは Z 順・軌道・中央減衰マスクで回避） | `compositions/scene-result.css`, `scene-result-setup.js` |
@@ -67,7 +67,7 @@
 | `7.12s 〜 8.88s` | `7.62s 〜 9.38s` | 3Dカード回転（`rotationY: -720° → -195° → -12° → 0°`、5層金属エッジ厚みスライス `.card-edge-slice` は着地後 `8.82s` で非表示化）・表裏スペキュラ反射（裏面 `7.74s〜`、表面 `8.48s〜`）・裏面タメ光（`7.96s〜8.40s` 中央紋章チャージ `#card-back-emblem-glow` ＋外枠プリズム漏れ光 `#card-back-rim-burst`） |
 | `8.68s` | `9.18s` | **正面ビタ止め着地**：着地衝撃波（背面）・ズームパンチ・瞬間RGB色収差・3D金箔片18個・2層DOF玉ボケ16個・疎密スパークル22個展開開始 |
 | `8.76s 〜 9.56s` | `9.26s 〜 10.06s` | SSR クレスト刻印 (`8.76s`) → 属性プレート (`8.98s`) → 星連続点灯 (`9.00s〜`、0.14s間隔) |
-| `8.92s 〜 11.85s` | `9.42s 〜 12.35s` | 中央減衰プリズムホロスイープ 2本（`8.92s`, `10.45s`）＋ 箔タイポ光走査ワイプ（サブタイトル `9.38s` → タイトル `9.60s` → フレーバー `9.96s` → 任意 `stats` `10.22s` → `cardNo` `10.36s`） |
+| `8.92s 〜 11.85s` | `9.42s 〜 12.35s` | 中央減衰プリズムホロスイープ 2本（`8.92s`, `10.45s`）＋ 箔タイポ光走査ワイプ（サブタイトル `9.38s` → タイトル `9.60s` → フレーバー `9.96s` → `cardNo` `10.30s`） |
 | `12.00s 〜 15.00s` | `12.50s 〜 15.50s` | **レイアウト完全固定・光のみ微動**：カード/文字/星/粒子の位置・サイズ固定のまま、ホロ光沢シマー・外枠リムグレア (`12.95s`)・背景ハロー・スパークル/玉ボケの位相差呼吸を維持 |
 | `15.00s 〜 15.50s` | `15.50s 〜 16.00s` | 末尾プリロール余白（親コンポジション `#edge-fade-out` が黒フェードアウト） |
 
@@ -99,6 +99,7 @@
 - `scripts/render_optics.py` — 物理光学発光アセット透過 PNG 並列生成（`npm run build:optics`）
 - `scripts/render_material.py` — 虹金属箔フレーム・裏面・ホロプリズム・金箔結晶片・内窓深度・フィルムグレイン生成（`npm run build:material`）
 - `scripts/generate_se.py` — 16.0 秒仮想マスター基準のステレオ WAV 効果音 3 本生成（`npm run build:se`）
+- `scripts/render_video.mjs` — `card-config.js` ＋ CLI `--variables` / `--variables-file` の自動箔タイポ同期＆自動命名 MP4 書き出しラッパー（`npm run render`）
 - `scripts/qa_video.py` — 出力 MP4 の自動定量 QA（`npm run qa`）
 
 ### `assets/` ＆ `renders/`（素材・生成物）
@@ -124,7 +125,6 @@
 | `photo`, `photoFit`, `photoPosition`, `photoZoom` | `"assets/photo.jpg"`, `"cover"`, `"50% 35%"`, `1.05` | `scene-result-setup.js` | 写真パス・トリミング・ズーム |
 | `rarity`, `stars` | `"SSR"`, `0`（`0` で非表示、`1..6` クランプ） | `scene-result-setup.js`, `render_typography.py` | レアリティ表記と星の数 |
 | `attribute`, `subtitle`, `title`, `flavor`, `cardNo` | 文字列（空文字で非表示） | `scene-result-setup.js`, `render_typography.py` | カード表示テキスト |
-| `stats` | `[]`（最大3項目 `{label, value}`） | `scene-result-setup.js` | 下部ステータス枠 |
 | `typography` | `preset` (`"royal-foil"` / `"cute-pastel"`、レガシー `"foil-brush"` / `"handwritten-sign"` / `"crisp-emboss"`), 4軸上書き (`layout`, `palette`, `font`, `style`), `wobble` (`0..100`), `foilGlitter`, `paperGrain`, `seed` | `render_typography.py`, `_typo_modern.py` | モダン/箔タイポグラフィ・レイアウト（カットインは分離固定） |
 | `optics` | `halation`, `coreGlow`, `irregularity`, `seed` | `render_optics.py` | 6段階物理光学発光パラメータ |
 | `material` | `frameFoilGlitter`, `frameBrushStrength`, `windowDepthOpacity`, `chromaShockPx`, `seed` | `render_material.py`, `scene-summon.html`, `scene-result-setup.js` | 虹フレーム・内窓深度・瞬間色収差量 |
@@ -132,9 +132,10 @@
 | `audio.targetLufs` | 任意（未設定時は `-14.0` LUFS） | `generate_se.py` | 統合ラウドネス目標値 |
 | `seed` | `20261120` | 全生成スクリプト・セットアップ JS | 全体の決定論ルートシード |
 
-### 4-2. CLI 変数オーバーライド（`--variables`）
-- `index.html` および `compositions/scene-result.html` は `photo`, `title`, `subtitle`, `rarity`, `attributeBadge`, `attributeLabel`, `flavor`, `resultRingMode` の 8 変数を `data-composition-variables` として公開している。
-- `--variables` で指定されたテキストが `assets/generated/typo-manifest.js` 内の事前レンダリング文字列と一致しない場合、自動的に HTML テキスト描画へフォールバックする。箔 PNG としてレンダリングしたい場合は `card-config.js` を更新して `npm run build:typo` を実行する。
+### 4-2. CLI 変数オーバーライド（`--variables` / `--variables-file`）
+- `index.html` および `compositions/scene-result.html` は `photo`, `title`, `subtitle`, `rarity`, `attributeBadge`, `attributeLabel`, `flavor`, `cardNo`, `preset`, `photoFit`, `photoPosition`, `photoZoom`, `resultRingMode` の 13 変数を `data-composition-variables` として公開している。
+- `npm run render -- --variables ...`（または `--variables-file <path>`）を実行すると、`scripts/render_video.mjs` が `card-config.js` と CLI 変数をマージし、`typo-manifest.js`（`schemaVersion: 2`）の `source` スナップショットと比較する。テキスト・プリセット・写真情報等に差分がある場合は自動で `scripts/render_typography.py --overrides-stdin` を先行実行して物理箔 PNG と入力写真下部 30% 輝度に応じたビネット値（`vignette.midAlpha` / `vignette.bottomAlpha`）を再生成し、出力ファイル名も上書き後のプリセットへ同期する。
+- `hyperframes render` を直接実行した場合などで `typo-manifest.js` と文字列が一致しないときは、自動的に HTML テキスト描画へフォールバックする。
 
 ---
 

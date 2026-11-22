@@ -10,6 +10,11 @@
     {"id":"attributeBadge","type":"string","label":"Attribute Badge (1 char)","default":""},
     {"id":"attributeLabel","type":"string","label":"Attribute Label","default":""},
     {"id":"flavor","type":"string","label":"Flavor Text","default":""},
+    {"id":"cardNo","type":"string","label":"Card Number","default":""},
+    {"id":"preset","type":"string","label":"Typography Preset (royal-foil | cute-pastel)","default":""},
+    {"id":"photoFit","type":"string","label":"Photo Fit (cover | contain)","default":""},
+    {"id":"photoPosition","type":"string","label":"Photo Position (CSS object-position)","default":""},
+    {"id":"photoZoom","type":"string","label":"Photo Zoom (number)","default":""},
     {"id":"resultRingMode","type":"string","label":"Result Ring Mode (rainbow | cooldown | gold)","default":""}
   ]'
 >
@@ -108,7 +113,6 @@
                     <div id="card-flavor-img" class="typo-img"></div>
                     <div id="card-flavor" data-layout-allow-safe-zone></div>
                   </div>
-                  <div id="card-stats"></div>
                 </div>
                 <div id="card-no-corner">
                   <div id="card-no-img"></div>
@@ -251,9 +255,6 @@
 
         if (cfg.flavor) {
           addLightWipe("#card-flavor-wrap", "#card-flavor-img, #card-flavor", 9.96, -14, 0.44, 28, 28, -6);
-        }
-        if (cfg.stats.length > 0) {
-          tl.fromTo("#card-stats", { opacity: 0, x: -14, clipPath: "inset(-10px 100% -10px -10px)" }, { opacity: 1, x: 0, clipPath: "inset(-10px -4% -10px -10px)", duration: 0.44, ease: "power2.out" }, at(10.22));
         }
         addLightWipe("#card-no-corner", "#card-no-img, #card-no-text", 10.30, -10, 0.34, 10, 10, -4);
 

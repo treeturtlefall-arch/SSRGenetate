@@ -277,6 +277,11 @@ def build_se_fanfare(rng: np.random.Generator, slots: CustomSlotBank) -> np.ndar
         add_mono_panned(buf, timp_ld, 1.88, gain=0.52 * ps_land, pan=0.0)
         cym_ld_l, cym_ld_r = synth_crash_cymbal(2.3, rng=rng, bright=1.02)
         add_stereo(buf, cym_ld_l, cym_ld_r, 1.88, gain=0.34 * ps_land)
+        # SSR確定の輪郭を際立たせる極短クリスタル倍音アタック (E7 + G7, Nyquist安全帯域)
+        atk_c1 = synth_crystal_celesta(2637.02, duration=0.38, brightness=1.05)
+        atk_c2 = synth_crystal_celesta(3135.96, duration=0.32, brightness=1.00)
+        add_mono_panned(buf, atk_c1, 1.88, gain=0.065 * ps_land, pan=-0.22)
+        add_mono_panned(buf, atk_c2, 1.885, gain=0.055 * ps_land, pan=0.22)
 
     # 4. 現代ソシャゲ SSR 確定ファンファーレ (clip 1.88s 〜 5.80s = 映像 8.68s 〜 12.60s)
     # 主役は広大なステレオ・シマーパッド＋ティンパニ打点、モダンホーンは厚み補助
@@ -302,6 +307,10 @@ def build_se_fanfare(rng: np.random.Generator, slots: CustomSlotBank) -> np.ndar
     # フィナーレ頭 (clip 2.64s = 映像 9.44s) の荘厳なクラッシュシンバル
     fin_cym_l, fin_cym_r = synth_crash_cymbal(2.8, rng=rng, bright=1.10)
     add_stereo(buf, fin_cym_l, fin_cym_r, 2.64, gain=0.38)
+    # Cmaj9 フィナーレ頭の高域ウィンドチャイム風4音煌めき (C7-D7-E7-G7)
+    for w_i, wf in enumerate([2093.00, 2349.32, 2637.02, 3135.96]):
+        wc = synth_crystal_celesta(wf, duration=0.45, brightness=1.02)
+        add_mono_panned(buf, wc, 2.64 + w_i * 0.022, gain=0.042, pan=-0.55 + w_i * 0.36)
 
     # 5. 5つ星点灯に合わせたキラメキチャイム連打 (clip 2.20s 〜 2.76s = 映像 9.00s 〜 9.56s)
     star_notes = [1046.50, 1174.66, 1318.51, 1567.98, 2093.00]

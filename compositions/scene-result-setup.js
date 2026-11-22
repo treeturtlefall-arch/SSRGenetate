@@ -52,11 +52,19 @@
   const rawRingMode = pick(hfVars.resultRingMode, baseCfg.resultRingMode, "rainbow");
   const resultRingMode = rawRingMode === "cooldown" || rawRingMode === "gold" ? rawRingMode : "rainbow";
 
+  const rawZoom =
+    typeof hfVars.photoZoom === "string" && hfVars.photoZoom.trim() !== ""
+      ? Number(hfVars.photoZoom)
+      : typeof baseCfg.photoZoom === "number"
+        ? baseCfg.photoZoom
+        : 1.05;
+  const resolvedPhotoZoom = Number.isFinite(rawZoom) && rawZoom > 0 ? rawZoom : 1.05;
+
   const cfg = {
     photo: pick(hfVars.photo, baseCfg.photo, "assets/photo.jpg"),
-    photoFit: baseCfg.photoFit || "cover",
-    photoPosition: baseCfg.photoPosition || "50% 35%",
-    photoZoom: typeof baseCfg.photoZoom === "number" ? baseCfg.photoZoom : 1.05,
+    photoFit: pick(hfVars.photoFit, baseCfg.photoFit, "cover"),
+    photoPosition: pick(hfVars.photoPosition, baseCfg.photoPosition, "50% 35%"),
+    photoZoom: resolvedPhotoZoom,
     rarity: pick(hfVars.rarity, baseCfg.rarity, "SSR"),
     stars: typeof baseCfg.stars === "number" ? baseCfg.stars : 0,
     attribute: resolveAttributeKeyText(),
@@ -68,8 +76,7 @@
         : typeof baseCfg.flavor === "string"
           ? baseCfg.flavor.trim()
           : "",
-    stats: Array.isArray(baseCfg.stats) && baseCfg.stats.length > 0 ? baseCfg.stats.slice(0, 3) : [],
-    cardNo: baseCfg.cardNo || "NO.077-SSR",
+    cardNo: pick(hfVars.cardNo, baseCfg.cardNo, "NO.077-SSR"),
     material: baseCfg.material || {},
     seed: typeof baseCfg.seed === "number" ? baseCfg.seed : 20261120,
   };
@@ -82,6 +89,14 @@
     cardFrontInner.setAttribute("data-typo-layout", typoLayout);
     if (typoMirror) {
       cardFrontInner.setAttribute("data-typo-mirror", "true");
+    }
+    const vig = typoManifestRoot.vignette;
+    const normCfgPhoto = String(cfg.photo || "").trim().replace(/\\/g, "/").replace(/^\.\//, "");
+    const normVigPhoto = vig && vig.photo ? String(vig.photo).trim().replace(/\\/g, "/").replace(/^\.\//, "") : "";
+    const vigMatchesPhoto = !normVigPhoto || normVigPhoto === normCfgPhoto;
+    if (vig && vigMatchesPhoto && typeof vig.midAlpha === "number" && typeof vig.bottomAlpha === "number") {
+      cardFrontInner.style.setProperty("--vignette-mid-a", String(vig.midAlpha));
+      cardFrontInner.style.setProperty("--vignette-bot-a", String(vig.bottomAlpha));
     }
   }
 
@@ -180,26 +195,6 @@
     }
   }
 
-  const statsEl = document.getElementById("card-stats");
-  if (cfg.stats.length > 0) {
-    statsEl.style.display = "grid";
-    cfg.stats.forEach(function (st) {
-      const box = document.createElement("div");
-      box.className = "stat-box";
-      const lbl = document.createElement("div");
-      lbl.className = "stat-label";
-      lbl.setAttribute("data-layout-allow-safe-zone", "");
-      lbl.textContent = st.label;
-      const val = document.createElement("div");
-      val.className = "stat-value";
-      val.setAttribute("data-layout-allow-safe-zone", "");
-      val.textContent = st.value;
-      box.appendChild(lbl);
-      box.appendChild(val);
-      statsEl.appendChild(box);
-    });
-  }
-
   const rng = createRng(cfg.seed);
   for (let i = 0; i < 28 * 3; i++) {
     rng();
@@ -220,7 +215,7 @@
     { x: -494, y: -740, tier: "micro", color: "gold",  group: 0 },
     { x: -445, y: -595, tier: "micro", color: "cyan",  group: 3 },
     // 主クラスター B: 右下コーナー外縁（特大1 + 中2 + 極小4）
-    { x: 438,  y: 765,  tier: "hero",  color: "white", group: 1 },
+    { x: 466,  y: 794,  tier: "hero",  color: "white", group: 1 },
     { x: 472,  y: 610,  tier: "mid",   color: "gold",  group: 2 },
     { x: 388,  y: 825,  tier: "mid",   color: "pink",  group: 3 },
     { x: 494,  y: 685,  tier: "micro", color: "cyan",  group: 0 },

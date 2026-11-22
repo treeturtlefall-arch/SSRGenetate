@@ -34,14 +34,14 @@
 | **Phase 2.5** | フロントエンド共通化 ＆ ビルド並列高速化・整理 | `compositions/shared-*`, `scripts/_optics_core.py`, `scripts/build_all.py` | 完了 |
 | **Phase 3** | 音響「現代ソシャゲ音像化」＆ 映像マイクロポリッシュ | `scripts/_audio_*`, `scripts/generate_se.py`, `compositions/scene-*` | 完了 |
 | **Phase 3.5** | カードタイポグラフィ刷新（書体・縁取り・非対称配置） | `assets/fonts/*`, `card-config.js`, `scripts/_typo_modern.py`, `render_video.mjs` | 完了 |
-| **Phase 4** | 運用性・量産性強化 ＆ 5 評価軸 / 複数素材検証 | `package.json`, `scripts/render_typography.py`, `compositions/scene-result-setup.js` | **未着手（次期）** |
-| **Phase 5** | 横動画（16:9 / 1920×1080）× 横型カード対応 | `card-config.js`, `index.html`, `compositions/*`, `scripts/*` | 未着手（拡張） |
+| **Phase 4** | 運用性・量産性強化 ＆ 5 評価軸 / 複数素材検証 | `package.json`, `scripts/render_typography.py`, `scripts/render_video.mjs`, `compositions/scene-result-setup.js` | 完了 |
+| **Phase 5** | 横動画（16:9 / 1920×1080）× 横型カード対応 | `card-config.js`, `index.html`, `compositions/*`, `scripts/*` | **未着手（次期）** |
 
 ---
 
-## 3. 実装済み基盤サマリー（Phase 0 〜 Phase 3.5：完了）
+## 3. 実装済み基盤サマリー（Phase 0 〜 Phase 4：完了）
 
-初期の「Web UI 感・光の濁り・90年代シンセ感」は Phase 0〜3.5 で解消済みです。現在のコードベースには以下の機能が実装・検証済みです。
+初期の「Web UI 感・光の濁り・90年代シンセ感」は Phase 0〜4 で解消・標準化済みです。現在のコードベースには以下の機能が実装・検証済みです。
 
 - **Phase 0（光・色・3D 基盤正常化）**: `#card-stage` への opacity 分離による 3D 表裏正常化、着地衝撃波の背面移動（顔被り解消）、発光レイヤーの `screen` / `plus-lighter` 統一、シャンパン金＆連続スペクトル虹パレット刷新、決定論フィルムグレイン導入。
 - **Phase 1（リザルト脱 Web UI 化 ＆ 終盤光微動）**: `#ssr-emblem` / `#attr-badge` の物理箔・金属刻印化、素 SVG 廃止、カード占有率調整（余白確保）、スパークル疎密クラスター＆3D 金箔片・玉ボケ導入、回転スペキュラ＋写真中央保護ホロマスク実装、12.0s〜15.0s のレイアウト固定＆光微動実装。
@@ -54,28 +54,19 @@
 - **Phase 3.5（タイポグラフィ刷新 ＆ ヘッダー共通座布団 ＆ 出力自動化）**:
   - **設計分離・書体**: 昇格カットイン（`RAINBOW ASCENSION` 撤去・「昇格 SSR 確定」中央配置）とカード文字を完全分離。ジャンル別フォント・`royal-foil` / `cute-pastel` 等プリセット・4 軸直交スキーマ・`scipy` 二重縁取り（`_typo_modern.py`）・非対称スラントレイアウト（`diagonal-ribbon` 等）・表面中央鋲を追加。
   - **ヘッダー＆命名自動化**: 左上 `SSR`（Pattern A オーバーハング）× 右上 `属性`（Pattern C メダリオン＋`attributeBadge` / `attributeLabel` 分割）の共通 `44px` 座布団ギミックを実装。`scripts/render_video.mjs` により `renders/SSR_{preset}_{YYYYMMDD}.mp4` の自動命名出力に対応。
+- **Phase 4（運用性・量産性強化 ＆ 5 評価軸 / 複数素材検証）**:
+  - **自動箔タイポ同期＆CLI拡張**: `scripts/render_video.mjs` が `card-config.js` と `--variables` / `--variables-file` の変更を `typo-manifest.js` (`schemaVersion: 2`) の `source` スナップショットで自動検知し、必要時のみ `render_typography.py --overrides-stdin` を自動実行して出力ファイル名もプリセットに同期。Phase 5 先回りの `dimensions` 出力も整備。
+  - **オートレイアウト＆ビネット自動適応**: 前後禁則・`\n` 改行・長文タイトル縮小時の `subtitle` 連動（`sqrt(ratio)`）・2〜3文字短文字間拡大を実装。Pillow（EXIF 補正＋`photoFit/Position/Zoom` 近似）で写真下部 30% の知覚輝度を計測し、レイアウト別レンジで `.photo-vignette` 濃度（`--vignette-mid-a` / `--vignette-bot-a`）を自動適応。
+  - **5評価軸 / 複数素材検証＆音響補強**: 人物・暗所ポスター・白背景物体・2Dパステルイラスト・CG＋長文/短文境界で全検証を実施。右下特大スパークルのコーナー退避（`NO.777-SSR` 被り解消）と、着地・フィナーレ頭への高域クリスタル煌めきレイヤーを追加。
 
 ---
 
-## 4. 今後の開発フェーズ（Phase 4 〜 Phase 5：未着手）
+## 4. 今後の開発フェーズ（Phase 5：未着手）
 
-### Phase 4：運用性・量産性の強化 ＆ 品質評価・複数素材検証（仕上げ）
+### Phase 4：運用性・量産性の強化 ＆ 品質評価・複数素材検証（完了）
 
-任意の写真・テキストを流し込んで運用する際の品質一貫性を仕上げます。
-
-- [ ] **4-1. 任意テキスト変更時の箔タイポ自動同期 ＆ オートレイアウト・ビネット自動適応強化**
-  - **対象**: `package.json`, `scripts/render_video.mjs`, `scripts/render_typography.py`, `compositions/scene-result-setup.js`
-  - **課題**: `compositions/scene-result-setup.js` の `bindTypoSlot` は `typo-manifest.js` 内の文字列と完全一致する場合のみ箔 PNG を使い、`--variables` 等でテキストを変更すると素の HTML テキストへフォールバックしてしまう。また `render_video.mjs` の `readPresetName()` も CLI `--variables` 上書きを認識しない。さらに明るい背景写真では下部ビネット濃度が不足する場合がある。
-  - **対策**: `scripts/render_video.mjs` 側でコマンドライン引数（`--variables '{...}'`）をパースし、テキスト・プリセット等の変更があれば **`render_typography.py` を先に自動実行（上書き変数を渡して物理箔 PNG と `typo-manifest.js` を再生成）してから `hyperframes render` を呼び、出力ファイル名（`SSR_{preset}_{YYYYMMDD}.mp4`）も上書き値に同期させる**。あわせて、可変フォント・縁取り・非対称レイアウトプリセットを含めた長文タイトル・フレーバー・多行折り返し時のオートレイアウト強化と、入力写真（CLI `--variables photo=...` 差し替え含む）の下部 30% 平均輝度に応じた `.photo-vignette` 濃度の自動適応も実装する。
-- [ ] **4-2. 5品質評価軸 ＆ 複数入力素材による汎用性検証（＋任意音響アタック強化）**
-  - **対象**: 検証チェックリスト、多様な入力画像（顔写真・人物以外の物体写真・風景・イラスト）、`scripts/generate_se.py`, `scripts/_audio_dsp.py`
-  - **対策**: 以下の 5 品質評価軸で「足し算だけでなく不要要素を削るレビュー」を実施し、どの種類の画像（および Phase 3.5 のジャンル別タイポプリセットとの組み合わせ）を入れても品質と視認性が破綻しないことを確認する：
-    - `Material`（素材ごとの質感一貫性） / `Lighting`（光源と反射・影の整合） / `Depth`（奥行き・カメラ移動） / `Timing`（予兆・溜め・解放・余韻） / `Hierarchy`（主役と脇役の優先順位）
-  - （任意）着地〜ファンファーレ頭（`card_land` / Cmaj9 着地）への高域ウィンドチャイム／金属トライアングルの煌めきおよびホーン頭倍音パンチの追加（`-14.0 LUFS` 維持）を検討・適用する。
-
-**Phase 4 完了基準（DoD）**
-- `card-config.js` または CLI 変数でタイトル・属性・フレーバーを差し替えても、素 HTML フォールバックにならず物理箔タイポ（選択フォント・縁取り・レイアウト含む）のまま破綻なく MP4 生成できること。
-- 人物・物体・風景・イラストの複数素材で 5 評価軸の破綻がないこと。
+- [x] **4-1. 任意テキスト変更時の箔タイポ自動同期 ＆ オートレイアウト・ビネット自動適応強化**（`render_video.mjs`, `render_typography.py`, `_typo_modern.py`, `scene-result-setup.js`, `scene-result.css`, `index.html`, `scene-result.html`）
+- [x] **4-2. 5品質評価軸 ＆ 複数入力素材による汎用性検証 ＆ 高域クリスタルアタック強化**（人物・イラスト・暗所・白背景・長文/短文テスト全 PASS、`npm run qa -- --check-audio` 合格）
 
 ---
 
@@ -98,6 +89,9 @@
 **Phase 5 完了基準（DoD）**
 - 横長写真を指定して `1920×1080`（16:9）の SSR ガチャ演出 MP4 が、縦版と同等の物理質感・写真保護・`12.0s〜15.0s` 光微動を保ったまま出力できること。
 - 既存の縦版（`1080×1920`）の品質・出力結果に一切のデグレがないこと。
+
+### 将来検討アイデア（全フェーズ完了後）
+- リザルト確定状態の静止画カード（`card.png`）書き出し機能の追加検討（`card.png` 専用の付随オプションとして、下部ステータス枠＝旧 `.stat-box` / 最大 3 項目 `{label, value}` 等の導入を検討）。
 
 ---
 

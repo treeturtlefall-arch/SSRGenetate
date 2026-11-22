@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import functools
 import math
-from typing import Any, Dict, List, Optional, Tuple
+import re
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -208,6 +209,10 @@ def _measure_width(text: str, primary: str, size: int, tracking_em: float, vf_we
     return total
 
 
+KINSOKU_HEAD: Set[str] = set("、。，．・！？!?）」』】〕〉》｝］ーぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ々ヾヽゝゞ:;,.)]}")
+KINSOKU_TAIL: Set[str] = set("（「『【〔〈《｛［([{")
+
+
 def _wrap_lines(
     text: str,
     primary: str,
@@ -218,29 +223,115 @@ def _wrap_lines(
     vf_weight: int,
     norm_factors: Dict[str, float],
 ) -> List[str]:
-    clean = text.strip()
+    clean = text.replace("\r\n", "\n").replace("\r", "\n").strip()
     if not clean:
         return []
-    if max_lines <= 1 or _measure_width(clean, primary, size, tracking_em, vf_weight, norm_factors) <= max_w:
-        return [clean]
+    if max_lines <= 1:
+        return [re.sub(r"\s*\n\s*", " ", clean)]
+
+    paragraphs = [p.strip() for p in clean.split("\n") if p.strip()]
+    if not paragraphs:
+        return []
+
     lines: List[str] = []
-    rest = clean
-    for _ in range(max_lines - 1):
-        if _measure_width(rest, primary, size, tracking_em, vf_weight, norm_factors) <= max_w:
-            break
-        split_idx = len(rest)
-        while split_idx > 1 and _measure_width(rest[:split_idx], primary, size, tracking_em, vf_weight, norm_factors) > max_w:
-            split_idx -= 1
-        best = split_idx
-        for k in range(split_idx, max(1, split_idx - 8), -1):
-            if rest[k - 1] in "、。，．・ ,.　":
-                best = k
+    for p_idx, para in enumerate(paragraphs):
+        if len(lines) >= max_lines:
+            lines[-1] = f"{lines[-1]} {para}".strip()
+            continue
+        if _measure_width(para, primary, size, tracking_em, vf_weight, norm_factors) <= max_w:
+            lines.append(para)
+            continue
+
+        rest = para
+        while rest:
+            remaining_slots = max_lines - len(lines)
+            if remaining_slots <= 1:
+                # これ以上の行枠がない場合は残りをすべて最終行へ収める（呼び出し元で縮小される）
+                if lines and remaining_slots <= 0:
+                    lines[-1] = f"{lines[-1]} {rest}".strip()
+                else:
+                    lines.append(rest.strip())
+                rest = ""
                 break
-        lines.append(rest[:best].rstrip())
-        rest = rest[best:].lstrip()
-    if rest:
-        lines.append(rest)
-    return lines
+            if _measure_width(rest, primary, size, tracking_em, vf_weight, norm_factors) <= max_w:
+                lines.append(rest.strip())
+                rest = ""
+                break
+
+            split_idx = len(rest)
+            while split_idx > 1 and _measure_width(rest[:split_idx], primary, size, tracking_em, vf_weight, norm_factors) > max_w:
+                split_idx -= 1
+            best = split_idx
+            for k in range(split_idx, max(1, split_idx - 8), -1):
+                if rest[k - 1] in "、。，．・ ,.　":
+                    best = k
+                    break
+
+            # 禁則調整（最大2文字まで前送り、ただし best > 1 を維持）
+            for _ in range(2):
+                if best < len(rest) and rest[best] in KINSOKU_HEAD and best - 1 > 1:
+                    best -= 1
+                else:
+                    break
+            for _ in range(2):
+                if best > 1 and rest[best - 1] in KINSOKU_TAIL and best - 1 > 1:
+                    best -= 1
+                else:
+                    break
+
+            head_part = rest[:best].rstrip()
+            tail_part = rest[best:].lstrip()
+            if not head_part:
+                head_part = rest[:1]
+                tail_part = rest[1:].lstrip()
+            lines.append(head_part)
+            rest = tail_part
+
+        # 後続段落があるのに既に行枠上限へ達していたら最終行にマージされる
+        if p_idx < len(paragraphs) - 1 and len(lines) > max_lines:
+            lines = lines[: max_lines - 1] + [" ".join(lines[max_lines - 1 :])]
+
+    return lines[:max_lines] if len(lines) > max_lines else lines
+
+
+def adjust_short_title_tracking(text: str, base_tracking_em: float, explicit_override: bool = False) -> float:
+    """極短タイトル（2〜3文字）のスカスカ感を防ぐため字間を自動拡大（明示上書き時は維持）"""
+    if explicit_override:
+        return float(base_tracking_em)
+    compact_len = len("".join(text.split()))
+    if compact_len == 2:
+        return float(base_tracking_em) + 0.10
+    if compact_len == 3:
+        return float(base_tracking_em) + 0.05
+    return float(base_tracking_em)
+
+
+def compute_fitted_font_size(
+    text: str,
+    primary: str,
+    font_size: int,
+    max_w: float,
+    max_lines: int,
+    tracking_em: float,
+    vf_weight: int,
+    norm_factors: Dict[str, float],
+) -> Tuple[int, List[str]]:
+    """折り返し後に最大幅へ収まる実効フォントサイズと分割行リストを返す"""
+    cur_size = font_size
+    lines = _wrap_lines(text, primary, cur_size, max_w, max_lines, tracking_em, vf_weight, norm_factors)
+    for _ in range(2):
+        if not lines:
+            break
+        widest = max(_measure_width(ln, primary, cur_size, tracking_em, vf_weight, norm_factors) for ln in lines)
+        if widest > max_w and widest > 1.0:
+            next_size = max(12, int(cur_size * (max_w / widest)))
+            if next_size == cur_size:
+                break
+            cur_size = next_size
+            lines = _wrap_lines(text, primary, cur_size, max_w, max_lines, tracking_em, vf_weight, norm_factors)
+        else:
+            break
+    return cur_size, lines
 
 
 def _render_mask_ls(
@@ -255,13 +346,9 @@ def _render_mask_ls(
     align: str = "center",
     pad: int = 36,
 ) -> Tuple[np.ndarray, Tuple[int, int, int, int]]:
-    cur_size = font_size
-    lines = _wrap_lines(text, primary, cur_size, max_w, max_lines, tracking_em, vf_weight, norm_factors)
-    if lines:
-        widest = max(_measure_width(ln, primary, cur_size, tracking_em, vf_weight, norm_factors) for ln in lines)
-        if widest > max_w and widest > 1.0:
-            cur_size = max(12, int(cur_size * (max_w / widest)))
-            lines = _wrap_lines(text, primary, cur_size, max_w, max_lines, tracking_em, vf_weight, norm_factors)
+    cur_size, lines = compute_fitted_font_size(
+        text, primary, font_size, max_w, max_lines, tracking_em, vf_weight, norm_factors
+    )
 
     if not lines:
         return np.zeros((16, 16), dtype=np.float32), (0, 16, 0, 16)
@@ -1055,6 +1142,7 @@ def resolve_modern_plan(preset_name: str, typo_cfg: Dict[str, Any]) -> Dict[str,
     slots: Dict[str, Dict[str, Any]] = {}
     for skey, sdef in base["slots"].items():
         cur = dict(sdef)
+        cur["trackingExplicit"] = False
         # fonts_custom/fonts.json 上書き
         cur["font"] = resolve_slot_font(skey, cur["font"], custom_mf)
         # card-config.js 個別スロット上書き
@@ -1064,6 +1152,7 @@ def resolve_modern_plan(preset_name: str, typo_cfg: Dict[str, Any]) -> Dict[str,
                 cur["font"] = ov["family"].strip()
             if isinstance(ov.get("trackingEm"), (int, float)):
                 cur["trackingEm"] = float(ov["trackingEm"])
+                cur["trackingExplicit"] = True
             if isinstance(ov.get("size"), (int, float)):
                 cur["size"] = int(ov["size"])
             if isinstance(ov.get("compressX"), (int, float)):
