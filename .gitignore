@@ -31,3 +31,13 @@ assets/fonts/SetoFont.ttf
 assets/fonts/TekitouPoem.ttf
 assets/fonts/TekitouPoem_Bold.ttf
 assets/fonts/ZenKurenaido-Regular.ttf
+
+# Build-generated assets & audio (reproducible via `npm run build:assets`)
+assets/generated/
+assets/se_summon.wav
+assets/se_upgrade.wav
+assets/se_fanfare.wav
+
+# Internal development notes & scratch verification scripts
+docs/
+scripts/compare_*.py

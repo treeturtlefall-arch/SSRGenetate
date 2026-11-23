@@ -99,7 +99,9 @@ function parseCliArgs(argv) {
   let dryRun = false;
   let forceTypo = false;
   let noAutoTypo = false;
-  let hasExplicitOutput = false;
+  let noCardPng = false;
+  let explicitOutput = null;
+  let explicitCardOutput = null;
   const passthroughArgs = [];
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -116,8 +118,35 @@ function parseCliArgs(argv) {
       noAutoTypo = true;
       continue;
     }
-    if (a === "-o" || a === "--output" || a.startsWith("--output=")) {
-      hasExplicitOutput = true;
+    if (a === "--no-card-png") {
+      noCardPng = true;
+      continue;
+    }
+    if (a === "--card-output") {
+      if (i + 1 >= argv.length) {
+        console.error(`[error] ${a} requires an argument.`);
+        process.exit(1);
+      }
+      explicitCardOutput = argv[i + 1];
+      i += 1;
+      continue;
+    }
+    if (a.startsWith("--card-output=")) {
+      explicitCardOutput = a.slice("--card-output=".length);
+      continue;
+    }
+    if (a === "-o" || a === "--output") {
+      if (i + 1 >= argv.length) {
+        console.error(`[error] ${a} requires an argument.`);
+        process.exit(1);
+      }
+      explicitOutput = argv[i + 1];
+      i += 1;
+      continue;
+    }
+    if (a.startsWith("--output=")) {
+      explicitOutput = a.slice("--output=".length);
+      continue;
     }
     if (a === "--variables" || a.startsWith("--variables=") || a === "--variables-file" || a.startsWith("--variables-file=")) {
       const isFileFlag = a === "--variables-file" || a.startsWith("--variables-file=");
@@ -140,7 +169,7 @@ function parseCliArgs(argv) {
     passthroughArgs.push(a);
   }
 
-  return { cliVars, dryRun, forceTypo, noAutoTypo, hasExplicitOutput, passthroughArgs };
+  return { cliVars, dryRun, forceTypo, noAutoTypo, noCardPng, explicitOutput, explicitCardOutput, passthroughArgs };
 }
 
 function applyCliOverrides(baseCfg, overrides) {
@@ -381,7 +410,8 @@ function resolveOutputPath(preset) {
   return path.relative(PROJECT_ROOT, candidate).replace(/\\/g, "/");
 }
 
-const { cliVars, dryRun, forceTypo, noAutoTypo, hasExplicitOutput, passthroughArgs } = parseCliArgs(process.argv.slice(2));
+const { cliVars, dryRun, forceTypo, noAutoTypo, noCardPng, explicitOutput, explicitCardOutput, passthroughArgs } = parseCliArgs(process.argv.slice(2));
+const hasExplicitOutput = Boolean(explicitOutput);
 const baseCfg = loadCardConfig();
 const effectiveCfg = applyCliOverrides(baseCfg, cliVars);
 const expectedSource = buildExpectedSource(effectiveCfg);
@@ -403,11 +433,12 @@ function encodeVariablesForHyperFrames(vars) {
 
 const preset = expectedSource.preset;
 const autoOutput = resolveOutputPath(preset);
+const finalOutput = explicitOutput || autoOutput;
+const defaultCardOutput = finalOutput.replace(/\.mp4$/i, "") + ".card.png";
+const finalCardOutput = explicitCardOutput || defaultCardOutput;
+const emitCardPng = !noCardPng && process.env.SSR_CARD_PNG !== "0";
 
-const cmdArgs = ["--yes", "hyperframes@0.9.72", "render", "-q", "delivery", "--crf", "12"];
-if (!hasExplicitOutput) {
-  cmdArgs.push("-o", autoOutput);
-}
+const cmdArgs = ["--yes", "hyperframes@0.9.72", "render", "-q", "delivery", "--crf", "12", "-o", finalOutput];
 const hasCliVars = Object.keys(cliVars).length > 0;
 const encodedVars = hasCliVars ? encodeVariablesForHyperFrames(cliVars) : null;
 if (hasCliVars && dryRun) {
@@ -420,7 +451,8 @@ const syncReasonText = forceTypo ? ["forced", ...syncStatus.reasons] : syncStatu
 
 if (dryRun) {
   console.log(`[dry-run] preset=${preset}`);
-  console.log(`[dry-run] output=${hasExplicitOutput ? "(custom -o)" : autoOutput}`);
+  console.log(`[dry-run] output=${finalOutput}`);
+  console.log(`[dry-run] cardPng=${emitCardPng ? finalCardOutput : "disabled (--no-card-png)"}`);
   console.log(
     `[dry-run] typoSync=${shouldSyncTypo ? `needs-sync (${syncReasonText.join(", ")})` : noAutoTypo ? "skipped (--no-auto-typo)" : "up-to-date"}`
   );
@@ -434,15 +466,16 @@ if (dryRun) {
   process.exit(0);
 }
 
-if (shouldSyncTypo) {
-  const envWithOverrides = {
-    ...process.env,
-    SSR_CARD_CONFIG_OVERRIDES: JSON.stringify(cliVars),
-    SSR_RESOLVED_CONFIG_JSON: JSON.stringify(effectiveCfg),
-  };
+const pythonBin = process.env.SSR_PYTHON || "python";
+const envWithOverrides = {
+  ...process.env,
+  SSR_CARD_CONFIG_OVERRIDES: JSON.stringify(cliVars),
+  SSR_RESOLVED_CONFIG_JSON: JSON.stringify(effectiveCfg),
+};
 
+if (shouldSyncTypo) {
   console.log(`[typo-sync] Regenerating typography (${syncReasonText.join(", ")})...`);
-  const pyRes = spawnSync("python", ["scripts/render_typography.py", "--overrides-stdin"], {
+  const pyRes = spawnSync(pythonBin, ["scripts/render_typography.py", "--overrides-stdin"], {
     cwd: PROJECT_ROOT,
     input: JSON.stringify(cliVars),
     env: envWithOverrides,
@@ -469,7 +502,7 @@ if (shouldSyncTypo) {
       ["scripts/render_optics.py", "--cutin-only"],
     ];
     for (const [script, ...args] of layoutScripts) {
-      const r = spawnSync("python", [script, ...args], {
+      const r = spawnSync(pythonBin, [script, ...args], {
         cwd: PROJECT_ROOT,
         env: envWithOverrides,
         stdio: "inherit",
@@ -489,7 +522,26 @@ if (shouldSyncTypo) {
   console.log(`[typo-sync] up-to-date (${preset})`);
 }
 
-console.log(`[render] preset=${preset} -> ${hasExplicitOutput ? "(custom -o)" : autoOutput}`);
+if (emitCardPng) {
+  const cardRes = spawnSync(pythonBin, ["scripts/render_card_png.py", "--overrides-stdin", "-o", finalCardOutput], {
+    cwd: PROJECT_ROOT,
+    input: JSON.stringify(cliVars),
+    env: envWithOverrides,
+    encoding: "utf8",
+    stdio: ["pipe", "inherit", "inherit"],
+    shell: false,
+  });
+  if (cardRes.error) {
+    console.error(`[card-png] Failed to spawn python: ${cardRes.error.message}`);
+    process.exit(1);
+  }
+  if ((cardRes.status ?? 1) !== 0) {
+    console.error(`[card-png] render_card_png.py exited with status ${cardRes.status}`);
+    process.exit(cardRes.status ?? 1);
+  }
+}
+
+console.log(`[render] preset=${preset} -> ${hasExplicitOutput ? `${finalOutput} (custom -o)` : autoOutput}`);
 
 let tmpVarsPath = null;
 if (hasCliVars) {

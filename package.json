@@ -11,6 +11,7 @@
     "dev": "npx --yes hyperframes@0.9.72 preview",
     "check": "npx --yes hyperframes@0.9.72 check",
     "render": "node scripts/render_video.mjs",
+    "render:card": "python scripts/render_card_png.py",
     "qa": "python scripts/qa_video.py",
     "publish": "npx --yes hyperframes@0.9.72 publish"
   }

@@ -22,7 +22,6 @@
 **詳細ドキュメント**:
 - [`SPEC.md`](./SPEC.md) — 確定仕様（詳細タイムライン・全ファイル一覧・設定スキーマ・音響/QA 基準）※仕様確認や構造変更時は必ず参照
 - [`ROADMAP.md`](./ROADMAP.md) — 開発フェーズ計画・進捗（Phase 0〜5）
-- [`LANDSCAPE_PLAN.md`](./LANDSCAPE_PLAN.md) — Phase 5 横動画（16:9）拡張設計
 - [`assets/se_custom/README.md`](./assets/se_custom/README.md) — ローカル専用カスタム SE スロット運用ガイド
 
 ## コマンド
@@ -35,7 +34,8 @@ npm run build:material # 虹フレーム・カード裏面・ホロ・フィル�
 npm run build:se       # 効果音 WAV（assets/se_custom/ 統合含む）を再生成
 npm run check          # lint + runtime + layout + motion + contrast を一括検証
 npx hyperframes snapshot --at 1,3,5   # 指定秒数のフレーム PNG を出力して目視確認
-npm run render         # MP4 書き出し (renders/ssr_gacha.mp4)
+npm run render         # MP4 + フル解像度 .card.png 同時書き出し (renders/SSR_{preset}_{YYYYMMDD}.mp4 / .card.png)
+npm run render:card    # フル解像度 card.png (900x1590 / 1480x860) 単体書き出し
 npm run qa -- renders/ssr_gacha.mp4 --check-audio  # 出力 MP4 の定量 QA（映像・音響）
 npx hyperframes preview --background  # エージェント用の永続 Studio プレビュー起動
 npx hyperframes preview --status      # プレビュー稼働確認
