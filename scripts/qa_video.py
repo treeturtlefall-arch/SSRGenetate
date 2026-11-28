@@ -162,7 +162,28 @@ def measure_audio(video_path: Path, duration: float) -> Dict[str, Any]:
     }
 
 
-def analyze_video(video_path: Path, check_audio: bool = False) -> Dict[str, Any]:
+def is_valid_stream_spec(
+    width: int,
+    height: int,
+    fps: float,
+    duration: float,
+    expected_fps: float = 30.0,
+) -> bool:
+    """ストリーム仕様検証（本家 1080p@30fps 既定; 720p/540p・24fps も後方互換許容）。"""
+    is_landscape = width > height
+    expected_w, expected_h = (1920, 1080) if is_landscape else (1080, 1920)
+    res_ok = (width == expected_w and height == expected_h) or (
+        (width, height) in ((720, 1280), (1280, 720), (540, 960), (960, 540))
+    )
+    fps_ok = abs(fps - expected_fps) <= 0.5 or abs(fps - 24.0) <= 0.5
+    return res_ok and fps_ok and 0 < duration <= TOTAL_LIMIT_SEC
+
+
+def analyze_video(
+    video_path: Path,
+    check_audio: bool = False,
+    expected_fps: float = 30.0,
+) -> Dict[str, Any]:
     if not video_path.exists():
         raise FileNotFoundError(f"Video not found: {video_path}")
 
@@ -186,12 +207,13 @@ def analyze_video(video_path: Path, check_audio: bool = False) -> Dict[str, Any]
     p95 = np.percentile(frames, 95, axis=(1, 2))
     spread = p95 - p5
 
-    # 1. ストリーム仕様
-    stream_pass = (
-        info["width"] > 0
-        and info["height"] > 0
-        and info["fps"] > 0
-        and info["duration"] <= TOTAL_LIMIT_SEC
+    # 1. ストリーム仕様 (本家既定: 1080x1920 または 1920x1080 @ 30fps; 720p/540p・24fps も後方互換許容)
+    stream_pass = is_valid_stream_spec(
+        width=info["width"],
+        height=info["height"],
+        fps=info["fps"],
+        duration=info["duration"],
+        expected_fps=expected_fps,
     )
 
     # 1.5 前後 0.5s フェード余白チェック（先頭・最終フレームが純黒近傍）
