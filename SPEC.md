@@ -90,8 +90,12 @@
 ### `scripts/`（決定論的アセット生成 ＆ QA スクリプト）
 - `scripts/_utils.py` — `card-config.js` 読み込み、シード解決、色変換、Porter-Duff Over 合成、微細シボ、金属レリーフ陰影、カード寸法定数
 - `scripts/_optics_core.py` — H&D 分光スペクトル、FFT 異方性 PSF ぼかし、EDT 距離変換、FBM ノイズ、6段階物理光学発光パイプライン
+- `scripts/_optics_masks.py` — 魔法陣3層・天蓋ゲート・オーブ亀裂・多面体クリスタルオーブ・星/スパークル/リザルトリングのマスク＆描画
+- `scripts/_optics_fx.py` — 玉ボケ・ゴッドレイ・縦光柱・衝撃波・カットイン光学素材・ウィスプ・天啓光撃・クリスタル破片生成
 - `scripts/_font_slots.py` — `assets/fonts_custom/` 優先解決・TTF `cmap` パーサー・書体別視覚サイズ正規化係数一元管理
+- `scripts/_typo_classic.py` — クラシック手書きキネマティクス・箔/ラメ/紙目物理変調・レアリティクレスト・属性プレート描画
 - `scripts/_typo_modern.py` — 4軸直交スキーマ (`font × style × palette × layout`) ＆ 2x/3x SSAA・EDT 縁取りモダンタイポ生成エンジン
+- `scripts/_typo_vignette.py` — 入力写真下部 30% の適応ビネット計測 ＆ 差分判定用スナップショット構築
 - `scripts/_audio_dsp.py` — 現代ソシャゲ音像シンセ、`fftconvolve` ホール残響、BS.1770-4 LUFS / TruePeak 計測、ソフトリミッター
 - `scripts/_audio_slots.py` — `assets/se_custom/`（11 スロット＋`slots.json`）の WAV デコード・44.1kHz ステレオ変換・フォールバック管理
 - `scripts/build_all.py` — 下位 4 スクリプトを並列実行する一括ビルダー（`npm run build:assets`）
@@ -101,6 +105,10 @@
 - `scripts/generate_se.py` — 16.0 秒仮想マスター基準のステレオ WAV 効果音 3 本生成（`npm run build:se`）
 - `scripts/render_video.mjs` — `card-config.js` ＋ CLI `--variables` / `--variables-file` の自動箔タイポ同期＆自動命名 MP4 書き出しラッパー（`npm run render`）
 - `scripts/qa_video.py` — 出力 MP4 の自動定量 QA（`npm run qa`）
+
+### `tests/` ＆ `.github/workflows/`（自動テスト・CI）
+- `tests/conftest.py`, `tests/test_utils.py`, `tests/test_optics.py`, `tests/test_typography.py` — 設定・レイアウト・光学・タイポグラフィの単体＆決定論性テスト（`pytest -v`）
+- `.github/workflows/ci.yml` — `push` / `pull_request` 時に Python 3.11 / 3.12 で `pytest -v` を自動実行する GitHub Actions ワークフロー
 
 ### `assets/` ＆ `renders/`（素材・生成物）
 - `assets/photo.jpg` — 入力写真（`.gitignore` で画像類は除外）

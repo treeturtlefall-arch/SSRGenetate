@@ -36,7 +36,7 @@ def test_parse_css_object_position():
 
 
 def test_wrap_text_lines_respects_explicit_newline():
-    lines = wrap_text_lines("一行目\n二行目", "KleeOne-Regular.ttf", 32, max_w=600, max_lines=2)
+    lines = wrap_text_lines("一行目\n二行目", "ShipporiMincho-Bold.ttf", 32, max_w=600, max_lines=2)
     assert lines == ["一行目", "二行目"]
 
 
